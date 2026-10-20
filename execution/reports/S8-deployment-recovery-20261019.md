@@ -66,5 +66,7 @@
 - لم يُنفذ enrollment مستضافًا لعدم وجود حساب اصطناعي غير مسجل مع الحفاظ على قاعدة Preview. كما لم تُمكن أداة Edge الحالية من استخراج رأس CSP أو nonces الطلبات؛ لذلك لا يُدعى PASS جديد لرأس CSP أو دوران nonce، رغم نجاح hydration وConsole والانحدار المحلي.
 - المتجر والضمان بقيا معلوماتيين بلا نماذج، وأعادت بوابة الأجهزة `NOT_AVAILABLE_IN_PREVIEW`. لم تُكرر POST gates الأخرى ضد النشر الجديد.
 - منح GitHub أقل صلاحية `user:email`، وأكد API أن `202302030@PUA.EDU.EG` بريد موثق للحساب `morapua2030`. أُنشئ المستودع الخاص `https://github.com/morapua2030/OTONOM` بعد فحص 308 ملفات مرشحة بلا أسرار غير مصنفة.
+- دُفع 295 ملفًا معتمدًا إلى فرع `main` في commit أولي `ec7e7144` بلا force أو إعادة كتابة تاريخ. تطابق الرأس المحلي والبعيد، وبقي المستودع PRIVATE.
 - توقف ربط Vercel بالمستودع قبل أي أثر لأن الحساب يحتاج `Login Connection` إلى GitHub. يظل `git.deploymentEnabled=false`، ولا يوجد نشر Git تلقائي أو Production.
+- تحقق ما بعد الدفع: لا يزال Git link غائبًا، والنشران الوحيدان Preview وREADY، وعدد Production صفر، وحماية كل النشرات `all`، وكل 25 قيمة بيئة Preview-only.
 - الدليل المنظم الأحدث: `execution/evidence/s8-hosted-20261020/summary.json`.
