@@ -1,0 +1,43 @@
+# Dependencies and build output
+**/node_modules/
+**/.next/
+**/.pnpm-store/
+**/dist/
+**/coverage/
+*.tsbuildinfo
+
+# Local configuration and credentials
+**/.env*
+!**/.env.example
+**/.local-secrets/
+**/.vercel/
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Databases, backups, uploaded files, and browser state
+**/backups/
+*.dump
+*.sql.gz
+*.sqlite*
+*.db
+**/.private-uploads/
+**/.media-uploads/
+**/.edge-profile*/
+**/.edge-csp-profile/
+**/tests/results/
+
+# Generated and local-only artifacts
+.vscode/
+.agents/
+skills-lock.json
+execution/evidence/
+spike/
+*.zip
+*.log
+Thumbs.db
+.DS_Store
+
+.vercel
+.env*

@@ -1,0 +1,38 @@
+{
+  "name": "otonom-web-platform",
+  "private": true,
+  "version": "0.1.0",
+  "description": "OTONOM website platform — LOCAL DEVELOPMENT ONLY (synthetic data). Provisional architecture: Next.js + Payload 3 + PostgreSQL with a framework-independent domain package.",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "db:setup": "pnpm --filter @otonom/web run db:setup",
+    "dev": "pnpm --filter @otonom/web run dev",
+    "build": "pnpm --filter @otonom/web run build",
+    "start": "pnpm --filter @otonom/web run start",
+    "test:domain": "pnpm --filter @otonom/domain run test",
+    "test:http": "pnpm --filter @otonom/tests run test",
+    "test:web": "pnpm --filter @otonom/web run test",
+    "test:visual": "pnpm --filter @otonom/tests run visual",
+    "test:surface": "pnpm --filter @otonom/tests run surface",
+    "test:journey": "pnpm --filter @otonom/tests run journey",
+    "test:cms": "pnpm --filter @otonom/tests run cms",
+    "test:portal": "pnpm --filter @otonom/tests run portal",
+    "test:security": "pnpm --filter @otonom/tests run security",
+    "test:e2e": "pnpm --filter @otonom/tests run e2e"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [],
+    "overrides": {
+      "dompurify": "3.4.16",
+      "esbuild": "0.28.2",
+      "sass": "1.105.2",
+      "undici": "7.29.1"
+    }
+  },
+  "devDependencies": {
+    "next": "16.4.0"
+  }
+}

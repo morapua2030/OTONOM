@@ -1,0 +1,28 @@
+{
+  "name": "@otonom/tests",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "test": "tsx src/acceptance.ts",
+    "visual": "tsx src/visual.ts",
+    "surface": "tsx src/surface.ts",
+    "journey": "tsx src/journey.ts",
+    "cms": "tsx src/cms.ts",
+    "portal": "tsx src/portal.ts",
+    "security": "tsx src/security.ts",
+    "csp-edge": "tsx src/csp-edge.ts",
+    "e2e": "tsx src/e2e.ts"
+  },
+  "dependencies": {
+    "@otonom/domain": "workspace:*",
+    "otplib": "13.5.0",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "@types/pg": "8.23.1",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3"
+  }
+}

@@ -1,0 +1,103 @@
+# OTONOM pre-code planning gate - structured state (honest values only)
+# Automated YAML validation: NOT RUN (no parser installed; installs not authorized)
+project: OTONOM Smart Home Website
+current_phase: continuous_multi_plan_pre_code
+date: "2026-10-13"
+user_response_language: Arabic
+documentation_language: English
+environment:
+  target: Antigravity IDE on Windows
+  actual: "Antigravity IDE 2.5.5 (local Windows), Claude Code extension as agent"
+  verified_by: "Get-Process on VSCODE_PID (product name and version)"
+  workspace: 'D:\otonom'
+  planning_folder: 'D:\otonom\docs\planning-gate-M2W1-precode'
+  correction: "v2 docs misidentified host as VS Code 1.141.0; originals not edited"
+release_strategy:
+  M2: APPROVED
+  W1: APPROVED
+  guardrails: [G-1_no_preview_sales, G-2_preview_labeling, G-3_warranty_minimum, G-4_policy_gate]
+  preview_web_sales: prohibited
+  commercial_warranty_portal: required
+  preview_variant: OPEN
+kpi:
+  new_and_existing_contracts: included
+  sourced_assisted_mutually_exclusive: true
+  cohort_orthogonal: true
+  north_star_headline: OPEN
+  north_star_options: [NS-A_website_sourced, NS-B_total_influenced]
+  contract_accounting: OPEN
+stack:
+  candidate: "Next.js + Payload CMS 3 + PostgreSQL"
+  fallback: "Custom Next.js full-stack + PostgreSQL"
+  approval: PROPOSED
+  scores_are_measurements: false
+spike:
+  criteria_source_retrieved: true
+  criteria_reviewed: true
+  thresholds_approved: false
+  execution_authorized: false
+  tests_executed: 0
+  readiness: READY_FOR_OWNER_DECISION_EXECUTION_BLOCKED
+warranty:
+  start_rule: commissioning
+  duration: UNAPPROVED
+  live_selling_allowed_without_policy: false
+operations:
+  git: prohibited
+  github: prohibited
+  dot_git_read: false
+  railway_deployment: deferred
+  railway_resources_created: 0
+  code_written: false
+  dependencies_installed: false
+  external_uploads: 0
+  original_docs_modified: false
+estimates:
+  confidence: low
+  preview_weeks_range: "19-52 (most likely ~34)"
+  commercial_weeks_range: "37-100 (most likely ~66)"
+  prior_estimates_preview_weeks: "11-17"
+  prior_estimates_total_weeks: "23-36"
+sources:
+  docs_files_verified: 33
+  archive_files_verified: 19
+  backups_hash_verified: 2
+artifacts:
+  - 00-master-progress-and-source-inventory.md
+  - 01-owner-approved-decisions-and-contradiction-ledger.md
+  - 02-prd-v1-reconciliation-and-gap-analysis.md
+  - 03-commercial-strategy-personas-and-journeys.md
+  - 04-information-architecture-sitemap-and-navigation.md
+  - 05-homepage-and-page-level-experience-plan.md
+  - 06-b2b-rfq-qualification-crm-and-proposals.md
+  - 07-contract-kpi-attribution-and-analytics.md
+  - 08-commerce-pricing-cart-orders-and-payments.md
+  - 09-inventory-serial-commissioning-and-warranty.md
+  - 10-cms-bilingual-content-and-publication-governance.md
+  - 11-technical-integrations-claims-and-case-studies.md
+  - 12-architecture-decision-matrix-and-adrs.md
+  - 13-proposed-module-boundaries-and-data-model.md
+  - 14-security-privacy-and-threat-model.md
+  - 15-antigravity-windows-workspace-and-future-railway.md
+  - 16-architecture-spike-v1-to-v7-review.md
+  - 17-test-strategy-acceptance-and-quality-gates.md
+  - 18-m2w1-preview-commercial-release-plan.md
+  - 19-epics-stories-dependencies-and-effort.md
+  - 20-operations-support-and-incident-readiness.md
+  - 21-risk-register-and-decision-impact-matrix.md
+  - 22-requirements-traceability-and-inconsistency-audit.md
+  - 23-precode-gate-review-and-action-list.md
+  - 24-final-arabic-chatgpt-handoff.md
+  - 25-structured-state.yaml
+blockers:
+  - PD-01 spike authorization
+  - PD-02 spike thresholds
+  - PD-03 stack decision (after spike)
+  - PD-04 implementation authorization
+  - PD-05 preview variant P-A/P-B
+  - PD-08 warranty policy (blocks commercial release)
+  - PD-13 privacy notice (blocks preview if PII collected)
+  - PD-14 consumer/shipping/returns/payment policies (blocks commercial release)
+  - PD-11 prices/SKUs/stock (blocks commercial release)
+  - PD-10 written case-study consent (blocks identified publication)
+next_gate: OWNER_REVIEW_BEFORE_SPIKE_OR_IMPLEMENTATION

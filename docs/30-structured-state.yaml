@@ -1,0 +1,168 @@
+# OTONOM planning packet — machine-readable state (honest values only)
+project: OTONOM Smart Home Website
+report_type: ANTIGRAVITY_MASTER_PLANNING_HANDOFF
+master_prompt_id: OTONOM-WEB-MASTER-2026-10-13 v2.0
+phase: PLANNING
+status: PARTIAL            # planning artifacts complete; owner decisions + evidence outstanding; see reasons below
+status_reasons:
+  - "Execution environment is local Windows, not Antigravity Cloud (owner direction pending)"
+  - "North Star, first-launch packaging, contract-value recognition not decided"
+  - "Warranty duration, written case-study consent, policies BLOCKED"
+  - "No evidence files (datasheets, tests, brand, prices) available for review"
+report_date: 2026-10-13
+reported_to_user_in: ar-EG
+documents_authored_in: en
+agent: claude-code (claude-opus-5-5) via VS Code extension
+execution_environment:
+  requested: Antigravity Cloud
+  actual: local Windows 11 Home laptop (LAPTOP-JTL6TGC3), Claude Code in VS Code 1.141.0
+  verified_by: env var names (VSCODE_*, CLAUDE_CODE_*), hostname, OS version
+  workspace_path: D:\otonom
+  persistent_storage: local NTFS disk; persists across sessions; NO verified backup
+  tools:
+    node: v24.20.0
+    npm: 11.19.0
+    pnpm: 10.33.0
+    python: 3.14.3
+    docker: not_installed
+    postgresql: not_installed
+    railway_cli: not_installed
+  observations:
+    - ".git folder present in D:\\otonom (created 2026-10-13 22:17, gk subfolder); NOT created, inspected, or used by agent"
+    - "v1 docs moved (not deleted) to docs/archive/v1-gate0-2026-10-13/"
+permissions:
+  planning: true
+  application_implementation: false
+  architecture_spike: false
+  git_or_github_work: false
+  railway_provisioning: false
+  railway_deployment: false
+  external_spend: false
+actions_performed:
+  git_or_github_operations: 0
+  railway_actions: 0
+  application_code_written: false
+  packages_installed: 0
+  external_resources_created: 0
+  costs_incurred: none
+product:
+  primary_market: Egypt
+  bilingual_ar_en: true
+  primary_audience: B2B_developers_and_contractors
+  retail_catalog_models: [4_channel, 6_channel, 16_channel]
+  b2b_rfq: required
+  controller_shop: required
+  warranty_service_portal_on_first_commercial_launch: required
+  3d_experience: deferred
+  marketplace: deferred
+  web_iot_control: out_of_scope
+metrics:
+  contract_scope: all_eligible_new_contracts_new_and_existing_customers
+  mutually_exclusive_attribution: true
+  attribution_classes: [WEBSITE_SOURCED, WEBSITE_ASSISTED, NON_WEBSITE, UNKNOWN]
+  sourced_and_assisted_reported_separately: true
+  north_star_selection: PROPOSED_NOT_APPROVED
+  north_star_recommendation: KPI-001 website_sourced (KPI-003 total_influenced as companion)
+  contract_value_recognition: PROPOSED_NOT_APPROVED
+architecture:
+  selected: NOT_APPROVED
+  recommendation: "A: nextjs + payload_cms_3 (embedded) + postgresql, domain services own critical state"
+  fallback: "D: nextjs + lean custom TS modules + postgresql"
+  weighted_scores: {A: 4.21, B: 3.59, C: 2.77, D: 3.75}
+  candidates:
+    - A_nextjs_payload3_postgresql
+    - B_nextjs_nestjs_postgresql
+    - C_nextjs_commerce_framework_cms
+    - D_nextjs_lean_custom_postgresql
+  veto_criteria: [V-1_atomic_reservation, V-2_domain_authz, V-3_private_uploads, V-4_reviewed_publication, V-5_admin_mfa, V-6_arabic_rtl, V-7_operability]
+  spike_authorized: false
+  spike_prerequisite: postgresql_install_or_other_environment
+roadmap:
+  packaging_options: [M1_complete, M2_preview_plus_commercial_with_portal, M3_legacy_bridge_exception]
+  warranty_options: [W1_requirement_preserving, W2_tradeoff]
+  recommendation: M2 + W1
+  decision: OPEN (DR-041)
+  rough_estimate_weeks_stages_1_to_6: "23-36 (low confidence, +/-40%)"
+  rough_estimate_weeks_to_preview: "11-17 (low confidence)"
+railway:
+  planned_target: true
+  status: PLANNING_ONLY / NOT_DEPLOYED / NOT_AUTHORIZED
+  authenticated: not_attempted
+  resources_provisioned: false
+  deployment_authorized: false
+  deployed: false
+tests:
+  application_tests: NOT_RUN   # no application exists
+  acceptance_matrix_defined: true
+blocking_decisions:
+  - DR-007 north_star_exact_selection
+  - DR-041 first_commercial_launch_scope (M1/M2/M3, W1/W2)
+  - DR-024 exact_warranty_duration_and_terms (BLOCKED)
+  - DR-032 customer_project_media_written_consent (BLOCKED)
+  - DR-043 policies_approval (BLOCKED)
+  - DR-015/016 product_skus_and_price_rules
+  - DR-030/042 actual_datasheet_and_compatibility_review
+  - DR-045 contract_value_recognition
+  - DR-040 execution_environment_confirmation
+decision_register_counts: {APPROVED: 23, CONFIRMED_BY_USER: 9, PROPOSED: 14, OPEN: 6, BLOCKED: 3, DEFERRED: 2, VERIFIED_BY_AGENT: 1, total: 58}
+artifacts_created:
+  - docs/README.md
+  - docs/00-environment-and-scope-audit.md
+  - docs/01-executive-product-vision.md
+  - docs/02-consolidated-discovery-facts.md
+  - docs/03-prd-v1-draft.md
+  - docs/04-decision-register.md
+  - docs/05-personas-and-customer-journeys.md
+  - docs/06-sitemap-content-map-and-page-briefs.md
+  - docs/07-brand-ux-and-design-system-brief.md
+  - docs/08-b2b-rfq-qualification-and-sales-workflow.md
+  - docs/09-kpi-dictionary-attribution-and-dashboard.md
+  - docs/10-controller-catalog-configurations-and-pricing.md
+  - docs/11-checkout-orders-manual-payments.md
+  - docs/12-inventory-reservations-and-serials.md
+  - docs/13-warranty-commissioning-service-rma.md
+  - docs/14-cms-content-evidence-and-publishing.md
+  - docs/15-technical-integration-showcase.md
+  - docs/16-architecture-options-and-decision-brief.md
+  - docs/17-proposed-domain-and-data-model.md
+  - docs/18-security-privacy-and-threat-model.md
+  - docs/19-nonfunctional-requirements.md
+  - docs/20-test-strategy-and-acceptance-matrix.md
+  - docs/21-mvp-packaging-roadmap-and-estimates.md
+  - docs/22-epics-stories-and-task-breakdown.md
+  - docs/23-risk-register-and-mitigations.md
+  - docs/24-evidence-request-and-publication-readiness.md
+  - docs/25-railway-future-readiness-NO-DEPLOY.md
+  - docs/26-agent-governance-and-approval-gates.md
+  - docs/27-project-owner-decisions-required.md
+  - docs/28-executive-summary-ar.md
+  - docs/29-chatgpt-handoff-ar.md
+  - docs/30-structured-state.yaml
+artifacts_archived: docs/archive/v1-gate0-2026-10-13/ (19 files, unchanged)
+validation_performed:
+  - read-only environment re-inspection (doc 00 section 8)
+  - file existence and non-empty check of all artifacts (see doc 29)
+  - internal count checks (decision register totals, weighted scores, edge-case tallies, 49 test IDs)
+not_validated:
+  - "YAML syntax not machine-validated (no parser installed; installs not authorized)"
+next_gate: OWNER_REVIEW_AND_EXPLICIT_APPROVAL (minimum answers D-Q2, D-Q3, D-Q12; recommended D-Q13)
+
+# ---- Update after owner round-2 decisions (2026-10-13); values above kept for history ----
+owner_round_2:
+  environment_intended: Antigravity Cloud (APPROVED intent, DR-040)
+  environment_verified: false            # DR-062 BLOCKED; no Antigravity tool in Claude Code session
+  development_on_windows_workspace: not_authorized   # DR-061
+  local_postgresql_install: declined     # DR-054 BLOCKED
+  git_directory: do_not_modify           # DR-060
+  mvp_packaging: "M2 + W1 PROPOSED (owner-preferred, provisional; DR-041)"
+  architecture: "A PROPOSED (unchanged; DR-037)"
+  spike: "approved in principle; execution BLOCKED (DR-059)"
+  backup:
+    authorized: true                     # DR-055
+    location: D:\otonom-backups\
+    snapshot1: {file: OTONOM-planning-docs-v2-2026-10-13-snapshot1.zip, files: 51, sha256: BA1D111EB40182F5BD765EA523255E2B319D2DF3D222F39C00CAE558A4A75794, verified: "51/51 hashes match"}
+    snapshot2: "see doc 31 / final report"
+    same_physical_disk_as_source: true
+  decision_register_counts: {APPROVED: 26, CONFIRMED_BY_USER: 9, PROPOSED: 13, OPEN: 5, BLOCKED: 6, DEFERRED: 2, VERIFIED_BY_AGENT: 1, total: 62}
+  artifacts_added: [docs/31-implementation-readiness-assessment.md]
+  next_gate: OWNER_DEFINES_AND_VERIFIES_ENVIRONMENT (doc 31 section 4)
