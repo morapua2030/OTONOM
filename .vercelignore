@@ -1,26 +1,21 @@
-**/node_modules/
-**/.next/
-**/.pnpm-store/
-**/dist/
-**/coverage/
-**/.env*
-!**/.env.example
-**/.local-secrets/
-**/.vercel/
-**/backups/
-**/.private-uploads/
-**/.media-uploads/
-**/tests/results/
-*.dump
-*.log
-*.zip
-*.tsbuildinfo
-.git/
-.agents/
-.vscode/
-docs/
-execution/
-spike/
-app/tests/
-app/tools/
-app/web/test/
+# CLI deployments are sourced from the repository root because the existing Vercel
+# project uses `app` as its Root Directory. Upload only that application tree.
+/*
+!app
+
+# Local credentials, database artifacts and generated evidence must never be uploaded.
+app/.local-secrets
+app/backups
+app/tests/results
+app/**/.env*
+app/**/.private-uploads
+app/**/.media-uploads
+app/**/.edge-profile*
+app/**/.edge-csp-profile
+app/**/node_modules
+app/**/.next
+app/**/*.dump
+app/**/*.sql.gz
+app/**/*.sqlite*
+app/**/*.db
+app/**/*.log
