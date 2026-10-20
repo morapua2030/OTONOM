@@ -4,7 +4,7 @@ import { SITE_URL } from '@/lib/server.ts';
 
 export const dynamic = 'force-dynamic';
 
-const STATIC = ['', '/about', '/solutions', '/solutions/multi-unit-developments', '/business/developers', '/business/contractors', '/business/partners', '/business/request-a-proposal', '/consultation', '/projects', '/technology', '/technology/integrations', '/contact'];
+const STATIC = ['', '/about', '/solutions', '/solutions/multi-unit-developments', '/business/developers', '/business/contractors', '/business/partners', '/business/request-a-proposal', '/consultation', '/projects', '/products', '/products/4r', '/products/6r', '/products/16r', '/products/compare', '/technology', '/technology/integrations', '/contact'];
 
 /** Built from PUBLISHED content only, with reciprocal hreflang alternates. */
 export async function GET() {

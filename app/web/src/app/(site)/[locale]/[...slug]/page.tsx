@@ -7,6 +7,7 @@ import { Bidi } from '@/components/bidi.tsx';
 import { Cards, Checklist, CtaBand, Faq, Steps } from '@/components/blocks.tsx';
 import { c } from '@/lib/content.ts';
 import { pageMetadata, summarise } from '@/lib/seo.ts';
+import { ProductGrid } from '@/components/products.tsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -181,7 +182,8 @@ function SegmentSections({ pageKey, locale }: { pageKey: string; locale: Locale 
     return (
       <>
         <Section title={k.controllers.title} locale={locale} intro={k.controllers.note}>
-          <Cards items={k.controllers.models} locale={locale} />
+          <ProductGrid locale={locale} />
+          <p className="actions"><a className="btn secondary" href={L('/products/compare')}>{locale === 'ar' ? 'قارن الوحدات' : 'Compare controllers'}</a></p>
         </Section>
         {cta}
       </>

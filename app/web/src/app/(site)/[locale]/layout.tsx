@@ -12,6 +12,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
     title: { default: 'OTONOM', template: locale === 'ar' ? `%s — ${ltrIsolate('OTONOM')}` : '%s — OTONOM' },
     // local development / preview: nothing is indexable until a public launch is approved
     robots: { index: false, follow: false },
+    icons: { icon: '/brand/otonom-logo.png', apple: '/brand/otonom-logo.png' },
     other: { 'content-language': locale },
   };
 }

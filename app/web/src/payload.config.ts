@@ -28,7 +28,7 @@ export default buildConfig({
         serviceDesk: { Component: '/components/admin/ServiceView#ServiceView', path: '/service-desk', exact: true },
       },
     },
-    meta: { titleSuffix: ' — OTONOM (local)' },
+    meta: { titleSuffix: ' — OTONOM' },
     // never call gravatar.com: it would send a hash of every staff e-mail to a third party (privacy)
     avatar: 'default',
   },

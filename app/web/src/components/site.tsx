@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import Image from 'next/image';
 import { t, type Locale } from '@/lib/i18n.ts';
 import { Bidi } from './bidi.tsx';
 import { LangSwitch } from './LangSwitch.tsx';
@@ -10,11 +11,9 @@ function NavLinks({ locale }: { locale: Locale }) {
     <>
       <a href={L('/solutions')}>{d.nav.solutions}</a>
       <a href={L('/business/developers')}>{d.nav.business}</a>
-      <a href={L('/projects')}>{d.nav.projects}</a>
-      <a href={L('/technology')}>{d.nav.technology}</a>
-      <a href={L('/shop')}>{d.nav.controllers}</a>
-      <a href={L('/support')}>{d.nav.support}</a>
+      <a href={L('/products')}>{d.nav.controllers}</a>
       <a href={L('/about')}>{d.nav.about}</a>
+      <a href={L('/contact')}>{d.nav.contact}</a>
     </>
   );
 }
@@ -27,7 +26,8 @@ export function SiteHeader({ locale }: { locale: Locale }) {
     <header className="header">
       <div className="wrap header-row">
         <a className="brand" href={L('')} aria-label={locale === 'ar' ? 'OTONOM — الصفحة الرئيسية' : 'OTONOM — home'}>
-          <span className="brand-mark" aria-hidden="true">O</span><span>{d.brand}</span>
+          <Image className="brand-logo" src="/brand/otonom-logo.png" alt="" width={776} height={719} priority />
+          <span className="brand-name">{d.brand}</span>
         </a>
         <nav className="nav nav-desktop" aria-label={navLabel}>
           <NavLinks locale={locale} />
@@ -57,7 +57,10 @@ export function SiteFooter({ locale }: { locale: Locale }) {
     <footer className="footer">
       <div className="wrap footer-grid">
         <div>
-          <strong className="brand">{d.brand}</strong>
+          <a className="brand footer-brand" href={L('')} aria-label={locale === 'ar' ? 'OTONOM — الصفحة الرئيسية' : 'OTONOM — home'}>
+            <Image className="brand-logo" src="/brand/otonom-logo.png" alt="" width={776} height={719} />
+            <span className="brand-name">{d.brand}</span>
+          </a>
           <p className="muted">
             <Bidi text={d.pages.about.body} locale={locale} />
           </p>
@@ -70,7 +73,8 @@ export function SiteFooter({ locale }: { locale: Locale }) {
         </nav>
         <nav aria-label={locale === 'ar' ? 'روابط الاستكشاف' : 'Explore links'}>
           <a href={L('/solutions')}>{d.nav.solutions}</a>
-          <a href={L('/technology/controllers')}>{d.nav.controllers}</a>
+          <a href={L('/products')}>{d.nav.controllers}</a>
+          <a href={L('/products/compare')}>{locale === 'ar' ? 'قارن الوحدات' : 'Compare controllers'}</a>
           <a href={L('/technology/integrations')}>{d.nav.technology}</a>
           <a href={L('/projects')}>{d.nav.projects}</a>
         </nav>

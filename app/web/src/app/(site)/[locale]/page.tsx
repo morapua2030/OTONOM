@@ -7,6 +7,8 @@ import { pageMetadata, summarise } from '@/lib/seo.ts';
 import { Placeholder, Section } from '@/components/site.tsx';
 import { Bidi } from '@/components/bidi.tsx';
 import { Cards, CtaBand, Steps } from '@/components/blocks.tsx';
+import Image from 'next/image';
+import { ProductGrid } from '@/components/products.tsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,17 +47,19 @@ export default async function Home({ params }: P) {
               <a className="btn" href={L('/business/request-a-proposal')}>
                 {d.cta.proposal}
               </a>
-              <a className="btn secondary" href={L('/projects')}>
-                {d.cta.viewWork}
+              <a className="btn secondary" href={L('/products')}>
+                {locale === 'ar' ? 'اكتشف وحدات التحكم' : 'Explore controllers'}
               </a>
             </div>
             <p className="hero-note">{locale === 'ar' ? 'يُراجع كل نطاق هندسيًا قبل تقديم العرض. لا توجد طلبات شراء عامة في المعاينة.' : 'Every scope is reviewed by engineering before proposal. Public ordering is not available in preview.'}</p>
           </div>
-          <aside className="hero-panel" aria-label={locale === 'ar' ? 'نطاق وحدات التحكم' : 'Controller range'}>
-            <span>{locale === 'ar' ? 'فئات وحدات التحكم' : 'CONTROLLER CATEGORIES'}</span>
-            <div className="channel-row" dir="ltr"><strong>4</strong><strong>6</strong><strong>16</strong></div>
-            <p>{locale === 'ar' ? 'قناة · تفاصيل كهربائية بعد اعتماد ورقة البيانات' : 'channels · electrical details after datasheet approval'}</p>
-            <a href={L('/technology/controllers')}>{locale === 'ar' ? 'استكشف الوحدات' : 'Explore controllers'}</a>
+          <aside className="hero-panel home-hero-product" aria-label={locale === 'ar' ? 'وحدة تحكم OTONOM فعلية' : 'Genuine OTONOM controller'}>
+            <span>{B(locale === 'ar' ? 'وحدات تحكم OTONOM الفعلية' : 'GENUINE OTONOM CONTROLLERS')}</span>
+            <Image src="/products/otonom-16r.png" alt={locale === 'ar' ? 'وحدة تحكم OTONOM 16R بست عشرة قناة — صورة المنتج الفعلي' : 'OTONOM 16R sixteen-channel controller — genuine product image'} width={1254} height={1254} sizes="(max-width: 760px) 88vw, 430px" priority />
+            <div className="hero-product-footer">
+              <p><bdi dir="ltr">4R · 6R · 16R</bdi></p>
+              <a href={L('/products')}>{locale === 'ar' ? 'شاهد المجموعة' : 'View the range'}</a>
+            </div>
           </aside>
         </div>
       </section>
@@ -97,9 +101,9 @@ export default async function Home({ params }: P) {
       </Section>
 
       <Section title={k.controllers.title} locale={locale} intro={k.controllers.note}>
-        <Cards items={k.controllers.models} locale={locale} />
+        <ProductGrid locale={locale} eager />
         <p>
-          <a href={L('/shop')}>{d.nav.controllers}</a>
+          <a href={L('/products/compare')}>{B(locale === 'ar' ? 'قارن 4R و6R و16R' : 'Compare 4R, 6R and 16R')}</a>
         </p>
       </Section>
 

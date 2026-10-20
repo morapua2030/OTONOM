@@ -41,6 +41,7 @@ export function RfqForm({ locale, kind }: { locale: Locale; kind: Kind }) {
   const [step, setStep] = useState<1 | 2>(1);
   const [ref, setRef] = useState<string | null>(null);
   const [formErr, setFormErr] = useState<string | null>(null);
+  const [modelHint, setModelHint] = useState('');
   const msg = (k: string) => (ERR[errors[k]] ?? ERR.invalid)[i - 1];
   const e = (k: string) => (errors[k] ? <span className="err" id={`err-${k}`}>{msg(k)}</span> : null);
   // accessible field wiring: id for the error summary links, aria-invalid + aria-describedby to the inline error(s)
@@ -57,6 +58,10 @@ export function RfqForm({ locale, kind }: { locale: Locale; kind: Kind }) {
       summaryRef.current?.focus();
     }
   }, [errors]);
+  useEffect(() => {
+    const model = new URLSearchParams(window.location.search).get('model')?.toLowerCase();
+    if (model && ['4r', '6r', '16r'].includes(model)) setModelHint(model);
+  }, []);
   const FIELD_OF: Record<string, string> = { contact: 'email', size: 'units' };
   // the summary names each field so repeated generic messages stay meaningful
   const NAME_OF: Record<string, [string, string]> = {
@@ -96,6 +101,7 @@ export function RfqForm({ locale, kind }: { locale: Locale; kind: Kind }) {
       const v = qs.get(`utm_${k}`);
       if (v) utm[k] = v;
     }
+    if (modelHint && !utm.content) utm.content = `controller-${modelHint}`;
     const payload = {
       kind,
       idempotencyKey,
@@ -178,6 +184,16 @@ export function RfqForm({ locale, kind }: { locale: Locale; kind: Kind }) {
         <legend>{L('نبدأ ببيانات التواصل', 'Start with contact details')}</legend>
         <p className="muted">{L('لن نطلب ملفات في هذه المرحلة.', 'No files are requested at this stage.')}</p>
         <div className="rfq-grid">
+      <label className="wide">
+        {L('الوحدة محل الاستفسار (اختياري)', 'Controller of interest (optional)')}
+        <select name="productModel" value={modelHint} onChange={(event) => setModelHint(event.target.value)}>
+          <option value="">{L('أحتاج مساعدة في الاختيار', 'I need help choosing')}</option>
+          <option value="4r">{O('OTONOM 4R — أربع قنوات', 'OTONOM 4R — four channels')}</option>
+          <option value="6r">{O('OTONOM 6R — ست قنوات', 'OTONOM 6R — six channels')}</option>
+          <option value="16r">{O('OTONOM 16R — ست عشرة قناة', 'OTONOM 16R — sixteen channels')}</option>
+        </select>
+        <span className="small muted">{L('الاختيار المبدئي لا يعني اعتماد الملاءمة الهندسية.', 'This initial choice does not confirm engineering fit.')}</span>
+      </label>
       <label>
         {L('الاسم بالكامل *', 'Full name *')}
         <input {...fp('fullName')} required autoComplete="name" />

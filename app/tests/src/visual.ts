@@ -12,10 +12,10 @@ import { Client, Recorder, sleep } from './http-client.ts';
 const BASE = process.env.OTONOM_BASE ?? 'http://127.0.0.1:3301';
 const EDGE = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
 const PROFILE = path.join(APP_ROOT, 'tests', '.edge-profile');
-const SHOTS = path.resolve(APP_ROOT, '..', 'execution', 'evidence', 'screenshots', 's7');
+const SHOTS = path.resolve(APP_ROOT, '..', 'execution', 'evidence', 'screenshots', 's9-20261020');
 const PORT = 9334;
 const WIDTHS = [360, 768, 1366];
-const PAGES = ['', '/solutions', '/solutions/villas', '/solutions/apartments', '/business/developers', '/business/contractors', '/technology/controllers', '/technology/integrations', '/technology/documentation', '/projects', '/business/request-a-proposal', '/consultation', '/shop', '/support/warranty', '/preview', '/preview/bidi-samples'];
+const PAGES = ['', '/solutions', '/solutions/villas', '/solutions/apartments', '/business/developers', '/business/contractors', '/technology/controllers', '/technology/integrations', '/technology/documentation', '/products', '/products/4r', '/products/6r', '/products/16r', '/products/compare', '/projects', '/business/request-a-proposal', '/consultation', '/shop', '/support/warranty', '/preview', '/preview/bidi-samples'];
 const rec = new Recorder();
 
 class Cdp {
@@ -182,6 +182,12 @@ async function main() {
         for (const width of WIDTHS) {
           const url = `${BASE}/${locale}${page}`;
           const { sid, targetId } = await open(url, width);
+          // Exercise native lazy-loading before the full-page capture so evidence does not contain blank
+          // below-fold product frames. Return to the top before probing/capturing.
+          await cdp.send('Runtime.evaluate', {
+            expression: `(async () => { const h = document.documentElement.scrollHeight; for (let y = 0; y < h; y += 900) { scrollTo(0, y); await new Promise(r => setTimeout(r, 25)); } scrollTo(0, 0); const ready = Promise.all([...document.images].map(img => img.complete ? (img.decode ? img.decode().catch(() => {}) : Promise.resolve()) : new Promise(resolve => { img.addEventListener('load', resolve, { once: true }); img.addEventListener('error', resolve, { once: true }); }))); await Promise.race([ready, new Promise(r => setTimeout(r, 2500))]); return true; })()`,
+            awaitPromise: true,
+          }, sid);
           const p = await evalJson(sid, PROBE);
           const name = `${locale}${page.replace(/\//g, '_') || '_home'}-${width}.png`;
           await shot(sid, name, width, p?.contentH ?? 900);

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { afterEach, test } from 'node:test';
 import { previewLocked, resolveSiteUrl, siteUsesHttps, uploadsDisabled } from '../src/lib/server.ts';
 
@@ -31,4 +32,10 @@ test('Vercel URL fallback keeps server URLs and auth cookies on HTTPS', () => {
   assert.equal(resolveSiteUrl({ OTONOM_SITE_URL: 'https://preview.example.test' } as NodeJS.ProcessEnv), 'https://preview.example.test');
   assert.equal(resolveSiteUrl({} as NodeJS.ProcessEnv), 'http://127.0.0.1:3301');
   assert.equal(siteUsesHttps({} as NodeJS.ProcessEnv), false);
+});
+
+test('admin title does not mislabel hosted Preview as local', () => {
+  const config = readFileSync(new URL('../src/payload.config.ts', import.meta.url), 'utf8');
+  assert.match(config, /titleSuffix:\s*['"]\s*— OTONOM['"]/);
+  assert.doesNotMatch(config, /OTONOM \(local\)/);
 });

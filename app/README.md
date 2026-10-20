@@ -1,6 +1,6 @@
 # OTONOM Web Platform
 
-> **Synthetic data only. Public production is not authorized.** A private GitHub repository and protected, noncommercial Vercel Preview were authorized on 2026-10-18; deployment remains pending verified account access, protected-project configuration, and isolated staging infrastructure.
+> **Synthetic data only. Public production is not authorized.** The owner deliberately keeps the source repository public; deployment is limited to an authenticated, noncommercial Vercel Preview with isolated staging infrastructure.
 > Architecture: **PROVISIONAL** (Option A from the spike: Next.js 16 + Payload CMS 3 + PostgreSQL, with a framework-independent domain package).
 > Public Commerce and Warranty remain disabled in PREVIEW. Local secrets, databases, uploads, browser profiles, and generated evidence must never be committed.
 
@@ -72,4 +72,4 @@ Settings global `stage` = PREVIEW (default) → every public commerce/portal end
 ## Protected Preview database migration safety
 
 Remote migrations are never automatic during a Vercel build or runtime start. An operator must use the admin connection from a secured workstation and provide all one-shot gates shown in `.env.example`: `OTONOM_ALLOW_REMOTE_MIGRATIONS=SYNTHETIC_PREVIEW_ONLY`, `OTONOM_FORCE_PREVIEW=1`, and exact expected host/database values. The guard derives the real target from `OTONOM_ADMIN_DATABASE_URL`, refuses production-like names, and requires `OTONOM_DB` to match the URL database. Do not store the admin URL or migration gate in Vercel.
-| Brand tokens | Placeholders | Official brand files not supplied |
+| Product ratings, prices and warranty terms | BLOCKED | Only the owner-confirmed 4R/6R/16R channel counts and genuine images are public; technical/commercial fields await approval |

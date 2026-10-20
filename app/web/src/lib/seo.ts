@@ -17,7 +17,8 @@ export function pageMetadata(o: { locale: Locale; path: string; title: string; d
       canonical: `/${o.locale}${p}`,
       languages: { ar: `/ar${p}`, en: `/en${p}`, 'x-default': `/ar${p}` },
     },
-    openGraph: { title, description, locale: o.locale === 'ar' ? 'ar_EG' : 'en_US', alternateLocale: o.locale === 'ar' ? 'en_US' : 'ar_EG', type: 'website' },
+    openGraph: { title, description, locale: o.locale === 'ar' ? 'ar_EG' : 'en_US', alternateLocale: o.locale === 'ar' ? 'en_US' : 'ar_EG', type: 'website', images: ['/brand/otonom-logo.png'] },
+    twitter: { card: 'summary', title, description, images: ['/brand/otonom-logo.png'] },
     robots: { index: false, follow: false },
   };
 }
