@@ -14,8 +14,19 @@ app/**/.edge-profile*
 app/**/.edge-csp-profile
 app/**/node_modules
 app/**/.next
+app/**/.pnpm-store
+app/**/dist
+app/**/coverage
+app/**/.vercel
 app/**/*.dump
 app/**/*.sql.gz
 app/**/*.sqlite*
 app/**/*.db
 app/**/*.log
+app/**/*.zip
+app/**/*.tsbuildinfo
+
+# Test and local operator sources are not required by the Vercel build.
+app/tests
+app/tools
+app/web/test
