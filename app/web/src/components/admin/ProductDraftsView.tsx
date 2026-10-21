@@ -1,7 +1,7 @@
 import type { AdminViewServerProps } from 'payload';
 import { domainDb } from '@/lib/server.ts';
 import { ActionForm } from './ActionForm.tsx';
-import { NoAccess, StaffShell, staffOf, when } from './shell.tsx';
+import { EmptyState, NoAccess, StaffShell, staffOf, when } from './shell.tsx';
 import s from './staff.module.css';
 
 /** Review-only merchandising drafts. Approval never mutates the public product registry. */
@@ -28,6 +28,7 @@ export async function ProductDraftsView(props: AdminViewServerProps) {
       </section>}
       <section className={s.section} data-testid="product-draft-queue">
         <h2>Draft queue ({drafts.length})</h2>
+        {drafts.length === 0 && <EmptyState title="No product drafts / لا توجد مسودات" detail="Create a bilingual draft above. Public product facts remain unchanged until the governed publication step." />}
         {drafts.map((draft) => <article className={s.card} key={draft.id} data-status={draft.status}>
           <h3><bdi>{draft.code}</bdi> · <span className={s.badge}>{draft.status}</span></h3>
           <p lang="ar" dir="rtl"><strong>{draft.title_ar}</strong> — {draft.summary_ar}</p>

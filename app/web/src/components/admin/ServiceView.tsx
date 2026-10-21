@@ -2,7 +2,7 @@ import type { AdminViewServerProps } from 'payload';
 import { RMA_TRANSITIONS, TICKET_TRANSITIONS } from '@otonom/domain';
 import { domainDb } from '@/lib/server.ts';
 import { ActionForm, type Field } from './ActionForm.tsx';
-import { NoAccess, StaffShell, staffOf, when } from './shell.tsx';
+import { EmptyState, NoAccess, StaffShell, staffOf, when } from './shell.tsx';
 import s from './staff.module.css';
 
 const RMA_FIELDS: Record<string, Field[]> = {
@@ -17,7 +17,23 @@ export async function ServiceView(props: AdminViewServerProps) {
   const shell = { ...props, title: 'Service desk', subtitle: 'Urgent safety tickets first. Warranty decisions are never automatic — every decision needs a written reason.' };
   if (!staff || !staff.can('service.manage')) return <StaffShell {...shell}>{<NoAccess need="service.manage" />}</StaffShell>;
   const db = domainDb();
-  const tickets = (await db.query(`SELECT * FROM domain.service_tickets ORDER BY (priority='URGENT') DESC, (status IN ('RESOLVED','CLOSED')), created_at DESC LIMIT 80`)).rows;
+  const search = props.initPageResult.req.searchParams;
+  const statuses = ['OPEN', 'TRIAGE', 'IN_PROGRESS', 'WAITING_CUSTOMER', 'RESOLVED', 'CLOSED'];
+  const priorities = ['URGENT', 'HIGH', 'NORMAL', 'LOW'];
+  const status = statuses.includes(search.get('status') ?? '') ? search.get('status')! : '';
+  const priority = priorities.includes(search.get('priority') ?? '') ? search.get('priority')! : '';
+  const query = (search.get('q') ?? '').trim().slice(0, 80);
+  const page = Math.max(1, Math.min(10_000, Number.parseInt(search.get('page') ?? '1', 10) || 1));
+  const ticketWhere: string[] = [];
+  const ticketValues: unknown[] = [];
+  if (status) { ticketValues.push(status); ticketWhere.push(`status=$${ticketValues.length}`); }
+  if (priority) { ticketValues.push(priority); ticketWhere.push(`priority=$${ticketValues.length}`); }
+  if (query) { ticketValues.push(`%${query}%`); ticketWhere.push(`(ref ILIKE $${ticketValues.length} OR serial ILIKE $${ticketValues.length} OR category ILIKE $${ticketValues.length} OR description ILIKE $${ticketValues.length})`); }
+  const ticketWhereSql = ticketWhere.length ? `WHERE ${ticketWhere.join(' AND ')}` : '';
+  const totalTickets = Number((await db.query(`SELECT count(*)::int AS n FROM domain.service_tickets ${ticketWhereSql}`, ticketValues)).rows[0].n);
+  const pageSize = 25;
+  const tickets = (await db.query(`SELECT * FROM domain.service_tickets ${ticketWhereSql} ORDER BY (priority='URGENT') DESC, (status IN ('RESOLVED','CLOSED')), created_at DESC LIMIT $${ticketValues.length + 1} OFFSET $${ticketValues.length + 2}`, [...ticketValues, pageSize, (page - 1) * pageSize])).rows;
+  const ticketPages = Math.max(1, Math.ceil(totalTickets / pageSize));
   const rmas = (await db.query(`
     SELECT r.*, i.condition AS inspection_condition,
       EXISTS (SELECT 1 FROM domain.rma_actions a WHERE a.rma_id=r.id AND a.action='REPAIR') AS has_repair_action
@@ -34,7 +50,15 @@ export async function ServiceView(props: AdminViewServerProps) {
       </p>
 
       <section className={s.section} data-testid="tickets">
-        <h2>Tickets ({tickets.length})</h2>
+        <h2>Tickets ({totalTickets})</h2>
+        <form className={s.search} method="get" action="/admin/service-desk" role="search">
+          <label>Search / بحث <input name="q" defaultValue={query} maxLength={80} placeholder="Ref, serial, category…" /></label>
+          <label>Status / الحالة <select name="status" defaultValue={status}><option value="">All / الكل</option>{statuses.map((value) => <option value={value} key={value}>{value}</option>)}</select></label>
+          <label>Priority / الأولوية <select name="priority" defaultValue={priority}><option value="">All / الكل</option>{priorities.map((value) => <option value={value} key={value}>{value}</option>)}</select></label>
+          <button className={s.btn} type="submit">Filter / تصفية</button>
+        </form>
+        {tickets.length === 0 && <EmptyState title="No service tickets / لا توجد تذاكر" detail="New requests will appear here with urgent safety issues placed first." />}
+        {tickets.length > 0 && (
         <div className={s.tableWrap}>
           <table className={s.table}>
             <thead>
@@ -95,10 +119,17 @@ export async function ServiceView(props: AdminViewServerProps) {
             </tbody>
           </table>
         </div>
+        )}
+        {ticketPages > 1 && <nav className={s.pager} aria-label="Service ticket pages">
+          {page > 1 && <a href={`/admin/service-desk?${new URLSearchParams({ ...(query ? { q: query } : {}), ...(status ? { status } : {}), ...(priority ? { priority } : {}), page: String(page - 1) })}`}>Previous / السابق</a>}
+          <span>Page {Math.min(page, ticketPages)} of {ticketPages}</span>
+          {page < ticketPages && <a href={`/admin/service-desk?${new URLSearchParams({ ...(query ? { q: query } : {}), ...(status ? { status } : {}), ...(priority ? { priority } : {}), page: String(page + 1) })}`}>Next / التالي</a>}
+        </nav>}
       </section>
 
       <section className={s.section} data-testid="rmas">
         <h2>Open RMAs ({rmas.length})</h2>
+        {rmas.length === 0 && <EmptyState title="No open RMAs / لا توجد حالات مفتوحة" detail="Eligible returns opened from a service ticket will appear in this controlled queue." />}
         {rmas.map((r) => (
           <div key={r.id} className={s.card} data-ref={r.ref}>
             <span className={s.mono}>{r.ref}</span> · serial <span className={s.mono}>{r.serial}</span> · <span className={s.badge}>{r.status}</span>
@@ -129,6 +160,7 @@ export async function ServiceView(props: AdminViewServerProps) {
 
       <section className={s.section} data-testid="ownership-claims">
         <h2>Ownership claims awaiting review ({claims.length})</h2>
+        {claims.length === 0 && <EmptyState title="No pending claims / لا توجد مطالبات معلقة" detail="Ownership evidence requiring staff verification will appear here." />}
         {claims.map((c) => (
           <div key={c.id} className={s.card}>
             Serial <span className={s.mono}>{c.serial}</span> · customer <span className={s.mono}>…{String(c.customer_ref).slice(-4)}</span>
