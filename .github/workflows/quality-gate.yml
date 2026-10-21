@@ -59,5 +59,11 @@ jobs:
         run: pnpm test:web
       - name: Audit production dependencies
         run: pnpm audit --prod
+      - name: Prepare ephemeral build-only configuration
+        shell: bash
+        run: |
+          node -e "const fs=require('node:fs'),c=require('node:crypto'); fs.appendFileSync(process.env.GITHUB_ENV,'PAYLOAD_SECRET='+c.randomBytes(48).toString('hex')+'\n')"
+          echo 'OTONOM_CMS_DATABASE_URL=postgresql://ci@127.0.0.1:5432/ci' >> "$GITHUB_ENV"
+          echo 'OTONOM_DOMAIN_DATABASE_URL=postgresql://ci@127.0.0.1:5432/ci' >> "$GITHUB_ENV"
       - name: Verify production build
         run: pnpm build
