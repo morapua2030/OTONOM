@@ -1,6 +1,7 @@
 // Store/operations domain operations. Authorisation is enforced by the calling layer; every write is audited in-transaction.
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type pg from 'pg';
+import { IdempotencyKeyReuseError } from './inventory.ts';
 import { audit, DomainError, tx, type Ctx } from './tx.ts';
 
 export async function verifyPayment(pool: pg.Pool, ctx: Ctx, paymentId: string, externalRef: string) {
@@ -20,10 +21,24 @@ export async function verifyPayment(pool: pg.Pool, ctx: Ctx, paymentId: string, 
   });
 }
 
-export async function adjustStock(pool: pg.Pool, ctx: Ctx, skuId: string, delta: number, reason: string) {
-  if (!reason) throw new DomainError('REASON_REQUIRED');
-  if (!Number.isInteger(delta) || delta === 0) throw new DomainError('INVALID_DELTA');
+export async function adjustStock(pool: pg.Pool, ctx: Ctx, skuId: string, delta: number, reason: string, idempotencyKey: string) {
+  if (!String(reason ?? '').trim()) throw new DomainError('REASON_REQUIRED');
+  if (reason.trim().length > 240) throw new DomainError('INVALID_REASON');
+  if (!Number.isSafeInteger(delta) || delta === 0 || Math.abs(delta) > 1_000_000_000) throw new DomainError('INVALID_DELTA');
+  if (!/^[A-Za-z0-9_-]{16,80}$/.test(idempotencyKey ?? '')) throw new DomainError('INVALID_IDEMPOTENCY_KEY');
+  const requestHash = createHash('sha256').update(JSON.stringify({ skuId, delta, reason: reason.trim() })).digest('hex');
   return tx(pool, async (c) => {
+    const key = await c.query(
+      `INSERT INTO domain.idempotency_keys(scope, key, request_hash) VALUES ('stock.adjust',$1,$2)
+       ON CONFLICT DO NOTHING RETURNING key`,
+      [idempotencyKey, requestHash],
+    );
+    if (!key.rowCount) {
+      const previous = (await c.query(`SELECT request_hash, result FROM domain.idempotency_keys WHERE scope='stock.adjust' AND key=$1`, [idempotencyKey])).rows[0];
+      if (!previous || previous.request_hash !== requestHash) throw new IdempotencyKeyReuseError('idempotency key reused with a different stock adjustment');
+      if (!previous.result) throw new DomainError('IDEMPOTENCY_INCOMPLETE');
+      return { ...previous.result, replay: true };
+    }
     const u = await c.query(
       `UPDATE domain.stock_levels SET on_hand = on_hand + $2 WHERE sku_id=$1 AND location_id='MAIN' RETURNING on_hand, reserved, allocated`,
       [skuId, delta],
@@ -35,9 +50,11 @@ export async function adjustStock(pool: pg.Pool, ctx: Ctx, skuId: string, delta:
     await c.query(
       `INSERT INTO domain.inventory_ledger(sku_id, location_id, type, qty, reference_type, reference_id, actor, reason, correlation_id)
        VALUES ($1,'MAIN','ADJUSTMENT',$2,'adjustment',$3,$4,$5,$6)`,
-      [skuId, delta, randomUUID(), ctx.actor.id, reason, ctx.correlationId ?? randomUUID()],
+      [skuId, delta, idempotencyKey, ctx.actor.id, reason.trim(), ctx.correlationId ?? randomUUID()],
     );
-    await audit(c, ctx, { action: 'stock.adjust', entityType: 'stock_level', entityId: skuId, after: u.rows[0], reason });
-    return u.rows[0];
+    const result = { ...u.rows[0], replay: false };
+    await audit(c, ctx, { action: 'stock.adjust', entityType: 'stock_level', entityId: skuId, after: result, reason: reason.trim() });
+    await c.query(`UPDATE domain.idempotency_keys SET result=$2 WHERE scope='stock.adjust' AND key=$1`, [idempotencyKey, result]);
+    return result;
   });
 }

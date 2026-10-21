@@ -16,6 +16,20 @@ export type PublicProduct = {
   publicationStatus: 'OWNER_CONFIRMED_CORE_ONLY';
 };
 
+/** Runtime allow-list: even a polluted internal candidate cannot leak review-only fields. */
+export function publicProductProjection(product: PublicProduct & Record<string, unknown>): PublicProduct {
+  return {
+    model: product.model,
+    name: product.name,
+    channels: product.channels,
+    image: product.image,
+    alt: { ar: product.alt.ar, en: product.alt.en },
+    summary: { ar: product.summary.ar, en: product.summary.en },
+    fit: { ar: product.fit.ar, en: product.fit.en },
+    publicationStatus: product.publicationStatus,
+  };
+}
+
 /**
  * Public-safe product registry.
  *
@@ -23,7 +37,7 @@ export type PublicProduct = {
  * Electrical, mechanical, radio, certification, price and warranty fields deliberately do
  * not exist in this public model, so review-only drafts cannot leak into rendered pages.
  */
-export const PRODUCTS: readonly PublicProduct[] = [
+const PRODUCT_CANDIDATES: readonly PublicProduct[] = [
   {
     model: '4r',
     name: 'OTONOM Smart Controller 4R',
@@ -82,6 +96,8 @@ export const PRODUCTS: readonly PublicProduct[] = [
     publicationStatus: 'OWNER_CONFIRMED_CORE_ONLY',
   },
 ] as const;
+
+export const PRODUCTS: readonly PublicProduct[] = PRODUCT_CANDIDATES.map((product) => Object.freeze(publicProductProjection(product)));
 
 export const productByModel = (model: string) => PRODUCTS.find((product) => product.model === model);
 export const localProductText = (value: Localized, locale: Locale) => value[locale];

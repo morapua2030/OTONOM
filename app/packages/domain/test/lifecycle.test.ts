@@ -50,6 +50,19 @@ test('cart pricing: approved prices only, variants priced independently, additio
   await assert.rejects(d.priceCart(pool, [{ skuId: 'nope', qty: 1 }]), /SKU_NOT_AVAILABLE/);
 });
 
+test('synthetic checkout review is read-only and reports policy and stock blockers', async () => {
+  const before = Number((await pool.query(`SELECT count(*)::int n FROM domain.orders`)).rows[0].n);
+  const review = await d.reviewSyntheticCheckout(pool, [{ skuId: 'c16w', qty: 1 }]);
+  assert.equal(review.mode, 'SYNTHETIC_INTERNAL_REVIEW');
+  assert.equal(review.canCreateOrder, false);
+  assert.equal(review.lines[0].stockSufficient, true);
+  assert.ok(review.blockers.includes('PAYMENT_DISABLED'));
+  assert.ok(review.blockers.includes('ORDER_NOT_CREATED'));
+  const blocked = await d.reviewSyntheticCheckout(pool, [{ skuId: 'c16w', qty: 2 }]);
+  assert.ok(blocked.blockers.includes('STOCK_NOT_AVAILABLE'));
+  assert.equal(Number((await pool.query(`SELECT count(*)::int n FROM domain.orders`)).rows[0].n), before);
+});
+
 test('full prepaid lifecycle: submit → confirm (reserve) → shipping → payment verify → allocate serials → ship → complete', async () => {
   const o = await d.submitWebsiteOrder(pool, web, { idempotencyKey: key(), lines: [{ skuId: 'c16', qty: 2 }, { skuId: 'add1', qty: 1 }], customer: cust, governorate: 'CAIRO', paymentMethod: 'BANK_TRANSFER' });
   assert.ok(o.accessToken && d.checkOrderToken(o.orderId, o.accessToken));
@@ -77,6 +90,7 @@ test('full prepaid lifecycle: submit → confirm (reserve) → shipping → paym
   const sh = (await pool.query(`SELECT status FROM domain.serial_units WHERE serial IN ('SYN-A-0001','SYN-A-0002')`)).rows;
   assert.ok(sh.every((r) => r.status === 'SHIPPED'));
   await d.completeOrder(pool, store, o.orderId);
+  assert.equal((await d.completeOrder(pool, store, o.orderId)).replay, true);
   const cs = await d.orderStatusForCustomer(pool, o.ref, o.accessToken);
   assert.equal(cs.status, 'COMPLETED');
   assert.equal(cs.shippingMinor, 150_00);
@@ -141,6 +155,9 @@ test('custom firmware quote: request → owner quote with validity → customer 
   const o = (await pool.query(`SELECT status, subtotal_minor, type FROM domain.orders WHERE id=$1`, [r.orderId])).rows[0];
   assert.deepEqual({ ...o, subtotal_minor: Number(o.subtotal_minor) }, { status: 'PENDING_REVIEW', subtotal_minor: 2500_00, type: 'CUSTOM_QUOTED' });
   await assert.rejects(d.requestCustomQuote(pool, web, { idempotencyKey: key(), lines: [{ skuId: 'c16', qty: 1 }], requirements: 'short', customer: cust, governorate: 'CAIRO' }), /REQUIREMENTS_TOO_SHORT/);
+  await assert.rejects(d.requestCustomQuote(pool, web, { idempotencyKey: key(), lines: [{ skuId: 'c16', qty: 1 }], requirements: 'x'.repeat(4_001), customer: cust, governorate: 'CAIRO' }), /REQUIREMENTS_TOO_LONG/);
+  await assert.rejects(d.requestCustomQuote(pool, web, { idempotencyKey: key(), lines: [{ skuId: 'c16', qty: 1 }], requirements: 'Synthetic valid requirement text', customer: { name: 'Synthetic', email: 'invalid' }, governorate: 'CAIRO' }), /INVALID_EMAIL/);
+  await assert.rejects(d.requestCustomQuote(pool, web, { idempotencyKey: key(), lines: [{ skuId: 'c16', qty: 1 }], requirements: 'Synthetic valid requirement text', customer: cust, governorate: '' }), /GOVERNORATE_REQUIRED/);
 });
 
 test('ledger and stock stay consistent: no negative stock, every movement ledgered and audited', async () => {
@@ -154,7 +171,14 @@ test('ledger and stock stay consistent: no negative stock, every movement ledger
 });
 
 test('concurrent allocation of the same serial to two orders: exactly one wins', async () => {
-  await d.adjustStock(pool, store, 'c16', 1, 'synthetic receipt for race test');
+  const adjustmentKey = key();
+  const firstAdjustment = await d.adjustStock(pool, store, 'c16', 1, 'synthetic receipt for race test', adjustmentKey);
+  assert.equal(firstAdjustment.replay, false);
+  const replayedAdjustment = await d.adjustStock(pool, store, 'c16', 1, 'synthetic receipt for race test', adjustmentKey);
+  assert.equal(replayedAdjustment.replay, true);
+  await assert.rejects(d.adjustStock(pool, store, 'c16', 2, 'synthetic receipt for race test', adjustmentKey), /IDEMPOTENCY_KEY_REUSE|idempotency key reused/);
+  await assert.rejects(d.adjustStock(pool, store, 'c16', 1, '   ', key()), /REASON_REQUIRED/);
+  await assert.rejects(d.adjustStock(pool, store, 'c16', Number.MAX_SAFE_INTEGER, 'synthetic invalid adjustment', key()), /INVALID_DELTA/);
   const mk = async () => {
     const o = await d.submitWebsiteOrder(pool, web, { idempotencyKey: key(), lines: [{ skuId: 'c16', qty: 1 }], customer: cust, governorate: 'CAIRO', paymentMethod: 'COD' });
     assert.equal((await d.confirmOrder(pool, { orderId: o.orderId, approvedBy: 'u-store', expectedRevision: 1, idempotencyKey: key() })).outcome, 'CONFIRMED');

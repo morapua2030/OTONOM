@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { afterEach, test } from 'node:test';
-import { previewLocked, resolveSiteUrl, siteUsesHttps, uploadsDisabled } from '../src/lib/server.ts';
+import { internalCommerceLabEnabled, previewLocked, resolveSiteUrl, siteUsesHttps, uploadsDisabled } from '../src/lib/server.ts';
 
 const originalPreview = process.env.OTONOM_FORCE_PREVIEW;
 const originalUploads = process.env.OTONOM_DISABLE_UPLOADS;
@@ -23,6 +23,13 @@ test('preview and upload safety locks require an explicit enabled value', () => 
   process.env.OTONOM_DISABLE_UPLOADS = '0';
   assert.equal(previewLocked(), false);
   assert.equal(uploadsDisabled(), false);
+});
+
+test('synthetic commerce lab is local-test-only and cannot be enabled on hosted or forced Preview runtimes', () => {
+  assert.equal(internalCommerceLabEnabled({ OTONOM_TEST_PAGES: '1' } as NodeJS.ProcessEnv), true);
+  assert.equal(internalCommerceLabEnabled({ OTONOM_TEST_PAGES: '1', VERCEL: '1' } as NodeJS.ProcessEnv), false);
+  assert.equal(internalCommerceLabEnabled({ OTONOM_TEST_PAGES: '1', OTONOM_FORCE_PREVIEW: '1' } as NodeJS.ProcessEnv), false);
+  assert.equal(internalCommerceLabEnabled({} as NodeJS.ProcessEnv), false);
 });
 
 test('Vercel URL fallback keeps server URLs and auth cookies on HTTPS', () => {

@@ -23,6 +23,7 @@ import {
   issueQuote,
   orderStatusForCustomer,
   priceCart,
+  reviewSyntheticCheckout,
   recordPayment,
   rejectPayment,
   requestCustomQuote,
@@ -44,9 +45,10 @@ import {
   signContract,
   verifyPayment,
   type Permission,
+  passwordPolicyError,
 } from '@otonom/domain';
 import { body, guard, jsonRes, mfaOk } from '../lib/access.ts';
-import { domainDb, previewLocked } from '../lib/server.ts';
+import { domainDb, internalCommerceLabEnabled, previewLocked } from '../lib/server.ts';
 import { validateRfq } from '../lib/rfq-validate.ts';
 import { clientIp, rateLimit } from '../lib/ratelimit.ts';
 import { chunksOf, collectPages } from '../lib/pagination.ts';
@@ -71,6 +73,14 @@ function domainOp(p: Permission, fn: (req: PayloadRequest, b: Record<string, unk
     } catch (e) {
       return mapError(e);
     }
+  };
+}
+
+function localCommerceLabOp(p: Permission, fn: (req: PayloadRequest, b: Record<string, unknown>) => Promise<unknown>) {
+  const guarded = domainOp(p, async (req, body) => fn(req, body));
+  return async (req: PayloadRequest) => {
+    if (!internalCommerceLabEnabled()) return jsonRes(404, { code: 'NOT_AVAILABLE' });
+    return guarded(req);
   };
 }
 
@@ -577,6 +587,16 @@ export const endpoints: Endpoint[] = [
   },
   // ---------------- Store operations (commercial release; behind roles) ----------------
   {
+    path: '/admin/commerce-lab/review',
+    method: 'post',
+    handler: localCommerceLabOp('order.confirm', (_req, b) =>
+      reviewSyntheticCheckout(
+        domainDb(),
+        Array.isArray(b.lines) ? (b.lines as any[]).map((line) => ({ skuId: String(line?.skuId ?? ''), qty: Number(line?.qty) })) : [],
+      ),
+    ),
+  },
+  {
     path: '/admin/orders/:id/confirm',
     method: 'post',
     handler: domainOp('order.confirm', async (req, b, ctx) => {
@@ -585,7 +605,7 @@ export const endpoints: Endpoint[] = [
     }),
   },
   { path: '/admin/payments/:id/verify', method: 'post', handler: domainOp('payment.verify', (req, b, ctx) => verifyPayment(domainDb(), ctx, param(req, 'id'), String(b.externalRef ?? ''))) },
-  { path: '/admin/stock/adjust', method: 'post', handler: domainOp('stock.adjust', (_r, b, ctx) => adjustStock(domainDb(), ctx, String(b.skuId ?? ''), Number(b.delta ?? 0), String(b.reason ?? ''))) },
+  { path: '/admin/stock/adjust', method: 'post', handler: domainOp('stock.adjust', (_r, b, ctx) => adjustStock(domainDb(), ctx, String(b.skuId ?? ''), Number(b.delta ?? 0), String(b.reason ?? ''), String(b.idempotencyKey ?? ''))) },
   { path: '/admin/prices', method: 'post', handler: domainOp('price.propose', (_r, b, ctx) => proposePrice(domainDb(), ctx, String(b.skuId ?? ''), Number(b.priceMinor), b.vatIncluded as boolean)) },
   { path: '/admin/prices/:id/approve', method: 'post', handler: domainOp('price.approve', (req, _b, ctx) => approvePrice(domainDb(), ctx, param(req, 'id'))) },
   { path: '/admin/serials', method: 'post', handler: domainOp('serial.register', (_r, b, ctx) => registerSerial(domainDb(), ctx, String(b.serial ?? ''), String(b.skuId ?? ''), String(b.status ?? 'IN_STOCK'))) },
@@ -699,7 +719,7 @@ export const endpoints: Endpoint[] = [
       const email = String(b.email ?? '').trim().toLowerCase();
       const password = String(b.password ?? '');
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return jsonRes(422, { code: 'VALIDATION_FAILED', fieldErrors: { email: 'invalid' } });
-      if (password.length < 10) return jsonRes(422, { code: 'VALIDATION_FAILED', fieldErrors: { password: 'min_10_chars' } });
+      if (passwordPolicyError(password, email)) return jsonRes(422, { code: 'VALIDATION_FAILED', fieldErrors: { password: 'strong_password_required' } });
       const exists = await req.payload.find({ collection: 'users', where: { email: { equals: email } }, overrideAccess: true, depth: 0, limit: 1, req });
       // role is always CUSTOMER (never client-controlled); same answer whether or not the e-mail exists (no account oracle)
       if (!exists.docs[0]) await req.payload.create({ collection: 'users', data: { email, password, role: 'CUSTOMER' } as any, overrideAccess: true, req });

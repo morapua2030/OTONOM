@@ -5,13 +5,14 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { IdempotencyKeyReuseError } from './inventory.ts';
 import { orderAccessToken } from './orders.ts';
+import { addMinor, minorUnits, multiplyMinor } from './money.ts';
 import { audit, DomainError, tx, type Ctx } from './tx.ts';
 
 const B32 = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 export const randomRef = (prefix: string) => `${prefix}-${new Date().getUTCFullYear()}-${Array.from(randomBytes(6), (b) => B32[b % 32]).join('')}`;
 
 export async function proposePrice(pool: pg.Pool, ctx: Ctx, skuId: string, priceMinor: number, vatIncluded: boolean) {
-  if (!Number.isInteger(priceMinor) || priceMinor <= 0) throw new DomainError('INVALID_PRICE');
+  priceMinor = minorUnits(priceMinor, 'INVALID_PRICE');
   if (typeof vatIncluded !== 'boolean') throw new DomainError('VAT_FLAG_REQUIRED');
   return tx(pool, async (c) => {
     const s = await c.query(`SELECT 1 FROM domain.skus WHERE id=$1`, [skuId]);
@@ -53,10 +54,12 @@ export async function submitWebsiteOrder(pool: pg.Pool, ctx: Ctx, i: SubmitOrder
     if (typeof l.skuId !== 'string' || !Number.isInteger(l.qty) || l.qty < 1 || l.qty > 100 || seen.has(l.skuId)) throw new DomainError('INVALID_LINES');
     seen.add(l.skuId);
   }
-  if (!String(i.customer?.name ?? '').trim() || !(i.customer.email || i.customer.phone)) throw new DomainError('CONTACT_REQUIRED');
+  const customer = normalizeCustomerContact(i.customer);
   if (!['COD', 'BANK_TRANSFER', 'EWALLET'].includes(i.paymentMethod)) throw new DomainError('INVALID_PAYMENT_METHOD');
-  if (!String(i.governorate ?? '').trim()) throw new DomainError('GOVERNORATE_REQUIRED');
-  const requestHash = createHash('sha256').update(JSON.stringify({ lines: i.lines, customer: i.customer, governorate: i.governorate, paymentMethod: i.paymentMethod })).digest('hex');
+  const governorate = String(i.governorate ?? '').trim();
+  if (!governorate) throw new DomainError('GOVERNORATE_REQUIRED');
+  if (governorate.length > 80) throw new DomainError('INVALID_GOVERNORATE');
+  const requestHash = createHash('sha256').update(JSON.stringify({ lines: i.lines, customer, governorate, paymentMethod: i.paymentMethod })).digest('hex');
 
   return tx(pool, async (c) => {
     // the idempotency key's primary key serialises concurrent duplicates (second insert waits for the first commit)
@@ -80,19 +83,31 @@ export async function submitWebsiteOrder(pool: pg.Pool, ctx: Ctx, i: SubmitOrder
     }
     const orderId = randomUUID();
     const ref = randomRef('ORD');
-    const subtotal = i.lines.reduce((a, l) => a + Number(bySku.get(l.skuId).price_minor) * l.qty, 0);
+    const priced = i.lines.map((l) => ({ line: l, row: bySku.get(l.skuId), lineMinor: multiplyMinor(bySku.get(l.skuId).price_minor, l.qty) }));
+    const subtotal = addMinor(priced.map((p) => p.lineMinor));
     await c.query(
       `INSERT INTO domain.orders(id, ref, type, status, channel, customer_name, customer_email, customer_phone, governorate, payment_method, subtotal_minor)
        VALUES ($1,$2,'STANDARD','PENDING_REVIEW','WEBSITE',$3,$4,$5,$6,$7,$8)`,
-      [orderId, ref, i.customer.name.trim(), i.customer.email ?? null, i.customer.phone ?? null, i.governorate, i.paymentMethod, subtotal],
+      [orderId, ref, customer.name, customer.email ?? null, customer.phone ?? null, governorate, i.paymentMethod, subtotal],
     );
-    for (const l of i.lines) {
-      const r = bySku.get(l.skuId);
-      await c.query(`INSERT INTO domain.order_lines(id, order_id, sku_id, qty, unit_price_minor, price_id) VALUES ($1,$2,$3,$4,$5,$6)`, [randomUUID(), orderId, l.skuId, l.qty, r.price_minor, r.price_id]);
+    for (const { line: l, row: r } of priced) {
+      const unitPriceMinor = minorUnits(r.price_minor, 'INVALID_PRICE');
+      await c.query(`INSERT INTO domain.order_lines(id, order_id, sku_id, qty, unit_price_minor, price_id) VALUES ($1,$2,$3,$4,$5,$6)`, [randomUUID(), orderId, l.skuId, l.qty, unitPriceMinor, r.price_id]);
     }
     const result = { orderId, ref, status: 'PENDING_REVIEW', subtotalMinor: subtotal, shipping: 'TO_BE_QUOTED' };
     await c.query(`UPDATE domain.idempotency_keys SET result=$3 WHERE scope='order.submit' AND key=$1 AND request_hash=$2`, [i.idempotencyKey, requestHash, result]);
     await audit(c, ctx, { action: 'order.submit', entityType: 'order', entityId: orderId, after: { ref, lines: i.lines, subtotal } });
     return { ...result, accessToken: orderAccessToken(orderId) };
   });
+}
+
+export function normalizeCustomerContact(customer: SubmitOrderInput['customer']) {
+  const name = String(customer?.name ?? '').trim();
+  const email = customer?.email ? String(customer.email).trim().toLowerCase() : undefined;
+  const phone = customer?.phone ? String(customer.phone).trim() : undefined;
+  if (!name || (!email && !phone)) throw new DomainError('CONTACT_REQUIRED');
+  if (name.length > 120) throw new DomainError('INVALID_CUSTOMER');
+  if (email && (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) throw new DomainError('INVALID_EMAIL');
+  if (phone && (phone.length > 32 || !/^\+?[0-9 ()-]{7,32}$/.test(phone))) throw new DomainError('INVALID_PHONE');
+  return { name, email, phone };
 }

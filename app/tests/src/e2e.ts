@@ -311,7 +311,7 @@ async function main() {
       await ownerApi.post('/api/mfa/verify', { code: await totp(ou) });
       const anon = new Client(BASE, 'anon', true);
       const custEmail = `e2e-cust-${tag.toLowerCase()}@example.com`;
-      const custPw = `Syn-${randomBytes(9).toString('base64url')}`;
+      const custPw = `Syn-${randomBytes(9).toString('base64url')}aA1!`;
       let quoteRef = '';
       let ticketRef = '';
       const claimCode = String(com).match(/[A-Z2-9]{5}-[A-Z2-9]{5}/)?.[0] ?? '';

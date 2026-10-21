@@ -134,7 +134,7 @@ async function main() {
   const kpiAfter = await stale.get('/api/reports/kpi');
   rec.add('SESS-LOGOUT', 'SESSION', 'after logout the old session cannot be reused', kpiBefore.status === 200 && kpiAfter.status === 401, { before: kpiBefore.status, after: kpiAfter.status });
   const tmpEmail = `tmp-${tag}@example.com`;
-  const tmpPw = `Tmp-${randomBytes(9).toString('base64url')}`;
+  const tmpPw = `Tmp-${randomBytes(9).toString('base64url')}aA1!`;
   const tmp = await owner.post('/api/users', { email: tmpEmail, password: tmpPw, role: 'CUSTOMER' });
   const tmpId = tmp.json?.doc?.id;
   try {

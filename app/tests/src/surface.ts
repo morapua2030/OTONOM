@@ -2,7 +2,7 @@
 // Asserts "no effect" by checking the database after each attempt, not only the HTTP status.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { generate } from 'otplib';
 import pg from 'pg';
 import { APP_ROOT, connConfig, SECRETS_DIR } from '@otonom/domain';
@@ -119,14 +119,14 @@ async function main() {
       ['/api/reports/kpi', 'kpi.read', ['ADMIN']],
     ];
     for (const [p, perm, allowed] of dom) {
-      const r = p.includes('kpi') ? await c.get(p) : await c.post(p, { skuId: 'sku-rc04', delta: 1, reason: 'probe' });
+      const r = p.includes('kpi') ? await c.get(p) : await c.post(p, { skuId: 'sku-rc04', delta: 1, reason: 'probe', idempotencyKey: randomUUID() });
       const ok = allowed.includes(who) ? r.status !== 401 && r.status !== 403 : r.status === 401 || r.status === 403;
       rec.add(`SURF-${who}-${perm}`, 'SURFACE', `${who}: ${perm} ${allowed.includes(who) ? 'allowed' : 'denied'}`, ok, r.status);
     }
   }
   // stock adjust by ADMIN above changed synthetic stock by +1: revert to keep the dev DB neutral
   const admin = ids.ADMIN;
-  await admin.post('/api/admin/stock/adjust', { skuId: 'sku-rc04', delta: -1, reason: 'revert surface probe' });
+  await admin.post('/api/admin/stock/adjust', { skuId: 'sku-rc04', delta: -1, reason: 'revert surface probe', idempotencyKey: randomUUID() });
   await su.end();
   const out = path.join(APP_ROOT, 'tests', 'results');
   mkdirSync(out, { recursive: true });

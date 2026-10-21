@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import type { CollectionConfig, FieldAccess } from 'payload';
-import { STAFF_ROLES, can } from '@otonom/domain';
+import { ValidationError, type CollectionConfig, type FieldAccess } from 'payload';
+import { STAFF_ROLES, can, passwordPolicyError } from '@otonom/domain';
 import { mfaOk, nobody, perm, staffOnly } from '../lib/access.ts';
 import { domainDb, siteUsesHttps } from '../lib/server.ts';
 
@@ -46,6 +46,15 @@ export const Users: CollectionConfig = {
     { name: 'recoveryCodes', type: 'json', access: hiddenField, admin: { hidden: true } },
   ],
   hooks: {
+    beforeValidate: [
+      ({ data, req }) => {
+        if (data?.password !== undefined) {
+          const code = passwordPolicyError(data.password, data.email);
+          if (code) throw new ValidationError({ collection: 'users', req, errors: [{ path: 'password', label: 'Password', message: code }] });
+        }
+        return data;
+      },
+    ],
     beforeChange: [
       async ({ data, originalDoc, operation }) => {
         // Role change must invalidate every existing session of that user (not done by Payload itself)

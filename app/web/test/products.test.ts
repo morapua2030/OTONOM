@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { PRODUCTS, PRODUCT_MODELS, productByModel } from '../src/lib/products.ts';
+import { PRODUCTS, PRODUCT_MODELS, productByModel, publicProductProjection } from '../src/lib/products.ts';
 
 const webRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -28,6 +28,19 @@ test('public product model cannot carry unapproved technical, price or warranty 
   for (const forbidden of ['voltage', 'current', 'amp', 'watt', 'ip rating', 'certification', 'price', 'warranty duration']) {
     assert.equal(publicJson.includes(forbidden), false, `unexpected public field or claim: ${forbidden}`);
   }
+});
+
+test('runtime public projection strips review-only and commercial fields', () => {
+  const projected = publicProductProjection({
+    ...PRODUCTS[0],
+    voltage: 'UNVERIFIED',
+    certification: 'UNVERIFIED',
+    priceMinor: 123,
+    warrantyDuration: 12,
+  } as any);
+  assert.deepEqual(Object.keys(projected).sort(), ['alt', 'channels', 'fit', 'image', 'model', 'name', 'publicationStatus', 'summary']);
+  assert.equal(JSON.stringify(projected).includes('UNVERIFIED'), false);
+  assert.equal(JSON.stringify(projected).includes('123'), false);
 });
 
 test('website chrome uses the original reviewed logo asset', () => {

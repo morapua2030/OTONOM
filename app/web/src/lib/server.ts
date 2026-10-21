@@ -33,5 +33,8 @@ export const payloadSecret = () => {
 };
 export const cmsConnString = () => connString('cms');
 export const fileLinkSecret = () => createHash('sha256').update('file-links:' + payloadSecret()).digest('base64url');
-export const previewLocked = () => process.env.OTONOM_FORCE_PREVIEW === '1';
-export const uploadsDisabled = () => process.env.OTONOM_DISABLE_UPLOADS === '1';
+export const previewLocked = (env: NodeJS.ProcessEnv = process.env) => env.OTONOM_FORCE_PREVIEW === '1';
+export const uploadsDisabled = (env: NodeJS.ProcessEnv = process.env) => env.OTONOM_DISABLE_UPLOADS === '1';
+/** Local-only synthetic commerce lab. It cannot be enabled on Vercel or a forced Preview runtime. */
+export const internalCommerceLabEnabled = (env: NodeJS.ProcessEnv = process.env) =>
+  env.OTONOM_TEST_PAGES === '1' && env.VERCEL !== '1' && !previewLocked(env);

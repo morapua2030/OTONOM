@@ -7,7 +7,8 @@ import path from 'node:path';
 import type pg from 'pg';
 import { SECRETS_DIR } from './db.ts';
 import { IdempotencyKeyReuseError } from './inventory.ts';
-import { randomRef } from './commerce.ts';
+import { normalizeCustomerContact, randomRef } from './commerce.ts';
+import { addMinor, minorUnits, multiplyMinor } from './money.ts';
 import { audit, DomainError, tx, type Ctx } from './tx.ts';
 
 // ---------- customer access token for guest orders (HMAC of the order id; nothing secret is stored per order) ----------
@@ -51,11 +52,43 @@ export async function priceCart(pool: pg.Pool | pg.PoolClient, lines: Line[]) {
     const s = by.get(l.skuId);
     if (!s || s.status !== 'ACTIVE') throw new DomainError('SKU_NOT_AVAILABLE');
     if (!s.price_id) throw new DomainError('PRICE_NOT_APPROVED');
-    return { skuId: l.skuId, qty: l.qty, kind: s.kind, unitPriceMinor: Number(s.price_minor), lineMinor: Number(s.price_minor) * l.qty, vatIncluded: s.vat_included };
+    const unitPriceMinor = minorUnits(s.price_minor, 'INVALID_PRICE');
+    return { skuId: l.skuId, qty: l.qty, kind: s.kind, unitPriceMinor, lineMinor: multiplyMinor(unitPriceMinor, l.qty), vatIncluded: s.vat_included };
   });
   // a standard addition is only sold together with a controller
   if (out.every((l) => l.kind === 'ADDITION')) throw new DomainError('ADDITION_REQUIRES_CONTROLLER');
-  return { lines: out, subtotalMinor: out.reduce((s, l) => s + l.lineMinor, 0), shipping: 'TO_BE_QUOTED' as const };
+  return { lines: out, subtotalMinor: addMinor(out.map((line) => line.lineMinor)), shipping: 'TO_BE_QUOTED' as const };
+}
+
+/**
+ * Read-only local commerce review. It never creates an order, reserves stock,
+ * selects shipping, calculates tax or initiates payment.
+ */
+export async function reviewSyntheticCheckout(pool: pg.Pool, lines: Line[]) {
+  const priced = await priceCart(pool, lines);
+  const stock = await pool.query(
+    `SELECT sku_id, on_hand, reserved, allocated FROM domain.stock_levels WHERE sku_id = ANY($1) AND location_id='MAIN'`,
+    [priced.lines.map((line) => line.skuId)],
+  );
+  const bySku = new Map(stock.rows.map((row) => [row.sku_id, row]));
+  const reviewedLines = priced.lines.map((line) => {
+    const row = bySku.get(line.skuId);
+    const available = row ? Number(row.on_hand) - Number(row.reserved) - Number(row.allocated) : 0;
+    return { ...line, available, stockSufficient: available >= line.qty };
+  });
+  return {
+    mode: 'SYNTHETIC_INTERNAL_REVIEW' as const,
+    lines: reviewedLines,
+    subtotalMinor: priced.subtotalMinor,
+    canCreateOrder: false,
+    blockers: [
+      ...(reviewedLines.some((line) => !line.stockSufficient) ? ['STOCK_NOT_AVAILABLE'] : []),
+      'SHIPPING_POLICY_NOT_APPROVED',
+      'TAX_POLICY_NOT_APPROVED',
+      'PAYMENT_DISABLED',
+      'ORDER_NOT_CREATED',
+    ],
+  };
 }
 
 // ---------- custom firmware / non-standard quotation ----------
@@ -64,9 +97,14 @@ export type QuoteRequest = { idempotencyKey: string; lines: Line[]; requirements
 export async function requestCustomQuote(pool: pg.Pool, ctx: Ctx, i: QuoteRequest) {
   if (!/^[A-Za-z0-9_-]{16,80}$/.test(i.idempotencyKey ?? '')) throw new DomainError('INVALID_IDEMPOTENCY_KEY');
   validLines(i.lines);
-  if (String(i.requirements ?? '').trim().length < 20) throw new DomainError('REQUIREMENTS_TOO_SHORT');
-  if (!String(i.customer?.name ?? '').trim() || !(i.customer.email || i.customer.phone)) throw new DomainError('CONTACT_REQUIRED');
-  const hash = createHash('sha256').update(JSON.stringify({ l: i.lines, r: i.requirements, c: i.customer, g: i.governorate })).digest('hex');
+  const requirements = String(i.requirements ?? '').trim();
+  if (requirements.length < 20) throw new DomainError('REQUIREMENTS_TOO_SHORT');
+  if (requirements.length > 4_000) throw new DomainError('REQUIREMENTS_TOO_LONG');
+  const customer = normalizeCustomerContact(i.customer);
+  const governorate = String(i.governorate ?? '').trim();
+  if (!governorate) throw new DomainError('GOVERNORATE_REQUIRED');
+  if (governorate.length > 80) throw new DomainError('INVALID_GOVERNORATE');
+  const hash = createHash('sha256').update(JSON.stringify({ l: i.lines, r: requirements, c: customer, g: governorate })).digest('hex');
   return tx(pool, async (c) => {
     const k = await c.query(`INSERT INTO domain.idempotency_keys(scope, key, request_hash) VALUES ('quote.request',$1,$2) ON CONFLICT DO NOTHING RETURNING key`, [i.idempotencyKey, hash]);
     if (!k.rowCount) {
@@ -81,7 +119,7 @@ export async function requestCustomQuote(pool: pg.Pool, ctx: Ctx, i: QuoteReques
     await c.query(
       `INSERT INTO domain.orders(id, ref, type, status, channel, customer_name, customer_email, customer_phone, governorate, quote_requirements)
        VALUES ($1,$2,'CUSTOM_QUOTED','QUOTE_PENDING','WEBSITE',$3,$4,$5,$6,$7)`,
-      [orderId, ref, i.customer.name.trim(), i.customer.email ?? null, i.customer.phone ?? null, i.governorate ?? null, i.requirements.trim()],
+      [orderId, ref, customer.name, customer.email ?? null, customer.phone ?? null, governorate, requirements],
     );
     for (const l of i.lines) await c.query(`INSERT INTO domain.order_lines(id, order_id, sku_id, qty) VALUES ($1,$2,$3,$4)`, [randomUUID(), orderId, l.skuId, l.qty]);
     const result = { orderId, ref, status: 'QUOTE_PENDING' };
@@ -93,7 +131,7 @@ export async function requestCustomQuote(pool: pg.Pool, ctx: Ctx, i: QuoteReques
 
 /** OWNER issues the quote (a price decision): amount + validity. Never automatic. */
 export async function issueQuote(pool: pg.Pool, ctx: Ctx, orderId: string, quoteMinor: number, validUntil: string) {
-  if (!Number.isInteger(quoteMinor) || quoteMinor <= 0) throw new DomainError('INVALID_AMOUNT');
+  quoteMinor = minorUnits(quoteMinor);
   if (Number.isNaN(Date.parse(validUntil)) || Date.parse(validUntil) <= Date.now()) throw new DomainError('INVALID_VALIDITY');
   return tx(pool, async (c) => {
     const o = await lockOrder(c, orderId);
@@ -123,30 +161,30 @@ async function lockOrder(c: pg.PoolClient, orderId: string) {
   if (!o) throw new DomainError('NOT_FOUND');
   return o;
 }
-const total = (o: any) => Number(o.subtotal_minor ?? 0) + Number(o.shipping_minor ?? 0);
+const total = (o: any) => addMinor([o.subtotal_minor ?? 0, o.shipping_minor ?? 0]);
 
 /** Shipping amount entered by staff for this order (fees are not a published tariff — BLOCKED B-02). */
 export async function setShipping(pool: pg.Pool, ctx: Ctx, orderId: string, shippingMinor: number) {
-  if (!Number.isInteger(shippingMinor) || shippingMinor < 0) throw new DomainError('INVALID_AMOUNT');
+  shippingMinor = minorUnits(shippingMinor, 'INVALID_AMOUNT', true);
   return tx(pool, async (c) => {
     const o = await lockOrder(c, orderId);
     if (!['PENDING_REVIEW', 'CONFIRMED'].includes(o.status)) throw new DomainError('INVALID_STATE');
     await c.query(`UPDATE domain.orders SET shipping_minor=$2, shipping_status='QUOTED', revision=revision+1 WHERE id=$1`, [orderId, shippingMinor]);
     await audit(c, ctx, { action: 'order.shipping', entityType: 'order', entityId: orderId, before: { shippingMinor: o.shipping_minor }, after: { shippingMinor } });
-    return { totalMinor: Number(o.subtotal_minor ?? 0) + shippingMinor };
+    return { totalMinor: addMinor([o.subtotal_minor ?? 0, shippingMinor]) };
   });
 }
 
 /** Records an expected manual payment (bank transfer / e-wallet / COD). Verification stays a separate staff step. */
 export async function recordPayment(pool: pg.Pool, ctx: Ctx, orderId: string, method: 'COD' | 'BANK_TRANSFER' | 'EWALLET', amountMinor: number) {
   if (!['COD', 'BANK_TRANSFER', 'EWALLET'].includes(method)) throw new DomainError('INVALID_PAYMENT_METHOD');
-  if (!Number.isInteger(amountMinor) || amountMinor <= 0) throw new DomainError('INVALID_AMOUNT');
+  amountMinor = minorUnits(amountMinor);
   return tx(pool, async (c) => {
     const o = await lockOrder(c, orderId);
     if (!['CONFIRMED', 'ALLOCATED', 'SHIPPED'].includes(o.status)) throw new DomainError('INVALID_STATE');
     if (o.shipping_status === 'TO_BE_QUOTED') throw new DomainError('SHIPPING_NOT_QUOTED');
-    const open = Number((await c.query(`SELECT coalesce(sum(amount_minor),0) s FROM domain.payments WHERE order_id=$1 AND status IN ('PENDING','VERIFIED')`, [orderId])).rows[0].s);
-    if (open + amountMinor > total(o)) throw new DomainError('PAYMENT_EXCEEDS_TOTAL');
+    const open = minorUnits((await c.query(`SELECT coalesce(sum(amount_minor),0) s FROM domain.payments WHERE order_id=$1 AND status IN ('PENDING','VERIFIED')`, [orderId])).rows[0].s, 'INVALID_AMOUNT', true);
+    if (addMinor([open, amountMinor]) > total(o)) throw new DomainError('PAYMENT_EXCEEDS_TOTAL');
     const id = randomUUID();
     await c.query(`INSERT INTO domain.payments(id, order_id, method, amount_minor, status) VALUES ($1,$2,$3,$4,'PENDING')`, [id, orderId, method, amountMinor]);
     await audit(c, ctx, { action: 'payment.record', entityType: 'payment', entityId: id, after: { orderId, method, amountMinor } });
@@ -176,7 +214,7 @@ export async function allocateSerials(pool: pg.Pool, ctx: Ctx, orderId: string, 
     if (o.status === 'ALLOCATED') return { status: 'ALLOCATED', replay: true };
     if (o.status !== 'CONFIRMED') throw new DomainError('INVALID_STATE');
     if (o.payment_method !== 'COD') {
-      const paid = Number((await c.query(`SELECT coalesce(sum(amount_minor),0) s FROM domain.payments WHERE order_id=$1 AND status='VERIFIED'`, [orderId])).rows[0].s);
+      const paid = minorUnits((await c.query(`SELECT coalesce(sum(amount_minor),0) s FROM domain.payments WHERE order_id=$1 AND status='VERIFIED'`, [orderId])).rows[0].s, 'INVALID_AMOUNT', true);
       if (o.shipping_status === 'TO_BE_QUOTED' || paid < total(o)) throw new DomainError('PAYMENT_NOT_VERIFIED');
     }
     const lines = (await c.query(`SELECT l.id, l.sku_id, l.qty, s.serialised FROM domain.order_lines l JOIN domain.skus s ON s.id=l.sku_id WHERE l.order_id=$1 ORDER BY l.id`, [orderId])).rows;
@@ -229,8 +267,9 @@ export async function shipOrder(pool: pg.Pool, ctx: Ctx, orderId: string) {
 export async function completeOrder(pool: pg.Pool, ctx: Ctx, orderId: string) {
   return tx(pool, async (c) => {
     const o = await lockOrder(c, orderId);
+    if (o.status === 'COMPLETED') return { status: 'COMPLETED', replay: true };
     if (o.status !== 'SHIPPED') throw new DomainError('INVALID_STATE');
-    const paid = Number((await c.query(`SELECT coalesce(sum(amount_minor),0) s FROM domain.payments WHERE order_id=$1 AND status='VERIFIED'`, [orderId])).rows[0].s);
+    const paid = minorUnits((await c.query(`SELECT coalesce(sum(amount_minor),0) s FROM domain.payments WHERE order_id=$1 AND status='VERIFIED'`, [orderId])).rows[0].s, 'INVALID_AMOUNT', true);
     if (paid < total(o)) throw new DomainError('PAYMENT_NOT_VERIFIED');
     await c.query(`UPDATE domain.orders SET status='COMPLETED', revision=revision+1 WHERE id=$1`, [orderId]);
     await audit(c, ctx, { action: 'order.complete', entityType: 'order', entityId: orderId, after: { status: 'COMPLETED' } });

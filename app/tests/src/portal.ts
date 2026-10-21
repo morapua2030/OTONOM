@@ -33,7 +33,7 @@ async function main() {
   const closed = await Promise.all([anon.req('POST', '/api/account/register', { json: {} }), anon.get('/api/account/devices'), anon.req('POST', '/api/account/devices/claim', { json: {} }), anon.get('/api/account/tickets')]);
   rec.add('P-PREVIEW-CLOSED', 'PORTAL', 'portal routes are 404 in PREVIEW', closed.every((r) => r.status === 404), closed.map((r) => r.status));
   const emails = [`cust-a-${tag}@example.com`.toLowerCase(), `cust-b-${tag}@example.com`.toLowerCase()];
-  const pw = `Syn-${randomBytes(9).toString('base64url')}`;
+  const pw = `Syn-${randomBytes(9).toString('base64url')}aA1!`;
   const serial = `SYN-PRT-${tag}`;
   try {
     await owner.post('/api/globals/settings', { stage: 'COMMERCIAL' });

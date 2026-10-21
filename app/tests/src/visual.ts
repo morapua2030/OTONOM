@@ -12,7 +12,7 @@ import { Client, Recorder, sleep } from './http-client.ts';
 const BASE = process.env.OTONOM_BASE ?? 'http://127.0.0.1:3301';
 const EDGE = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
 const PROFILE = path.join(APP_ROOT, 'tests', '.edge-profile');
-const SHOTS = path.resolve(APP_ROOT, '..', 'execution', 'evidence', 'screenshots', 's9-20261020');
+const SHOTS = path.resolve(APP_ROOT, '..', 'execution', 'evidence', 'screenshots', 's10-20261021');
 const PORT = 9334;
 const WIDTHS = [360, 768, 1366];
 const PAGES = ['', '/solutions', '/solutions/villas', '/solutions/apartments', '/business/developers', '/business/contractors', '/technology/controllers', '/technology/integrations', '/technology/documentation', '/products', '/products/4r', '/products/6r', '/products/16r', '/products/compare', '/projects', '/business/request-a-proposal', '/consultation', '/shop', '/support/warranty', '/preview', '/preview/bidi-samples'];
@@ -257,6 +257,38 @@ async function main() {
         const want = loc === 'ar' ? 'rtl' : 'ltr';
         const textFields = (st?.fields ?? []) as string[];
         rec.add(`VIS-ADMIN-${loc}-FIELD-DIR`, 'ADMIN-I18N', `admin editor (${loc}) renders localized text fields ${want}`, mfa.status === 200 && st?.path?.startsWith('/admin/collections/pages') && textFields.length > 0 && textFields.filter((d) => d === want).length >= Math.ceil(textFields.length / 2), { mfa: mfa.status, path: st?.path, fields: textFields });
+      }
+    }
+    // S10 Store Operations: real local Edge rendering with the normal STORE password + MFA flow.
+    {
+      const u = JSON.parse(readFileSync(path.join(SECRETS_DIR, 'dev_users.json'), 'utf8')).find((x: any) => x.role === 'STORE');
+      const c = new Client(BASE, 'store-visual', true);
+      const login = await c.post('/api/users/login', { email: u.email, password: u.password });
+      const s0 = Math.floor(Date.now() / 30000);
+      while (Math.floor(Date.now() / 30000) === s0) await sleep(1000);
+      const mfa = await c.post('/api/mfa/verify', { code: await generate({ secret: u.totp }) });
+      const token = c.cookies.get('payload-token');
+      for (const width of WIDTHS) {
+        const { result: tgt } = await cdp.send('Target.createTarget', { url: 'about:blank' });
+        const { result: att } = await cdp.send('Target.attachToTarget', { targetId: tgt.targetId, flatten: true });
+        const sid = att.sessionId as string;
+        await cdp.send('Network.enable', {}, sid);
+        await cdp.send('Network.setCookie', { name: 'payload-token', value: token ?? '', domain: '127.0.0.1', path: '/', httpOnly: true }, sid);
+        await cdp.send('Page.enable', {}, sid);
+        await cdp.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 768 }, sid);
+        const loaded = cdp.once('Page.loadEventFired', sid);
+        await cdp.send('Page.navigate', { url: `${BASE}/admin/store-ops` }, sid);
+        await loaded;
+        await sleep(2500);
+        const st = await evalJson(
+          sid,
+          `JSON.stringify({ path: location.pathname, heading: document.querySelector('h1')?.textContent || '', lab: !!document.querySelector('[data-testid=commerce-lab]'), stage: !!document.querySelector('[data-testid=store-stage]'), scrollW: document.documentElement.scrollWidth, h: document.documentElement.scrollHeight, leaked: /DATABASE_URL|postgres(?:ql)?:\\/\\//i.test(document.body.innerText) })`,
+        );
+        await shot(sid, `admin_store-ops-${width}.png`, width, Math.min(st?.h ?? 900, 6000));
+        await cdp.send('Target.closeTarget', { targetId: tgt.targetId });
+        rec.add(`VIS-STORE-${width}-AUTH`, 'ADMIN-COMMERCE', `STORE password + MFA session reaches Store Operations at ${width}px`, login.status === 200 && mfa.status === 200 && st?.path === '/admin/store-ops' && /Store Operations/i.test(st?.heading), { login: login.status, mfa: mfa.status, path: st?.path });
+        rec.add(`VIS-STORE-${width}-LAB`, 'ADMIN-COMMERCE', `local synthetic commerce review is visible and the public stage warning remains visible at ${width}px`, st?.lab === true && st?.stage === true, { lab: st?.lab, stage: st?.stage });
+        rec.add(`VIS-STORE-${width}-LAYOUT`, 'ADMIN-COMMERCE', `Store Operations has no page overflow or connection-string disclosure at ${width}px`, st?.scrollW <= width && st?.leaked === false, { scrollW: st?.scrollW, leaked: st?.leaked });
       }
     }
     // RFQ error state (one width per locale; each submission is rate-limited server-side)

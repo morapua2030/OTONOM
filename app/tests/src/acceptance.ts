@@ -294,6 +294,10 @@ async function main() {
       s.ENGINEER.post(`/api/admin/orders/${fake}/payments`, { method: 'COD', amountMinor: 1 }),
     ]);
     rec.add('APP-W7-STAFF-ROLES', 'W7', 'editor cannot allocate/cancel; store cannot issue quotes; engineer cannot record payments', roleChecks.every((r) => r.status === 403), roleChecks.map((r) => r.status));
+    const labAnon = await anon.req('POST', '/api/admin/commerce-lab/review', { json: { lines: [{ skuId: 'sku-rc04', qty: 1 }] } });
+    const labEditor = await s.EDITOR.post('/api/admin/commerce-lab/review', { lines: [{ skuId: 'sku-rc04', qty: 1 }] });
+    const labStore = await s.STORE.post('/api/admin/commerce-lab/review', { lines: [{ skuId: 'sku-rc04', qty: 1 }] });
+    rec.add('APP-S10-COMMERCE-LAB-RBAC', 'S10', 'local synthetic cart review requires MFA staff permission and cannot bypass missing price approval', labAnon.status === 401 && labEditor.status === 403 && labStore.status === 422 && labStore.json?.code === 'PRICE_NOT_APPROVED', { anonymous: labAnon.status, editor: labEditor.status, store: labStore.status });
     const nf = await s.OWNER.post(`/api/admin/orders/${fake}/quote`, { quoteMinor: 1, validUntil: '2099-01-01T00:00:00Z' });
     rec.add('APP-W7-QUOTE-NOT-FOUND', 'W7', 'owner quote on an unknown order → 404', nf.status === 404, nf.status);
     try {

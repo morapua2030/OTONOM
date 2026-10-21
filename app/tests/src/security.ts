@@ -2,7 +2,7 @@
 // independent security review / penetration test required before any public exposure (release blocker B-30).
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { generate } from 'otplib';
 import pg from 'pg';
 import { APP_ROOT, connConfig, SECRETS_DIR } from '@otonom/domain';
@@ -99,7 +99,7 @@ async function main() {
 
   // ---------- CSRF on a staff mutation ----------
   const st0 = (await su.query(`SELECT on_hand FROM domain.stock_levels WHERE sku_id='sku-rc04'`)).rows[0]?.on_hand;
-  const csrf = await admin.req('POST', '/api/admin/stock/adjust', { json: { skuId: 'sku-rc04', delta: 5, reason: 'csrf probe' }, headers: { origin: 'http://evil.example', 'sec-fetch-site': 'cross-site' } });
+  const csrf = await admin.req('POST', '/api/admin/stock/adjust', { json: { skuId: 'sku-rc04', delta: 5, reason: 'csrf probe', idempotencyKey: randomUUID() }, headers: { origin: 'http://evil.example', 'sec-fetch-site': 'cross-site' } });
   const st1 = (await su.query(`SELECT on_hand FROM domain.stock_levels WHERE sku_id='sku-rc04'`)).rows[0]?.on_hand;
   rec.add('SEC-CSRF-STAFF', 'CSRF', 'cross-site staff mutation refused and has no effect', (csrf.status === 401 || csrf.status === 403) && st0 === st1, { status: csrf.status, st0, st1 });
 

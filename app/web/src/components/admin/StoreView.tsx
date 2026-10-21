@@ -2,7 +2,9 @@ import type { AdminViewServerProps } from 'payload';
 import { randomUUID } from 'node:crypto';
 import { domainDb } from '@/lib/server.ts';
 import { ActionForm } from './ActionForm.tsx';
+import { CommerceLab } from './CommerceLab.tsx';
 import { NoAccess, StaffShell, minorToEgp, staffOf, when } from './shell.tsx';
+import { internalCommerceLabEnabled } from '@/lib/server.ts';
 import s from './staff.module.css';
 
 /** Store back office. Customer-facing store routes stay gated by the stage (404 in PREVIEW); this view is staff-only. */
@@ -13,7 +15,31 @@ export async function StoreView(props: AdminViewServerProps) {
   if (!staff || !(staff.can('order.confirm') || staff.can('price.approve'))) return <StaffShell {...shell}>{<NoAccess need="order.confirm" />}</StaffShell>;
   const db = domainDb();
   const settings: any = await req.payload.findGlobal({ slug: 'settings', req, overrideAccess: true });
-  const orders = (await db.query(`SELECT * FROM domain.orders ORDER BY created_at DESC LIMIT 60`)).rows;
+  const search = req.searchParams;
+  const allowedStatuses = ['QUOTE_PENDING', 'QUOTED', 'PENDING_REVIEW', 'CONFIRMED', 'ALLOCATED', 'SHIPPED', 'COMPLETED', 'CANCELLED', 'EXPIRED'];
+  const status = allowedStatuses.includes(search.get('status') ?? '') ? search.get('status')! : '';
+  const query = (search.get('q') ?? '').trim().slice(0, 80);
+  const sku = (search.get('sku') ?? '').trim().slice(0, 64);
+  const validDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
+  const from = validDate(search.get('from') ?? '') ? search.get('from')! : '';
+  const to = validDate(search.get('to') ?? '') ? search.get('to')! : '';
+  const page = Math.max(1, Math.min(10_000, Number.parseInt(search.get('page') ?? '1', 10) || 1));
+  const pageSize = 25;
+  const where: string[] = [];
+  const values: unknown[] = [];
+  if (status) { values.push(status); where.push(`orders.status=$${values.length}`); }
+  if (query) { values.push(`%${query}%`); where.push(`(orders.ref ILIKE $${values.length} OR orders.customer_name ILIKE $${values.length})`); }
+  if (sku) {
+    values.push(`%${sku}%`);
+    where.push(`EXISTS (SELECT 1 FROM domain.order_lines filter_line JOIN domain.skus filter_sku ON filter_sku.id=filter_line.sku_id WHERE filter_line.order_id=orders.id AND filter_sku.code ILIKE $${values.length})`);
+  }
+  if (from) { values.push(from); where.push(`orders.created_at >= $${values.length}::date`); }
+  if (to) { values.push(to); where.push(`orders.created_at < ($${values.length}::date + interval '1 day')`); }
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const totalOrders = Number((await db.query(`SELECT count(*)::int n FROM domain.orders ${whereSql}`, values)).rows[0].n);
+  const orderParams = [...values, pageSize, (page - 1) * pageSize];
+  const orders = (await db.query(`SELECT * FROM domain.orders ${whereSql} ORDER BY created_at DESC LIMIT $${values.length + 1} OFFSET $${values.length + 2}`, orderParams)).rows;
+  const pages = Math.max(1, Math.ceil(totalOrders / pageSize));
   const ids = orders.map((o) => o.id);
   const lines = ids.length ? (await db.query(`SELECT l.id, l.order_id, l.qty, l.unit_price_minor, s.code, s.serialised FROM domain.order_lines l JOIN domain.skus s ON s.id=l.sku_id WHERE l.order_id = ANY($1) ORDER BY s.code`, [ids])).rows : [];
   const pays = ids.length ? (await db.query(`SELECT id, order_id, method, amount_minor, status, external_ref FROM domain.payments WHERE order_id = ANY($1) ORDER BY created_at`, [ids])).rows : [];
@@ -34,8 +60,20 @@ export async function StoreView(props: AdminViewServerProps) {
         {settings?.stage !== 'COMMERCIAL' ? ' — the customer-facing store, cart and checkout are CLOSED (server returns 404).' : ' — customer store routes are open.'}
       </p>
 
+      {internalCommerceLabEnabled() && staff.can('order.confirm') && (
+        <CommerceLab skus={stock.map((sku) => ({ id: sku.id, code: sku.code, model: sku.model, available: Number(sku.on_hand) - Number(sku.reserved) - Number(sku.allocated), approvedPrice: sku.approved_price === null ? null : Number(sku.approved_price) }))} />
+      )}
+
       <section className={s.section} data-testid="orders">
-        <h2>Orders ({orders.length})</h2>
+        <h2>Orders ({totalOrders})</h2>
+        <form className={s.search} method="get" action="/admin/store-ops">
+          <label>Search / بحث <input name="q" defaultValue={query} maxLength={80} /></label>
+          <label>SKU / الصنف <input name="sku" defaultValue={sku} maxLength={64} /></label>
+          <label>Status / الحالة <select name="status" defaultValue={status}><option value="">All / الكل</option>{allowedStatuses.map((value) => <option value={value} key={value}>{value}</option>)}</select></label>
+          <label>From / من <input name="from" type="date" defaultValue={from} /></label>
+          <label>To / إلى <input name="to" type="date" defaultValue={to} /></label>
+          <button className={s.btn} type="submit">Filter / تصفية</button>
+        </form>
         <div className={s.tableWrap}>
           <table className={s.table}>
             <thead>
@@ -51,6 +89,7 @@ export async function StoreView(props: AdminViewServerProps) {
               </tr>
             </thead>
             <tbody>
+              {orders.length === 0 && <tr><td colSpan={8}>No synthetic orders match this filter / لا توجد طلبات اصطناعية مطابقة.</td></tr>}
               {orders.map((o) => (
                 <tr key={o.id} data-ref={o.ref}>
                   <td data-label="Ref" className={s.mono}>
@@ -128,6 +167,11 @@ export async function StoreView(props: AdminViewServerProps) {
             </tbody>
           </table>
         </div>
+        <nav className={s.pager} aria-label="Order pages">
+          {page > 1 && <a href={`/admin/store-ops?${new URLSearchParams({ ...(query ? { q: query } : {}), ...(sku ? { sku } : {}), ...(status ? { status } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}), page: String(page - 1) })}`}>Previous / السابق</a>}
+          <span>Page {Math.min(page, pages)} of {pages}</span>
+          {page < pages && <a href={`/admin/store-ops?${new URLSearchParams({ ...(query ? { q: query } : {}), ...(sku ? { sku } : {}), ...(status ? { status } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}), page: String(page + 1) })}`}>Next / التالي</a>}
+        </nav>
       </section>
 
       <section className={s.section} data-testid="stock">
@@ -150,21 +194,21 @@ export async function StoreView(props: AdminViewServerProps) {
             <tbody>
               {stock.map((k) => (
                 <tr key={k.id}>
-                  <td data-label="" className={s.mono}>{k.code}</td>
-                  <td data-label="SKU">{k.kind}{k.model ? ` · ${k.model}` : ''}</td>
-                  <td data-label="Kind" className={s.num}>{k.on_hand}</td>
-                  <td data-label="On hand" className={s.num}>{k.reserved}</td>
-                  <td data-label="Reserved" className={s.num}>{k.allocated}</td>
-                  <td data-label="Allocated" className={s.num}>{k.on_hand - k.reserved - k.allocated}</td>
-                  <td data-label="Available" className={s.num}>{k.serials_in_stock}</td>
-                  <td data-label="Serials in stock">{k.approved_price ? minorToEgp(k.approved_price) : <span className={s.muted}>none — orders refused (BLOCKED, owner pricing)</span>}</td>
-                  <td data-label="Approved price">
+                  <td data-label="SKU" className={s.mono}>{k.code}</td>
+                  <td data-label="Kind">{k.kind}{k.model ? ` · ${k.model}` : ''}</td>
+                  <td data-label="On hand" className={s.num}>{k.on_hand}</td>
+                  <td data-label="Reserved" className={s.num}>{k.reserved}</td>
+                  <td data-label="Allocated" className={s.num}>{k.allocated}</td>
+                  <td data-label="Available" className={s.num}>{k.on_hand - k.reserved - k.allocated}</td>
+                  <td data-label="Serials in stock" className={s.num}>{k.serials_in_stock}</td>
+                  <td data-label="Approved price">{k.approved_price ? minorToEgp(k.approved_price) : <span className={s.muted}>none — orders refused (BLOCKED, owner pricing)</span>}</td>
+                  <td data-label="Actions">
                     <div className={s.actions}>
                       {staff.can('price.propose') && (
                         <ActionForm testId={`sku-${k.code}-propose`} endpoint="/api/admin/prices" label="Propose price" secondary fixed={{ skuId: k.id }} fields={[{ name: 'priceMinor', label: 'Price (EGP)', type: 'money', required: true }, { name: 'vatIncluded', label: 'VAT included', type: 'checkbox' }]} />
                       )}
                       {staff.can('stock.adjust') && (
-                        <ActionForm testId={`sku-${k.code}-adjust`} endpoint="/api/admin/stock/adjust" label="Adjust stock" secondary fixed={{ skuId: k.id }} fields={[{ name: 'delta', label: '± units', type: 'number', required: true }, { name: 'reason', label: 'Reason', type: 'text', required: true }]} />
+                        <ActionForm testId={`sku-${k.code}-adjust`} endpoint="/api/admin/stock/adjust" label="Adjust stock" secondary fixed={{ skuId: k.id, idempotencyKey: randomUUID() }} fields={[{ name: 'delta', label: '± units', type: 'number', required: true }, { name: 'reason', label: 'Reason', type: 'text', required: true }]} />
                       )}
                     </div>
                   </td>

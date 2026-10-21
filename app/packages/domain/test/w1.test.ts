@@ -73,6 +73,10 @@ test('order input validation', async () => {
   await assert.rejects(d.submitWebsiteOrder(pool, web, order({ customer: { name: 'x' } })), /CONTACT_REQUIRED/);
   await assert.rejects(d.submitWebsiteOrder(pool, web, order({ lines: [{ skuId: 'nope', qty: 1 }] })), /SKU_NOT_AVAILABLE/);
   await assert.rejects(d.submitWebsiteOrder(pool, web, order({ lines: [{ skuId: 'sku-b', qty: 1 }] })), /PRICE_NOT_APPROVED/);
+  await assert.rejects(d.submitWebsiteOrder(pool, web, order({ customer: { name: 'Synthetic', email: 'invalid' } })), /INVALID_EMAIL/);
+  await assert.rejects(d.submitWebsiteOrder(pool, web, order({ customer: { name: 'Synthetic', phone: '12' } })), /INVALID_PHONE/);
+  await assert.rejects(d.submitWebsiteOrder(pool, web, order({ governorate: 'x'.repeat(81) })), /INVALID_GOVERNORATE/);
+  await assert.rejects(d.proposePrice(pool, store, 'sku-a', Number.MAX_SAFE_INTEGER + 1, true), /INVALID_PRICE/);
 });
 
 test('website order is then confirmable by staff with the spike-verified atomic reservation', async () => {
