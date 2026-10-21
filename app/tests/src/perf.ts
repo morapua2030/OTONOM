@@ -131,8 +131,11 @@ async function queryPlans() {
   await q('audit.by_entity', `SELECT * FROM domain.audit_events WHERE entity_type='order' AND entity_id=$1`, ['x']);
   await q('rfq.by_idempotency', `SELECT id FROM cms.rfqs WHERE idempotency_key=$1`, ['x']);
   await q('rfq.duplicates_90d', `SELECT id FROM cms.rfqs WHERE (submitted_email=$1 OR submitted_phone=$2) AND created_at > now() - interval '90 days'`, ['a@example.com', '+201000000000']);
-  await q('tickets.by_customer', `SELECT * FROM domain.service_tickets WHERE customer_ref=$1`, ['user:1']);
-  const counts = (await su.query(`SELECT (SELECT count(*) FROM cms.rfqs) rfqs, (SELECT count(*) FROM domain.audit_events) audit, (SELECT count(*) FROM domain.contracts) contracts`)).rows[0];
+  await q('tickets.by_customer', `SELECT ref,serial,category,priority,status,resolution,revision,created_at,updated_at FROM domain.service_tickets WHERE customer_ref=$1 ORDER BY created_at DESC LIMIT 50`, ['user:1']);
+  await q('service.queue', `SELECT id,ref,serial,priority,status,revision,created_at FROM domain.service_tickets ORDER BY (priority='URGENT') DESC,(status IN ('RESOLVED','CLOSED')),created_at DESC LIMIT 80`);
+  await q('rma.queue', `SELECT r.id,r.ref,r.status,r.revision,i.condition FROM domain.rmas r LEFT JOIN domain.rma_inspections i ON i.rma_id=r.id WHERE r.status <> 'CLOSED' ORDER BY r.created_at DESC LIMIT 50`);
+  await q('service.timeline', `SELECT event_type,from_status,to_status,note,revision,created_at FROM domain.service_ticket_events WHERE ticket_id=$1 ORDER BY id LIMIT 100`, ['00000000-0000-0000-0000-000000000000']);
+  const counts = (await su.query(`SELECT (SELECT count(*) FROM cms.rfqs) rfqs, (SELECT count(*) FROM domain.audit_events) audit, (SELECT count(*) FROM domain.contracts) contracts, (SELECT count(*) FROM domain.device_ownerships) ownerships, (SELECT count(*) FROM domain.service_tickets) tickets, (SELECT count(*) FROM domain.rmas) rmas`)).rows[0];
   await su.end();
   return { plans, rowCounts: counts, note: 'tiny synthetic data volumes — plans show index use, not production-scale timing' };
 }

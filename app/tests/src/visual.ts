@@ -12,7 +12,7 @@ import { Client, Recorder, sleep } from './http-client.ts';
 const BASE = process.env.OTONOM_BASE ?? 'http://127.0.0.1:3301';
 const EDGE = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
 const PROFILE = path.join(APP_ROOT, 'tests', '.edge-profile');
-const SHOTS = path.resolve(APP_ROOT, '..', 'execution', 'evidence', 'screenshots', 's10-20261021');
+const SHOTS = path.resolve(APP_ROOT, '..', 'execution', 'evidence', 'screenshots', 's11-20261021');
 const PORT = 9334;
 const WIDTHS = [360, 768, 1366];
 const PAGES = ['', '/solutions', '/solutions/villas', '/solutions/apartments', '/business/developers', '/business/contractors', '/technology/controllers', '/technology/integrations', '/technology/documentation', '/products', '/products/4r', '/products/6r', '/products/16r', '/products/compare', '/projects', '/business/request-a-proposal', '/consultation', '/shop', '/support/warranty', '/preview', '/preview/bidi-samples'];
@@ -289,6 +289,35 @@ async function main() {
         rec.add(`VIS-STORE-${width}-AUTH`, 'ADMIN-COMMERCE', `STORE password + MFA session reaches Store Operations at ${width}px`, login.status === 200 && mfa.status === 200 && st?.path === '/admin/store-ops' && /Store Operations/i.test(st?.heading), { login: login.status, mfa: mfa.status, path: st?.path });
         rec.add(`VIS-STORE-${width}-LAB`, 'ADMIN-COMMERCE', `local synthetic commerce review is visible and the public stage warning remains visible at ${width}px`, st?.lab === true && st?.stage === true, { lab: st?.lab, stage: st?.stage });
         rec.add(`VIS-STORE-${width}-LAYOUT`, 'ADMIN-COMMERCE', `Store Operations has no page overflow or connection-string disclosure at ${width}px`, st?.scrollW <= width && st?.leaked === false, { scrollW: st?.scrollW, leaked: st?.leaked });
+      }
+    }
+    // S11 Service Desk: real local Edge rendering at the supported mobile/tablet/desktop widths.
+    {
+      const u = JSON.parse(readFileSync(path.join(SECRETS_DIR, 'dev_users.json'), 'utf8')).find((x: any) => x.role === 'ENGINEER');
+      const c = new Client(BASE, 'service-visual', true);
+      const login = await c.post('/api/users/login', { email: u.email, password: u.password });
+      const s0 = Math.floor(Date.now() / 30000);
+      while (Math.floor(Date.now() / 30000) === s0) await sleep(1000);
+      const mfa = await c.post('/api/mfa/verify', { code: await generate({ secret: u.totp }) });
+      const token = c.cookies.get('payload-token');
+      for (const width of WIDTHS) {
+        const { result: tgt } = await cdp.send('Target.createTarget', { url: 'about:blank' });
+        const { result: att } = await cdp.send('Target.attachToTarget', { targetId: tgt.targetId, flatten: true });
+        const sid = att.sessionId as string;
+        await cdp.send('Network.enable', {}, sid);
+        await cdp.send('Network.setCookie', { name: 'payload-token', value: token ?? '', domain: '127.0.0.1', path: '/', httpOnly: true }, sid);
+        await cdp.send('Page.enable', {}, sid);
+        await cdp.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 768 }, sid);
+        const loaded = cdp.once('Page.loadEventFired', sid);
+        await cdp.send('Page.navigate', { url: `${BASE}/admin/service-desk` }, sid);
+        await loaded;
+        await sleep(2500);
+        const st = await evalJson(sid, `JSON.stringify({ path: location.pathname, heading: document.querySelector('h1')?.textContent || '', policy: !!document.querySelector('[data-testid=warranty-policy]'), tickets: !!document.querySelector('[data-testid=tickets]'), rmas: !!document.querySelector('[data-testid=rmas]'), scrollW: document.documentElement.scrollWidth, h: document.documentElement.scrollHeight, leaked: /DATABASE_URL|postgres(?:ql)?:\\/\\//i.test(document.body.innerText) })`);
+        await shot(sid, `admin_service-desk-${width}.png`, width, Math.min(st?.h ?? 900, 6000));
+        await cdp.send('Target.closeTarget', { targetId: tgt.targetId });
+        rec.add(`VIS-SERVICE-${width}-AUTH`, 'ADMIN-SERVICE', `ENGINEER password + MFA session reaches Service Desk at ${width}px`, login.status === 200 && mfa.status === 200 && st?.path === '/admin/service-desk' && /Service desk/i.test(st?.heading), { login: login.status, mfa: mfa.status, path: st?.path });
+        rec.add(`VIS-SERVICE-${width}-STATE`, 'ADMIN-SERVICE', `policy, ticket and RMA states render at ${width}px`, st?.policy === true && st?.tickets === true && st?.rmas === true, { policy: st?.policy, tickets: st?.tickets, rmas: st?.rmas });
+        rec.add(`VIS-SERVICE-${width}-LAYOUT`, 'ADMIN-SERVICE', `Service Desk has no page overflow or connection-string disclosure at ${width}px`, st?.scrollW <= width && st?.leaked === false, { scrollW: st?.scrollW, leaked: st?.leaked });
       }
     }
     // RFQ error state (one width per locale; each submission is rate-limited server-side)

@@ -61,6 +61,13 @@ CLONE_READY=1
 "$PG/pg_restore.exe" -d "$E2E_DB" "$CLONE_DUMP" >> "$OUT/database-clone.log" 2>&1
 rm -f "$CLONE_DUMP"
 export OTONOM_DB="$E2E_DB"
+# Apply forward-only domain migrations only inside the disposable clone. The source otonom_dev and hosted databases
+# remain untouched; the pg_dump above is the verified restore point for this isolated run.
+cd "$APP/packages/domain"
+if ! npx --no-install tsx -e "import('./src/migrate.ts').then(async (m) => console.log(JSON.stringify(await m.migrate())))" > "$OUT/database-migrate.log" 2>&1; then
+  echo "disposable database migration failed"
+  exit 2
+fi
 # Test-only: clear shared rate-limit buckets in the disposable clone (they persist across server restarts).
 "$PG/psql.exe" -q -d "$E2E_DB" -c 'DELETE FROM domain.rate_limits' > /dev/null
 cd "$APP/web" && (OTONOM_TRUST_PROXY=1 OTONOM_TEST_PAGES=1 npx --no-install next start -H 127.0.0.1 -p 3301 > "$OUT/server.log" 2>&1 &)

@@ -6,11 +6,17 @@ import {
   adjustStock,
   acceptQuote,
   recordCallback,
+  recordDiagnosis,
+  recordRmaAction,
+  recordRmaInspection,
+  requestOwnershipTransfer,
+  acceptOwnershipTransfer,
   claimDevice,
   customerRef,
   decideOwnership,
   listMyDevices,
   listMyTickets,
+  getMyTicketTimeline,
   openRma,
   openTicket,
   recordCommissioning,
@@ -25,6 +31,7 @@ import {
   priceCart,
   reviewSyntheticCheckout,
   recordPayment,
+  recordStockMovement,
   rejectPayment,
   requestCustomQuote,
   setShipping,
@@ -46,6 +53,8 @@ import {
   verifyPayment,
   type Permission,
   passwordPolicyError,
+  createProductDraft,
+  transitionProductDraft,
   STAFF_ROLES,
 } from '@otonom/domain';
 import { body, guard, jsonRes, mfaOk } from '../lib/access.ts';
@@ -59,7 +68,10 @@ const param = (req: PayloadRequest, k: string) => String((req.routeParams as any
 
 function mapError(e: unknown): Response {
   if (e instanceof IdempotencyKeyReuseError) return jsonRes(409, { code: e.code });
-  if (e instanceof DomainError) return jsonRes(e.code === 'NOT_FOUND' ? 404 : 422, { code: e.code });
+  if (e instanceof DomainError) {
+    const status = e.code === 'NOT_FOUND' ? 404 : ['STALE_REVISION', 'IDEMPOTENCY_KEY_REUSED', 'TRANSFER_ALREADY_PENDING'].includes(e.code) ? 409 : 422;
+    return jsonRes(status, { code: e.code });
+  }
   console.error(e);
   return jsonRes(500, { code: 'INTERNAL_ERROR' });
 }
@@ -682,6 +694,10 @@ export const endpoints: Endpoint[] = [
   },
   { path: '/admin/payments/:id/verify', method: 'post', handler: domainOp('payment.verify', (req, b, ctx) => verifyPayment(domainDb(), ctx, param(req, 'id'), String(b.externalRef ?? ''))) },
   { path: '/admin/stock/adjust', method: 'post', handler: domainOp('stock.adjust', (_r, b, ctx) => adjustStock(domainDb(), ctx, String(b.skuId ?? ''), Number(b.delta ?? 0), String(b.reason ?? ''), String(b.idempotencyKey ?? ''))) },
+  { path: '/admin/stock/movements', method: 'post', handler: domainOp('stock.adjust', (_r, b, ctx) => recordStockMovement(domainDb(), ctx, { skuId: String(b.skuId ?? ''), kind: String(b.kind ?? '') as any, qty: Number(b.qty), reference: String(b.reference ?? ''), reason: String(b.reason ?? ''), idempotencyKey: String(b.idempotencyKey ?? '') })) },
+  { path: '/admin/product-drafts', method: 'post', handler: domainOp('product.draft', (_r, b, ctx) => createProductDraft(domainDb(), ctx, { skuId: String(b.skuId ?? ''), titleAr: String(b.titleAr ?? ''), titleEn: String(b.titleEn ?? ''), summaryAr: String(b.summaryAr ?? ''), summaryEn: String(b.summaryEn ?? ''), sortOrder: Number(b.sortOrder ?? 0) })) },
+  { path: '/admin/product-drafts/:id/submit', method: 'post', handler: domainOp('product.draft', (req, b, ctx) => transitionProductDraft(domainDb(), ctx, param(req, 'id'), 'IN_REVIEW', Number(b.expectedRevision), '')) },
+  { path: '/admin/product-drafts/:id/decision', method: 'post', handler: domainOp('product.approve', (req, b, ctx) => transitionProductDraft(domainDb(), ctx, param(req, 'id'), String(b.decision ?? ''), Number(b.expectedRevision), String(b.reason ?? ''))) },
   { path: '/admin/prices', method: 'post', handler: domainOp('price.propose', (_r, b, ctx) => proposePrice(domainDb(), ctx, String(b.skuId ?? ''), Number(b.priceMinor), b.vatIncluded as boolean)) },
   { path: '/admin/prices/:id/approve', method: 'post', handler: domainOp('price.approve', (req, _b, ctx) => approvePrice(domainDb(), ctx, param(req, 'id'))) },
   { path: '/admin/serials', method: 'post', handler: domainOp('serial.register', (_r, b, ctx) => registerSerial(domainDb(), ctx, String(b.serial ?? ''), String(b.skuId ?? ''), String(b.status ?? 'IN_STOCK'))) },
@@ -821,10 +837,24 @@ export const endpoints: Endpoint[] = [
     }),
   },
   { path: '/account/tickets', method: 'get', handler: customerOp(async (req, _b, ctx) => jsonRes(200, { tickets: await listMyTickets(domainDb(), ctx.actor.id) })) },
+  { path: '/account/tickets/:ref/timeline', method: 'get', handler: customerOp(async (req, _b, ctx) => jsonRes(200, await getMyTicketTimeline(domainDb(), ctx.actor.id, param(req, 'ref')))) },
   {
     path: '/service-tickets',
     method: 'post',
-    handler: customerOp(async (req, b, ctx) => jsonRes(201, await openTicket(domainDb(), ctx, { serial: String(b.serial ?? ''), category: String(b.category ?? ''), description: String(b.description ?? '') }))),
+    handler: customerOp(async (req, b, ctx) => {
+      const result = await openTicket(domainDb(), ctx, { serial: String(b.serial ?? ''), category: String(b.category ?? ''), description: String(b.description ?? ''), idempotencyKey: b.idempotencyKey ? String(b.idempotencyKey) : undefined });
+      return jsonRes((result as any).replay ? 200 : 201, result);
+    }),
+  },
+  {
+    path: '/account/devices/:serial/transfer',
+    method: 'post',
+    handler: customerOp(async (req, b, ctx) => jsonRes(201, await requestOwnershipTransfer(domainDb(), ctx, param(req, 'serial'), String(b.toCustomerRef ?? '')))),
+  },
+  {
+    path: '/account/device-transfers/:id/accept',
+    method: 'post',
+    handler: customerOp(async (req, b, ctx) => jsonRes(200, await acceptOwnershipTransfer(domainDb(), ctx, param(req, 'id'), String(b.token ?? '')))),
   },
   // ---------------- W1 service operations (staff, MFA, role-checked) ----------------
   {
@@ -835,7 +865,8 @@ export const endpoints: Endpoint[] = [
     ),
   },
   { path: '/admin/ownerships/:id/decision', method: 'post', handler: domainOp('ownership.verify', (req, b, ctx) => decideOwnership(domainDb(), ctx, param(req, 'id'), b.decision as any, String(b.reason ?? ''))) },
-  { path: '/admin/tickets/:id/status', method: 'post', handler: domainOp('service.manage', (req, b, ctx) => updateTicket(domainDb(), ctx, param(req, 'id'), { status: String(b.status ?? ''), assignedTo: b.assignedTo ? String(b.assignedTo) : undefined, resolution: b.resolution ? String(b.resolution) : undefined })) },
+  { path: '/admin/tickets/:id/status', method: 'post', handler: domainOp('service.manage', (req, b, ctx) => updateTicket(domainDb(), ctx, param(req, 'id'), { status: String(b.status ?? ''), assignedTo: b.assignedTo ? String(b.assignedTo) : undefined, resolution: b.resolution ? String(b.resolution) : undefined, expectedRevision: b.expectedRevision === undefined ? undefined : Number(b.expectedRevision) })) },
+  { path: '/admin/tickets/:id/diagnoses', method: 'post', handler: domainOp('service.manage', (req, b, ctx) => recordDiagnosis(domainDb(), ctx, param(req, 'id'), String(b.diagnosis ?? ''), b.partsNote ? String(b.partsNote) : undefined)) },
   // ---------------- consistency between the domain (source of truth) and the CMS (release blocker B-31) ----------------
   {
     path: '/admin/reconcile',
@@ -881,7 +912,7 @@ export const endpoints: Endpoint[] = [
       const ledgerDrift = (await db.query(`
         WITH ledger AS (
           SELECT sku_id, location_id,
-            coalesce(sum(CASE WHEN type IN ('RECEIPT','ADJUSTMENT') THEN qty WHEN type='SHIP' THEN -qty ELSE 0 END), 0)::int AS expected
+            coalesce(sum(CASE WHEN type IN ('RECEIPT','ADJUSTMENT','RESTOCK') THEN qty WHEN type IN ('SHIP','WRITE_OFF') THEN -qty ELSE 0 END), 0)::int AS expected
           FROM domain.inventory_ledger
           GROUP BY sku_id, location_id
         )
@@ -901,7 +932,9 @@ export const endpoints: Endpoint[] = [
   },
   { path: '/admin/tickets/:id/callback', method: 'post', handler: domainOp('service.manage', (req, b, ctx) => recordCallback(domainDb(), ctx, param(req, 'id'), String(b.note ?? ''))) },
   { path: '/admin/tickets/:id/rma', method: 'post', handler: domainOp('rma.decide', (req, _b, ctx) => openRma(domainDb(), ctx, param(req, 'id'))) },
-  { path: '/admin/rmas/:id/transition', method: 'post', handler: domainOp('rma.decide', (req, b, ctx) => rmaTransition(domainDb(), ctx, param(req, 'id'), String(b.to ?? ''), { reason: b.reason ? String(b.reason) : undefined, replacementSerial: b.replacementSerial ? String(b.replacementSerial) : undefined })) },
+  { path: '/admin/rmas/:id/inspections', method: 'post', handler: domainOp('rma.decide', (req, b, ctx) => recordRmaInspection(domainDb(), ctx, param(req, 'id'), { condition: String(b.condition ?? '') as any, serialMatches: b.serialMatches === true, notes: String(b.notes ?? '') })) },
+  { path: '/admin/rmas/:id/actions', method: 'post', handler: domainOp('rma.decide', (req, b, ctx) => recordRmaAction(domainDb(), ctx, param(req, 'id'), String(b.action ?? '') as any, String(b.note ?? ''))) },
+  { path: '/admin/rmas/:id/transition', method: 'post', handler: domainOp('rma.decide', (req, b, ctx) => rmaTransition(domainDb(), ctx, param(req, 'id'), String(b.to ?? ''), { reason: b.reason ? String(b.reason) : undefined, replacementSerial: b.replacementSerial ? String(b.replacementSerial) : undefined, expectedRevision: b.expectedRevision === undefined ? undefined : Number(b.expectedRevision) })) },
   {
     path: '/ready',
     method: 'get',

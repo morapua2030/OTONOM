@@ -210,6 +210,9 @@ export async function StoreView(props: AdminViewServerProps) {
                       {staff.can('stock.adjust') && (
                         <ActionForm testId={`sku-${k.code}-adjust`} endpoint="/api/admin/stock/adjust" label="Adjust stock" secondary fixed={{ skuId: k.id, idempotencyKey: randomUUID() }} fields={[{ name: 'delta', label: '± units', type: 'number', required: true }, { name: 'reason', label: 'Reason', type: 'text', required: true }]} />
                       )}
+                      {staff.can('stock.adjust') && (
+                        <ActionForm testId={`sku-${k.code}-movement`} endpoint="/api/admin/stock/movements" label="Controlled movement" secondary fixed={{ skuId: k.id, idempotencyKey: randomUUID() }} fields={[{ name: 'kind', label: 'Movement', type: 'select', options: ['RECEIVE','WRITE_OFF','APPROVED_RETURN'], required: true }, { name: 'qty', label: 'Quantity', type: 'number', required: true }, { name: 'reference', label: 'Document/reference', type: 'text', required: true }, { name: 'reason', label: 'Reason', type: 'text', required: true }]} />
+                      )}
                     </div>
                   </td>
                 </tr>

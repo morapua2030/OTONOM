@@ -77,8 +77,12 @@ async function main() {
     rec.add('P-NO-INVENTED-DATES', 'PORTAL', 'no coverage dates without an approved warranty policy', mine?.coverage === 'NO_COVERAGE_RECORD' && mine?.coverageEndsAt === null && mine?.coverageStartsAt === null, mine);
     // ---- tickets + IDOR ----
     const bTicket = await B.post('/api/service-tickets', { serial, category: 'FAULT', description: 'Synthetic: attempt to open a ticket on a foreign device.' });
-    const aTicket = await A.post('/api/service-tickets', { serial, category: 'FAULT', description: 'Synthetic: channel 2 does not respond after power cut.' });
+    const ticketKey = `portal-${tag}-ticket`;
+    const aTicket = await A.post('/api/service-tickets', { serial, category: 'FAULT', description: 'Synthetic: channel 2 does not respond after power cut.', idempotencyKey: ticketKey });
+    const aReplay = await A.post('/api/service-tickets', { serial: serial.toLowerCase(), category: 'FAULT', description: 'Synthetic: channel 2 does not respond after power cut.', idempotencyKey: ticketKey });
+    const aTamper = await A.post('/api/service-tickets', { serial, category: 'OTHER', description: 'Synthetic: changed payload with an already used key.', idempotencyKey: ticketKey });
     rec.add('P-TICKET-IDOR', 'PORTAL', 'ticket on a foreign device refused as not found; own device accepted', bTicket.status === 404 && aTicket.status === 201 && /^SRV-/.test(aTicket.json?.ref ?? ''), { b: bTicket.status, a: aTicket.json });
+    rec.add('P-TICKET-IDEMPOTENCY', 'PORTAL', 'ticket replay returns the same ref and changed payload is rejected', aReplay.status === 200 && aReplay.json?.replay === true && aReplay.json?.ref === aTicket.json?.ref && aTamper.status === 409 && aTamper.json?.code === 'IDEMPOTENCY_KEY_REUSED', { replay: aReplay.json, tamper: aTamper.json });
     const tA0 = await A.get('/api/account/tickets');
     const tB = await B.get('/api/account/tickets');
     rec.add('P-TICKETS-SCOPED', 'PORTAL', 'ticket lists are per customer', (tA0.json?.tickets ?? []).length === 1 && (tB.json?.tickets ?? []).length === 0, { a: tA0.json?.tickets?.length, b: tB.json?.tickets?.length });
@@ -92,12 +96,34 @@ async function main() {
     // ---- staff service flow ----
     const tid = (await su.query(`SELECT id FROM domain.service_tickets WHERE ref=$1`, [aTicket.json?.ref])).rows[0]?.id;
     const tri = await eng.post(`/api/admin/tickets/${tid}/status`, { status: 'TRIAGE', assignedTo: 'engineer' });
+    const diagnosis = await eng.post(`/api/admin/tickets/${tid}/diagnoses`, { diagnosis: 'Synthetic internal diagnosis must not appear in customer timeline.', partsNote: 'Synthetic internal parts note.' });
+    const ownTimeline = await A.get(`/api/account/tickets/${aTicket.json?.ref}/timeline`);
+    const foreignTimeline = await B.get(`/api/account/tickets/${aTicket.json?.ref}/timeline`);
+    rec.add('P-TICKET-TIMELINE', 'PORTAL', 'customer timeline is owner-scoped and excludes internal diagnosis text', diagnosis.status === 200 && ownTimeline.status === 200 && foreignTimeline.status === 404 && !JSON.stringify(ownTimeline.json).includes('internal diagnosis'), { diagnosis: diagnosis.status, own: ownTimeline.status, foreign: foreignTimeline.status });
     const rma = await eng.post(`/api/admin/tickets/${tid}/rma`, {});
     const noReason = await eng.post(`/api/admin/rmas/${rma.json?.id}/transition`, { to: 'APPROVED' });
     const storeRma = await store.post(`/api/admin/rmas/${rma.json?.id}/transition`, { to: 'APPROVED', reason: 'x' });
     rec.add('P-RMA', 'PORTAL', 'engineer opens RMA (coverage recorded, no auto-decision); decision needs a reason; store cannot decide', tri.status === 200 && rma.status === 200 && rma.json?.coverageAtRequest === 'NO_COVERAGE_RECORD' && noReason.status === 422 && storeRma.status === 403, { tri: tri.status, rma: rma.json, noReason: noReason.status, store: storeRma.status });
-    await eng.post(`/api/admin/rmas/${rma.json?.id}/transition`, { to: 'REJECTED', reason: 'synthetic test — closing' });
+    const approve = await eng.post(`/api/admin/rmas/${rma.json?.id}/transition`, { to: 'APPROVED', reason: 'synthetic test approval for inspection' });
+    const receive = await eng.post(`/api/admin/rmas/${rma.json?.id}/transition`, { to: 'RECEIVED' });
+    const earlyInspect = await eng.post(`/api/admin/rmas/${rma.json?.id}/transition`, { to: 'INSPECTED' });
+    const inspection = await eng.post(`/api/admin/rmas/${rma.json?.id}/inspections`, { condition: 'DAMAGED', serialMatches: true, notes: 'Synthetic inspection confirms the serial and keeps it quarantined.' });
+    const inspected = await eng.post(`/api/admin/rmas/${rma.json?.id}/transition`, { to: 'INSPECTED' });
+    const refundReview = await eng.post(`/api/admin/rmas/${rma.json?.id}/actions`, { action: 'REFUND_REVIEW', note: 'Synthetic review only; no refund was issued.' });
+    await eng.post(`/api/admin/rmas/${rma.json?.id}/transition`, { to: 'REJECTED', reason: 'synthetic test — closing after inspection' });
     await eng.post(`/api/admin/rmas/${rma.json?.id}/transition`, { to: 'CLOSED' });
+    const unitAfter = (await su.query(`SELECT status FROM domain.serial_units WHERE serial=$1`, [serial])).rows[0]?.status;
+    const rmaEffects = Number((await su.query(`SELECT count(*)::int n FROM domain.inventory_ledger WHERE reference_type='rma' AND reference_id=$1 AND type='RETURN_QUARANTINE'`, [rma.json?.id])).rows[0]?.n);
+    rec.add('P-RMA-INSPECTION', 'PORTAL', 'received unit is quarantined; inspection is mandatory; review causes no refund or restock', approve.status === 200 && receive.status === 200 && earlyInspect.status === 422 && earlyInspect.json?.code === 'INSPECTION_REQUIRED' && inspection.status === 200 && inspected.status === 200 && refundReview.status === 200 && unitAfter === 'QUARANTINED' && rmaEffects === 1, { approve: approve.status, receive: receive.status, early: earlyInspect.json, inspection: inspection.status, action: refundReview.status, unitAfter, rmaEffects });
+
+    // ---- two-party ownership transfer; former owner loses access ----
+    const bId = (await su.query(`SELECT id FROM cms.users WHERE email=$1`, [emails[1]])).rows[0].id;
+    const transfer = await A.post(`/api/account/devices/${serial}/transfer`, { toCustomerRef: `user:${bId}` });
+    const wrongTransfer = await B.post(`/api/account/device-transfers/${transfer.json?.id}/accept`, { token: 'WRONG-CODE1' });
+    const acceptTransfer = await B.post(`/api/account/device-transfers/${transfer.json?.id}/accept`, { token: transfer.json?.token });
+    const aAfterTransfer = await A.get('/api/account/devices');
+    const bAfterTransfer = await B.get('/api/account/devices');
+    rec.add('P-OWNERSHIP-TRANSFER', 'PORTAL', 'transfer requires the intended recipient and one-time token; former owner loses projection', transfer.status === 201 && wrongTransfer.status === 422 && acceptTransfer.status === 200 && !(aAfterTransfer.json?.devices ?? []).some((x: any) => x.serial === serial) && (bAfterTransfer.json?.devices ?? []).some((x: any) => x.serial === serial), { request: transfer.status, wrong: wrongTransfer.status, accept: acceptTransfer.status });
 
     const auditActions = (await su.query(`SELECT DISTINCT action FROM domain.audit_events WHERE action IN ('serial.commission','device.claim','ticket.open','ticket.status','rma.open','rma.rejected','rma.closed')`)).rows.map((r) => r.action).sort();
     rec.add('P-AUDIT', 'AUDIT', 'commissioning, claim, ticket and RMA steps are audited', auditActions.length === 7, { auditActions });

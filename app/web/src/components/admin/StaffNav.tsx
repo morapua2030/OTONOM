@@ -13,6 +13,7 @@ export function StaffNav({ user }: ServerProps) {
     { href: '/admin/kpi', label: 'KPI dashboard', show: can(role, 'kpi.read') },
     { href: '/admin/store-ops', label: 'Store operations', show: can(role, 'order.confirm') || can(role, 'price.approve') },
     { href: '/admin/service-desk', label: 'Service desk', show: can(role, 'service.manage') },
+    { href: '/admin/product-drafts', label: 'Product drafts', show: can(role, 'product.draft') || can(role, 'product.approve') },
   ].filter((l) => l.show);
   if (!links.length) return null;
   return (

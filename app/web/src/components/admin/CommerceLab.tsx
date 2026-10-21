@@ -16,7 +16,10 @@ type Review = {
 const money = (minor: number) => new Intl.NumberFormat('en-EG', { style: 'currency', currency: 'EGP' }).format(minor / 100);
 
 export function CommerceLab({ skus }: { skus: Sku[] }) {
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [lines, setLines] = useState<Line[]>(skus[0] ? [{ skuId: skus[0].id, qty: 1 }] : []);
+  const [customerAlias, setCustomerAlias] = useState('Synthetic customer');
+  const [governorate, setGovernorate] = useState('NOT_CONFIGURED');
   const [busy, setBusy] = useState(false);
   const [review, setReview] = useState<Review | null>(null);
   const [error, setError] = useState('');
@@ -41,6 +44,7 @@ export function CommerceLab({ skus }: { skus: Sku[] }) {
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.code ?? `HTTP_${response.status}`);
       setReview(result as Review);
+      setStep(5);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'REVIEW_FAILED');
     } finally {
@@ -53,8 +57,9 @@ export function CommerceLab({ skus }: { skus: Sku[] }) {
       <h2 id="commerce-lab-title">Synthetic cart review / مراجعة سلة اصطناعية</h2>
       <p className={s.muted}>Local test tool only. It never creates an order, reserves stock, captures payment or stores customer data.</p>
       <p className={s.muted} lang="ar" dir="rtl">أداة اختبار محلية فقط؛ لا تنشئ طلبًا ولا تحجز مخزونًا ولا تسجل دفعًا أو بيانات عميل.</p>
+      <p className={s.muted} aria-live="polite">Step {step} of 5: {['Cart', 'Synthetic details', 'Fulfilment', 'Review', 'Blocked confirmation'][step - 1]}</p>
       <form onSubmit={submit} className={s.labForm} aria-busy={busy}>
-        {lines.map((line, index) => (
+        {step === 1 && lines.map((line, index) => (
           <div className={s.labLine} key={`${index}-${line.skuId}`}>
             <label>
               SKU / الصنف
@@ -69,18 +74,40 @@ export function CommerceLab({ skus }: { skus: Sku[] }) {
             <button className={`${s.btn} ${s.btnSecondary}`} type="button" onClick={() => { setLines((current) => current.filter((_, i) => i !== index)); setReview(null); }} disabled={lines.length === 1}>Remove / حذف</button>
           </div>
         ))}
-        <div className={s.actions}>
+        {step === 1 && <div className={s.actions}>
           <button className={`${s.btn} ${s.btnSecondary}`} type="button" disabled={!skus.length || lines.length >= 20} onClick={() => { if (skus[0]) setLines((current) => [...current, { skuId: skus[0].id, qty: 1 }]); setReview(null); }}>Add line / إضافة</button>
-          <button className={s.btn} type="submit" disabled={busy || !lines.length}>{busy ? 'Reviewing…' : 'Server review / مراجعة خادمية'}</button>
-        </div>
+          <button className={s.btn} type="button" disabled={!lines.length} onClick={() => setStep(2)}>Continue / متابعة</button>
+        </div>}
+        {step === 2 && <fieldset>
+          <legend>Synthetic details / بيانات اصطناعية</legend>
+          <label>Alias only / اسم تجريبي<input value={customerAlias} maxLength={80} onChange={(event) => setCustomerAlias(event.target.value)} required /></label>
+          <p className={s.muted}>Do not enter a real name, phone, email or address. Values stay in browser memory only.</p>
+        </fieldset>}
+        {step === 3 && <fieldset>
+          <legend>Fulfilment review / مراجعة التسليم</legend>
+          <label>Governorate policy<select value={governorate} onChange={(event) => setGovernorate(event.target.value)}><option value="NOT_CONFIGURED">Not configured / غير معتمد</option></select></label>
+          <p className={s.err}>Shipping method, rate, tax and installation are not approved. This step cannot promise delivery.</p>
+        </fieldset>}
+        {step === 4 && <div>
+          <p><strong>{customerAlias}</strong> · {lines.length} synthetic line(s) · fulfilment {governorate}</p>
+          <p className={s.err}>Final server revalidation is required. Confirmation remains simulated and cannot create an order.</p>
+        </div>}
+        {step > 1 && step < 5 && <div className={s.actions}>
+          <button className={`${s.btn} ${s.btnSecondary}`} type="button" onClick={() => setStep((step - 1) as 1 | 2 | 3 | 4)}>Back / رجوع</button>
+          {step < 4
+            ? <button className={s.btn} type="button" disabled={step === 2 && !customerAlias.trim()} onClick={() => setStep((step + 1) as 2 | 3 | 4)}>Continue / متابعة</button>
+            : <button className={s.btn} type="submit" disabled={busy}>{busy ? 'Reviewing…' : 'Server review / مراجعة خادمية'}</button>}
+        </div>}
       </form>
       <div role="status" aria-live="polite" className={s.labResult}>
         {error && <p className={s.err}>{error === 'PRICE_NOT_APPROVED' ? 'No approved price: checkout remains blocked / لا يوجد سعر معتمد: المسار مغلق' : error}</p>}
         {review && (
           <>
+            <p><strong>Simulation complete.</strong> No order, reservation, payment or customer record was created.</p>
             <p><strong>{money(review.subtotalMinor)}</strong> — synthetic approved fixture prices only.</p>
             <ul>{review.lines.map((line) => <li key={line.skuId}>{line.skuId}: {line.qty} × {money(line.unitPriceMinor)}; available {line.available}; {line.stockSufficient ? 'stock check passed' : 'insufficient stock'}</li>)}</ul>
             <p className={s.err}>Blocked: {review.blockers.join(', ')}. No order was created.</p>
+            <button className={`${s.btn} ${s.btnSecondary}`} type="button" onClick={() => { setStep(1); setReview(null); }}>Back to cart / العودة للسلة</button>
           </>
         )}
       </div>

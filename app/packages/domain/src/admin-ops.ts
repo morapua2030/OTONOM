@@ -58,3 +58,56 @@ export async function adjustStock(pool: pg.Pool, ctx: Ctx, skuId: string, delta:
     return result;
   });
 }
+
+export type StockMovementInput = {
+  skuId: string;
+  kind: 'RECEIVE' | 'WRITE_OFF' | 'APPROVED_RETURN';
+  qty: number;
+  reference: string;
+  reason: string;
+  idempotencyKey: string;
+};
+
+/** Explicit operational movement; APPROVED_RETURN is a human-approved sellable return, never an RMA receipt. */
+export async function recordStockMovement(pool: pg.Pool, ctx: Ctx, input: StockMovementInput) {
+  if (!['RECEIVE', 'WRITE_OFF', 'APPROVED_RETURN'].includes(input.kind)) throw new DomainError('INVALID_MOVEMENT_KIND');
+  if (!Number.isSafeInteger(input.qty) || input.qty <= 0 || input.qty > 1_000_000_000) throw new DomainError('INVALID_QUANTITY');
+  if (!/^[A-Za-z0-9._:/-]{3,120}$/.test(input.reference ?? '')) throw new DomainError('INVALID_REFERENCE');
+  if (!String(input.reason ?? '').trim() || input.reason.trim().length > 240) throw new DomainError('REASON_REQUIRED');
+  if (!/^[A-Za-z0-9_-]{16,80}$/.test(input.idempotencyKey ?? '')) throw new DomainError('INVALID_IDEMPOTENCY_KEY');
+  const requestHash = createHash('sha256').update(JSON.stringify({ skuId: input.skuId, kind: input.kind, qty: input.qty, reference: input.reference, reason: input.reason.trim() })).digest('hex');
+  const delta = input.kind === 'WRITE_OFF' ? -input.qty : input.qty;
+  const ledgerType = input.kind === 'RECEIVE' ? 'RECEIPT' : input.kind === 'WRITE_OFF' ? 'WRITE_OFF' : 'RESTOCK';
+  return tx(pool, async (c) => {
+    const key = await c.query(
+      `INSERT INTO domain.idempotency_keys(scope,key,request_hash) VALUES ('stock.movement',$1,$2)
+       ON CONFLICT DO NOTHING RETURNING key`,
+      [input.idempotencyKey, requestHash],
+    );
+    if (!key.rowCount) {
+      const previous = (await c.query(`SELECT request_hash,result FROM domain.idempotency_keys WHERE scope='stock.movement' AND key=$1`, [input.idempotencyKey])).rows[0];
+      if (!previous || previous.request_hash !== requestHash) throw new IdempotencyKeyReuseError('idempotency key reused with a different stock movement');
+      if (!previous.result) throw new DomainError('IDEMPOTENCY_INCOMPLETE');
+      return { ...previous.result, replay: true };
+    }
+    const updated = await c.query(
+      `UPDATE domain.stock_levels SET on_hand=on_hand+$2
+        WHERE sku_id=$1 AND location_id='MAIN' AND on_hand+$2 >= reserved+allocated
+        RETURNING on_hand,reserved,allocated`,
+      [input.skuId, delta],
+    );
+    if (!updated.rowCount) {
+      const exists = await c.query(`SELECT 1 FROM domain.stock_levels WHERE sku_id=$1 AND location_id='MAIN'`, [input.skuId]);
+      throw new DomainError(exists.rowCount ? 'STOCK_WOULD_BE_NEGATIVE' : 'NOT_FOUND');
+    }
+    await c.query(
+      `INSERT INTO domain.inventory_ledger(sku_id,location_id,type,qty,reference_type,reference_id,actor,reason,correlation_id)
+       VALUES ($1,'MAIN',$2,$3,$4,$5,$6,$7,$8)`,
+      [input.skuId, ledgerType, input.qty, input.kind.toLowerCase(), input.reference, ctx.actor.id, input.reason.trim(), ctx.correlationId ?? randomUUID()],
+    );
+    const result = { ...updated.rows[0], kind: input.kind, replay: false };
+    await audit(c, ctx, { action: `stock.${input.kind.toLowerCase()}`, entityType: 'stock_level', entityId: input.skuId, after: result, reason: input.reason.trim() });
+    await c.query(`UPDATE domain.idempotency_keys SET result=$2 WHERE scope='stock.movement' AND key=$1`, [input.idempotencyKey, result]);
+    return result;
+  });
+}

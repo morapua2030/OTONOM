@@ -26,6 +26,7 @@ export default buildConfig({
         kpiDashboard: { Component: '/components/admin/KpiView#KpiView', path: '/kpi', exact: true },
         storeOperations: { Component: '/components/admin/StoreView#StoreView', path: '/store-ops', exact: true },
         serviceDesk: { Component: '/components/admin/ServiceView#ServiceView', path: '/service-desk', exact: true },
+        productDrafts: { Component: '/components/admin/ProductDraftsView#ProductDraftsView', path: '/product-drafts', exact: true },
       },
     },
     meta: { titleSuffix: ' — OTONOM' },

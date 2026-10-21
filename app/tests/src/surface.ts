@@ -54,10 +54,11 @@ async function main() {
     }
     // ---- users: self-registration, escalation, secrets ----
     const u0 = await count(`SELECT count(*)::int n FROM cms.users`);
+    const owners0 = await count(`SELECT count(*)::int n FROM cms.users WHERE role='OWNER'`);
     const uc = await c.post('/api/users', { email: `x${randomBytes(3).toString('hex')}@example.com`, password: 'Synthetic-Pass-123!', role: 'OWNER' });
     const u1 = await count(`SELECT count(*)::int n FROM cms.users`);
-    const owners = await count(`SELECT count(*)::int n FROM cms.users WHERE role='OWNER'`);
-    rec.add(`SURF-${who}-USER-CREATE`, 'SURFACE', `${who}: cannot create users / owners`, denied(uc.status) && u1 === u0 && owners === 1, { status: uc.status, u0, u1, owners });
+    const owners1 = await count(`SELECT count(*)::int n FROM cms.users WHERE role='OWNER'`);
+    rec.add(`SURF-${who}-USER-CREATE`, 'SURFACE', `${who}: cannot create users / owners`, denied(uc.status) && u1 === u0 && owners1 === owners0, { status: uc.status, u0, u1, owners0, owners1 });
     await c.patch(`/api/users/${victimId}`, { role: 'EDITOR', email: 'hijack@example.com' });
     const v = (await su.query(`SELECT role, email FROM cms.users WHERE id=$1`, [victimId])).rows[0];
     rec.add(`SURF-${who}-USER-HIJACK`, 'SURFACE', `${who}: cannot change the owner's role/email`, v.role === 'OWNER' && v.email !== 'hijack@example.com', v);

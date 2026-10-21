@@ -11,8 +11,11 @@ let pool: pg.Pool;
 const eng = { actor: { id: 'u-eng', role: 'ENGINEER' }, correlationId: 'svc' };
 const store = { actor: { id: 'u-store', role: 'STORE' }, correlationId: 'svc' };
 const owner = { actor: { id: 'u-owner', role: 'OWNER' }, correlationId: 'svc' };
+const editor = { actor: { id: 'u-editor', role: 'EDITOR' }, correlationId: 'svc' };
 const alice = { actor: { id: d.customerRef(101), role: 'CUSTOMER' }, correlationId: 'svc' };
 const bob = { actor: { id: d.customerRef(102), role: 'CUSTOMER' }, correlationId: 'svc' };
+const carol = { actor: { id: d.customerRef(103), role: 'CUSTOMER' }, correlationId: 'svc' };
+const dan = { actor: { id: d.customerRef(104), role: 'CUSTOMER' }, correlationId: 'svc' };
 const web = { actor: { id: 'website', role: 'ANONYMOUS' }, correlationId: 'svc' };
 const key = () => `k${Math.random().toString(36).slice(2)}${Date.now().toString(36)}zzzz`;
 let aliceCode = '';
@@ -27,7 +30,7 @@ before(async () => {
   pool = d.makePool('domain', 6);
   await pool.query(`INSERT INTO domain.skus(id, code, model) VALUES ('c06','T-RC06','RC06')`);
   await pool.query(`INSERT INTO domain.stock_levels(sku_id, on_hand) VALUES ('c06', 4)`);
-  for (const s of ['SVC-0001', 'SVC-0002', 'SVC-0003', 'SVC-0004']) await d.registerSerial(pool, store, s, 'c06');
+  for (const s of ['SVC-0001', 'SVC-0002', 'SVC-0003', 'SVC-0004', 'SVC-0005']) await d.registerSerial(pool, store, s, 'c06');
 });
 after(async () => pool?.end());
 
@@ -80,17 +83,42 @@ test('customer sees only own devices; no coverage dates without an approved poli
   assert.deepEqual(b.map((x) => x.serial), ['SVC-0002']);
 });
 
+test('parallel ownership decisions produce at most one verified owner', async () => {
+  await Promise.all([
+    d.claimDevice(pool, carol, { serial: 'SVC-0005', evidence: 'Synthetic ownership evidence supplied by Carol for review.' }),
+    d.claimDevice(pool, dan, { serial: 'svc-0005', evidence: 'Synthetic ownership evidence supplied by Dan for review.' }),
+  ]);
+  const claims = (await pool.query(`SELECT id FROM domain.device_ownerships WHERE serial='SVC-0005' AND status='PENDING' ORDER BY id`)).rows;
+  assert.equal(claims.length, 2);
+  const decisions = await Promise.allSettled(claims.map((row) => d.decideOwnership(pool, owner, row.id, 'VERIFIED', 'synthetic concurrent review decision')));
+  assert.equal(decisions.filter((result) => result.status === 'fulfilled').length, 1);
+  assert.equal((await pool.query(`SELECT count(*)::int n FROM domain.device_ownerships WHERE serial='SVC-0005' AND status='VERIFIED'`)).rows[0].n, 1);
+});
+
 test('tickets: only for own devices (IDOR guard), transitions enforced, resolution required', async () => {
   await assert.rejects(d.openTicket(pool, bob, { serial: 'SVC-0001', category: 'FAULT', description: 'Synthetic: trying to open a ticket for someone else.' }), /NOT_FOUND/);
   await assert.rejects(d.openTicket(pool, alice, { serial: 'SVC-0001', category: 'FAULT', description: 'short' }), /DESCRIPTION_TOO_SHORT/);
-  const t = await d.openTicket(pool, alice, { serial: 'SVC-0001', category: 'FAULT', description: 'Synthetic: channel 3 relay does not switch.' });
+  const ticketKey = `ticket:${key()}`;
+  const t = await d.openTicket(pool, alice, { serial: 'SVC-0001', category: 'FAULT', description: 'Synthetic: channel 3 relay does not switch.', idempotencyKey: ticketKey });
   assert.match(t.ref, /^SRV-\d{4}-/);
+  const replay = await d.openTicket(pool, alice, { serial: 'svc-0001', category: 'FAULT', description: 'Synthetic: channel 3 relay does not switch.', idempotencyKey: ticketKey });
+  assert.equal(replay.replay, true);
+  assert.equal(replay.ref, t.ref);
+  await assert.rejects(d.openTicket(pool, alice, { serial: 'SVC-0001', category: 'OTHER', description: 'Synthetic: a different request using the same key.', idempotencyKey: ticketKey }), /IDEMPOTENCY_KEY_REUSED/);
   assert.equal((await d.listMyTickets(pool, bob.actor.id)).length, 0);
   assert.equal((await d.listMyTickets(pool, alice.actor.id)).length, 1);
+  const concurrentKey = `ticket:${key()}`;
+  const duplicateAttempts = await Promise.all(Array.from({ length: 10 }, () => d.openTicket(pool, alice, { serial: 'SVC-0003', category: 'OTHER', description: 'Synthetic concurrent duplicate ticket submission.', idempotencyKey: concurrentKey })));
+  assert.equal(new Set(duplicateAttempts.map((result) => result.ref)).size, 1);
+  assert.equal(duplicateAttempts.filter((result) => result.replay).length, 9);
   const tid = (await pool.query(`SELECT id FROM domain.service_tickets WHERE ref=$1`, [t.ref])).rows[0].id;
   await assert.rejects(d.updateTicket(pool, eng, tid, { status: 'RESOLVED' }), /ILLEGAL_TRANSITION/);
-  await d.updateTicket(pool, eng, tid, { status: 'TRIAGE', assignedTo: 'u-eng' });
+  await assert.rejects(d.updateTicket(pool, eng, tid, { status: 'TRIAGE', expectedRevision: 99 }), /STALE_REVISION/);
+  const triage = await d.updateTicket(pool, eng, tid, { status: 'TRIAGE', assignedTo: 'u-eng', expectedRevision: 1 });
+  assert.equal(triage.revision, 2);
+  await d.recordDiagnosis(pool, eng, tid, 'Synthetic diagnosis: relay terminal requires bench inspection.', 'No parts committed.');
   await assert.rejects(d.updateTicket(pool, eng, tid, { status: 'RESOLVED' }), /RESOLUTION_REQUIRED/);
+  assert.equal((await pool.query(`SELECT count(*)::int n FROM domain.service_ticket_events WHERE ticket_id=$1`, [tid])).rows[0].n, 3);
 });
 
 test('RMA: never auto-decided; replacement moves ownership, ledgers stock and keeps append-only history', async () => {
@@ -102,7 +130,11 @@ test('RMA: never auto-decided; replacement moves ownership, ledgers stock and ke
   await assert.rejects(d.rmaTransition(pool, eng, r.id, 'REPLACED', { replacementSerial: 'SVC-0004' }), /ILLEGAL_TRANSITION/);
   await d.rmaTransition(pool, eng, r.id, 'APPROVED', { reason: 'synthetic: goodwill decision recorded by engineer' });
   await d.rmaTransition(pool, eng, r.id, 'RECEIVED');
+  assert.equal((await pool.query(`SELECT status FROM domain.serial_units WHERE serial='SVC-0001'`)).rows[0].status, 'QUARANTINED');
+  await assert.rejects(d.rmaTransition(pool, eng, r.id, 'INSPECTED'), /INSPECTION_REQUIRED/);
+  await d.recordRmaInspection(pool, eng, r.id, { condition: 'REPAIRABLE', serialMatches: true, notes: 'Synthetic inspection: serial matched and unit remains quarantined.' });
   await d.rmaTransition(pool, eng, r.id, 'INSPECTED');
+  await d.recordRmaAction(pool, eng, r.id, 'REFUND_REVIEW', 'Synthetic review only; no payment or refund side effect.');
   await assert.rejects(d.rmaTransition(pool, eng, r.id, 'REPLACED', { replacementSerial: 'SVC-0002' }), /REPLACEMENT_NOT_AVAILABLE/); // not in stock
   const onHand0 = (await pool.query(`SELECT on_hand FROM domain.stock_levels WHERE sku_id='c06'`)).rows[0].on_hand;
   await d.rmaTransition(pool, eng, r.id, 'REPLACED', { replacementSerial: 'SVC-0004' });
@@ -110,11 +142,13 @@ test('RMA: never auto-decided; replacement moves ownership, ledgers stock and ke
   assert.equal(onHand1, onHand0 - 1);
   const devices = (await d.listMyDevices(pool, alice.actor.id)).map((x) => x.serial).sort();
   assert.deepEqual(devices, ['SVC-0003', 'SVC-0004']);
-  assert.equal((await pool.query(`SELECT status FROM domain.serial_units WHERE serial='SVC-0001'`)).rows[0].status, 'RETURNED');
+  assert.equal((await pool.query(`SELECT status FROM domain.serial_units WHERE serial='SVC-0001'`)).rows[0].status, 'QUARANTINED');
   assert.deepEqual((await d.replacementHistory(pool, 'SVC-0004')).map((h) => [h.old_serial, h.new_serial]), [['SVC-0001', 'SVC-0004']]);
   await assert.rejects(pool.query(`UPDATE domain.serial_replacements SET new_serial='SVC-0003'`), /permission denied|append-only/);
   // the replacement has no coverage row: coverage of replacements is a policy decision (not automatic)
   assert.equal((await d.listMyDevices(pool, alice.actor.id)).find((x) => x.serial === 'SVC-0004')?.coverage, 'NO_COVERAGE_RECORD');
+  assert.equal((await pool.query(`SELECT count(*)::int n FROM domain.inventory_ledger WHERE reference_type='rma' AND reference_id=$1 AND type='RETURN_QUARANTINE'`, [r.id])).rows[0].n, 1);
+  assert.equal((await pool.query(`SELECT count(*)::int n FROM domain.rma_actions WHERE rma_id=$1 AND action='REFUND_REVIEW'`, [r.id])).rows[0].n, 1);
 });
 
 test('W-08 safety ticket: urgent, guidance returned, cannot be resolved before a human callback', async () => {
@@ -130,4 +164,54 @@ test('W-08 safety ticket: urgent, guidance returned, cannot be resolved before a
   assert.equal((await d.updateTicket(pool, eng, id, { status: 'RESOLVED', resolution: 'synthetic: loose terminal tightened' })).status, 'RESOLVED');
   const a = (await pool.query(`SELECT count(*)::int n FROM domain.audit_events WHERE action IN ('ticket.safety_escalation','ticket.callback') AND entity_id=$1`, [id])).rows[0].n;
   assert.equal(a, 2);
+});
+
+test('ownership transfer requires both parties and revokes the former owner projection', async () => {
+  const transfer = await d.requestOwnershipTransfer(pool, alice, ' svc-0003 ', bob.actor.id, 30);
+  await assert.rejects(d.acceptOwnershipTransfer(pool, alice, transfer.id, transfer.token), /TRANSFER_NOT_ACCEPTED/);
+  await assert.rejects(d.acceptOwnershipTransfer(pool, bob, transfer.id, 'WRONG-CODE1'), /TRANSFER_NOT_ACCEPTED/);
+  assert.equal((await d.acceptOwnershipTransfer(pool, bob, transfer.id, transfer.token)).status, 'ACCEPTED');
+  assert.ok(!(await d.listMyDevices(pool, alice.actor.id)).some((x) => x.serial === 'SVC-0003'));
+  assert.ok((await d.listMyDevices(pool, bob.actor.id)).some((x) => x.serial === 'SVC-0003'));
+  await assert.rejects(d.acceptOwnershipTransfer(pool, bob, transfer.id, transfer.token), /TRANSFER_NOT_ACCEPTED/);
+});
+
+test('pure warranty evaluation never invents a policy or start date', () => {
+  assert.equal(d.evaluateWarranty({ policy: null, asOf: '2026-01-01T00:00:00Z' }).status, 'UNKNOWN_POLICY');
+  assert.equal(d.evaluateWarranty({ policy: { version: 2, status: 'APPROVED', durationMonths: 12 } }).reason, 'OWNERSHIP_UNVERIFIED');
+  assert.equal(d.evaluateWarranty({ policy: { version: 2, status: 'APPROVED', durationMonths: 12 }, ownershipVerified: true }).status, 'PENDING_START_EVIDENCE');
+  const evidence = { ownershipVerified: true, verifiedStartAt: '2026-01-01T00:00:00Z', startEvidence: 'COMMISSIONING' as const };
+  assert.equal(d.evaluateWarranty({ policy: { version: 2, status: 'APPROVED', durationMonths: 12 }, ...evidence, exclusionMatch: true, asOf: '2026-06-01T00:00:00Z' }).reason, 'POSSIBLE_EXCLUSION');
+  assert.equal(d.evaluateWarranty({ policy: { version: 2, status: 'APPROVED', durationMonths: 12 }, ...evidence, asOf: '2026-06-01T00:00:00Z' }).status, 'ELIGIBLE');
+  assert.equal(d.evaluateWarranty({ policy: { version: 2, status: 'APPROVED', durationMonths: 12 }, ...evidence, asOf: '2027-01-01T00:00:00Z' }).status, 'EXPIRED');
+});
+
+test('explicit receive, write-off and approved-return movements are conserved and replay-safe', async () => {
+  const before = Number((await pool.query(`SELECT on_hand FROM domain.stock_levels WHERE sku_id='c06'`)).rows[0].on_hand);
+  const receiveKey = `receive_${key()}`;
+  const receive = { skuId: 'c06', kind: 'RECEIVE' as const, qty: 2, reference: 'SYN-GRN-01', reason: 'Synthetic goods receipt', idempotencyKey: receiveKey };
+  await assert.rejects(d.recordStockMovement(pool, owner, { ...receive, kind: 'UNKNOWN' as any }), /INVALID_MOVEMENT_KIND/);
+  assert.equal((await d.recordStockMovement(pool, owner, receive)).on_hand, before + 2);
+  assert.equal((await d.recordStockMovement(pool, owner, receive)).replay, true);
+  await assert.rejects(d.recordStockMovement(pool, owner, { ...receive, qty: 3 }), /idempotency key reused/);
+  await d.recordStockMovement(pool, owner, { skuId: 'c06', kind: 'WRITE_OFF', qty: 1, reference: 'SYN-WO-01', reason: 'Synthetic damaged stock write-off', idempotencyKey: `writeoff_${key()}` });
+  await d.recordStockMovement(pool, owner, { skuId: 'c06', kind: 'APPROVED_RETURN', qty: 1, reference: 'SYN-RET-01', reason: 'Synthetic inspected sellable return', idempotencyKey: `return_${key()}` });
+  const after = Number((await pool.query(`SELECT on_hand FROM domain.stock_levels WHERE sku_id='c06'`)).rows[0].on_hand);
+  assert.equal(after, before + 2);
+  const movements = (await pool.query(`SELECT type,qty FROM domain.inventory_ledger WHERE reference_id IN ('SYN-GRN-01','SYN-WO-01','SYN-RET-01') ORDER BY reference_id`)).rows;
+  assert.deepEqual(movements.map((r) => [r.type, r.qty]), [['RECEIPT', 2], ['RESTOCK', 1], ['WRITE_OFF', 1]]);
+  await assert.rejects(d.recordStockMovement(pool, owner, { skuId: 'c06', kind: 'WRITE_OFF', qty: 999999, reference: 'SYN-WO-02', reason: 'Synthetic invalid excessive write-off', idempotencyKey: `writeoff_${key()}` }), /STOCK_WOULD_BE_NEGATIVE/);
+});
+
+test('bilingual product drafts use revisions and four-eyes review without publishing facts', async () => {
+  await assert.rejects(d.createProductDraft(pool, editor, { skuId: 'c06', titleAr: '', titleEn: 'Synthetic RC06', summaryAr: 'ملخص اصطناعي', summaryEn: 'Synthetic review content.' }), /BILINGUAL_CONTENT_REQUIRED/);
+  const draft = await d.createProductDraft(pool, editor, { skuId: 'c06', titleAr: 'وحدة اصطناعية', titleEn: 'Synthetic controller', summaryAr: 'محتوى اصطناعي للمراجعة فقط', summaryEn: 'Synthetic review-only merchandising copy.', sortOrder: 6 });
+  const submitted = await d.transitionProductDraft(pool, editor, draft.id, 'IN_REVIEW', 1);
+  assert.equal(submitted.revision, 2);
+  await assert.rejects(d.transitionProductDraft(pool, editor, draft.id, 'APPROVED', 2, 'self approval attempt'), /FOUR_EYES_REQUIRED/);
+  await assert.rejects(d.transitionProductDraft(pool, owner, draft.id, 'APPROVED', 1, 'stale'), /STALE_REVISION/);
+  const approved = await d.transitionProductDraft(pool, owner, draft.id, 'APPROVED', 2, 'Bilingual synthetic copy reviewed; no public publication.');
+  assert.equal(approved.status, 'APPROVED');
+  const row = (await pool.query(`SELECT status,proposed_by,reviewed_by FROM domain.product_merchandising_drafts WHERE id=$1`, [draft.id])).rows[0];
+  assert.deepEqual(row, { status: 'APPROVED', proposed_by: 'u-editor', reviewed_by: 'u-owner' });
 });

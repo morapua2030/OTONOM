@@ -18,7 +18,12 @@ export async function ServiceView(props: AdminViewServerProps) {
   if (!staff || !staff.can('service.manage')) return <StaffShell {...shell}>{<NoAccess need="service.manage" />}</StaffShell>;
   const db = domainDb();
   const tickets = (await db.query(`SELECT * FROM domain.service_tickets ORDER BY (priority='URGENT') DESC, (status IN ('RESOLVED','CLOSED')), created_at DESC LIMIT 80`)).rows;
-  const rmas = (await db.query(`SELECT * FROM domain.rmas WHERE status NOT IN ('CLOSED') ORDER BY created_at DESC LIMIT 50`)).rows;
+  const rmas = (await db.query(`
+    SELECT r.*, i.condition AS inspection_condition,
+      EXISTS (SELECT 1 FROM domain.rma_actions a WHERE a.rma_id=r.id AND a.action='REPAIR') AS has_repair_action
+      FROM domain.rmas r LEFT JOIN domain.rma_inspections i ON i.rma_id=r.id
+     WHERE r.status NOT IN ('CLOSED') ORDER BY r.created_at DESC LIMIT 50
+  `)).rows;
   const claims = (await db.query(`SELECT * FROM domain.device_ownerships WHERE status='PENDING' ORDER BY created_at LIMIT 50`)).rows;
   const policy = (await db.query(`SELECT version, duration_months FROM domain.warranty_policies WHERE status='APPROVED' ORDER BY version DESC LIMIT 1`)).rows[0];
   const openRmaTickets = new Set(rmas.map((r) => r.ticket_id));
@@ -59,7 +64,7 @@ export async function ServiceView(props: AdminViewServerProps) {
                     {t.resolution && <div className={s.muted}>Resolution: {t.resolution}</div>}
                   </td>
                   <td data-label="Status">
-                    <span className={s.badge}>{t.status}</span>
+                    <span className={s.badge}>{t.status}</span> <span className={s.muted}>rev {t.revision}</span>
                   </td>
                   <td data-label="Actions">
                     <div className={s.actions}>
@@ -73,10 +78,13 @@ export async function ServiceView(props: AdminViewServerProps) {
                           endpoint={`/api/admin/tickets/${t.id}/status`}
                           label={`→ ${to}`}
                           secondary
-                          fixed={{ status: to }}
+                          fixed={{ status: to, expectedRevision: t.revision }}
                           fields={['RESOLVED', 'CLOSED'].includes(to) && !t.resolution ? [{ name: 'resolution', label: 'Resolution', type: 'text', required: true }] : []}
                         />
                       ))}
+                      {['TRIAGE', 'IN_PROGRESS', 'WAITING_CUSTOMER'].includes(t.status) && (
+                        <ActionForm testId={`ticket-${t.ref}-diagnosis`} endpoint={`/api/admin/tickets/${t.id}/diagnoses`} label="Record diagnosis" secondary fields={[{ name: 'diagnosis', label: 'Diagnosis', type: 'text', required: true }, { name: 'partsNote', label: 'Parts note', type: 'text' }]} />
+                      )}
                       {staff.can('rma.decide') && !['RESOLVED', 'CLOSED'].includes(t.status) && !openRmaTickets.has(t.id) && (
                         <ActionForm testId={`ticket-${t.ref}-rma`} endpoint={`/api/admin/tickets/${t.id}/rma`} label="Open RMA" secondary />
                       )}
@@ -97,11 +105,21 @@ export async function ServiceView(props: AdminViewServerProps) {
             <div className={s.muted}>
               Coverage at request: {r.coverage_at_request}
               {r.decision_reason ? ` · decision: ${r.decision_reason}` : ''}
+              {r.inspection_condition ? ` · inspection: ${r.inspection_condition}` : ''} · rev {r.revision}
             </div>
             {staff.can('rma.decide') && (
               <div className={s.actions}>
-                {(RMA_TRANSITIONS[r.status] ?? []).map((to) => (
-                  <ActionForm key={to} testId={`rma-${r.ref}-to-${to}`} endpoint={`/api/admin/rmas/${r.id}/transition`} label={`→ ${to}`} secondary fixed={{ to }} fields={RMA_FIELDS[to] ?? []} />
+                {r.status === 'RECEIVED' && !r.inspection_condition && (
+                  <ActionForm testId={`rma-${r.ref}-inspection`} endpoint={`/api/admin/rmas/${r.id}/inspections`} label="Record inspection" fields={[{ name: 'condition', label: 'Condition', type: 'select', options: ['UNOPENED','FUNCTIONAL','REPAIRABLE','DAMAGED','UNSAFE','UNKNOWN'], required: true }, { name: 'serialMatches', label: 'Serial matches', type: 'checkbox' }, { name: 'notes', label: 'Inspection notes', type: 'text', required: true }]} />
+                )}
+                {r.status === 'INSPECTED' && !r.has_repair_action && (
+                  <ActionForm testId={`rma-${r.ref}-repair-action`} endpoint={`/api/admin/rmas/${r.id}/actions`} label="Record repair action" secondary fixed={{ action: 'REPAIR' }} fields={[{ name: 'note', label: 'Repair/parts note', type: 'text', required: true }]} />
+                )}
+                {r.status === 'INSPECTED' && (
+                  <ActionForm testId={`rma-${r.ref}-refund-review`} endpoint={`/api/admin/rmas/${r.id}/actions`} label="Record refund review only" secondary fixed={{ action: 'REFUND_REVIEW' }} fields={[{ name: 'note', label: 'Review note', type: 'text', required: true }]} />
+                )}
+                {(RMA_TRANSITIONS[r.status] ?? []).filter((to) => to !== 'INSPECTED' || !!r.inspection_condition).filter((to) => to !== 'REPAIRED' || !!r.has_repair_action).map((to) => (
+                  <ActionForm key={to} testId={`rma-${r.ref}-to-${to}`} endpoint={`/api/admin/rmas/${r.id}/transition`} label={`→ ${to}`} secondary fixed={{ to, expectedRevision: r.revision }} fields={RMA_FIELDS[to] ?? []} />
                 ))}
               </div>
             )}
@@ -113,7 +131,7 @@ export async function ServiceView(props: AdminViewServerProps) {
         <h2>Ownership claims awaiting review ({claims.length})</h2>
         {claims.map((c) => (
           <div key={c.id} className={s.card}>
-            Serial <span className={s.mono}>{c.serial}</span> · customer {c.customer_ref}
+            Serial <span className={s.mono}>{c.serial}</span> · customer <span className={s.mono}>…{String(c.customer_ref).slice(-4)}</span>
             <div className={s.muted}>{String(c.evidence ?? '').slice(0, 200)}</div>
             {staff.can('ownership.verify') && (
               <ActionForm testId={`claim-${c.id}-decide`} endpoint={`/api/admin/ownerships/${c.id}/decision`} label="Decide" fields={[{ name: 'decision', label: 'Decision', type: 'select', options: ['VERIFIED', 'REJECTED'], required: true }, { name: 'reason', label: 'Reason', type: 'text', required: true }]} />

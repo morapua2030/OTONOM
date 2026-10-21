@@ -6,8 +6,70 @@ import type pg from 'pg';
 import { randomRef } from './commerce.ts';
 import { audit, DomainError, tx, type Ctx } from './tx.ts';
 
+/**
+ * Serial identifiers are opaque except for surrounding whitespace and ASCII case.
+ * Do not remove punctuation or otherwise guess that two manufacturer identifiers match.
+ */
+export function normalizeSerial(value: string): string {
+  const serial = String(value ?? '').trim().toUpperCase();
+  if (!/^[A-Z0-9-]{6,40}$/.test(serial)) throw new DomainError('INVALID_SERIAL');
+  return serial;
+}
+
+type EvaluationBase = {
+  evaluatedAt: string;
+  manualReviewRequired: boolean;
+  userExplanationCode: string;
+};
+
+export type WarrantyEvaluation =
+  | (EvaluationBase & { status: 'UNKNOWN_POLICY'; eligible: null; reason: 'NO_APPROVED_POLICY'; missingEvidence: ['APPROVED_POLICY'] })
+  | (EvaluationBase & { status: 'REVIEW_REQUIRED'; eligible: null; policyVersion: number; reason: 'OWNERSHIP_UNVERIFIED' | 'CONFLICTING_EVIDENCE' | 'POSSIBLE_EXCLUSION' | 'CLAIM_CONTEXT_INCOMPLETE'; missingEvidence: string[] })
+  | (EvaluationBase & { status: 'PENDING_START_EVIDENCE'; eligible: null; policyVersion: number; reason: 'START_DATE_UNVERIFIED'; missingEvidence: string[] })
+  | (EvaluationBase & { status: 'VOID'; eligible: false; policyVersion: number; reason: 'COVERAGE_VOID'; missingEvidence: [] })
+  | (EvaluationBase & { status: 'ELIGIBLE'; eligible: true; policyVersion: number; startsAt: string; endsAt: string; missingEvidence: [] })
+  | (EvaluationBase & { status: 'EXPIRED'; eligible: false; policyVersion: number; startsAt: string; endsAt: string; missingEvidence: [] });
+
+/** Pure, deterministic evaluator. It never creates entitlement from a serial or receipt alone. */
+export function evaluateWarranty(input: {
+  policy?: { version: number; status: 'DRAFT' | 'APPROVED' | 'RETIRED'; durationMonths: number | null } | null;
+  verifiedStartAt?: string | null;
+  startEvidence?: 'PURCHASE' | 'COMMISSIONING' | 'INSTALLATION' | null;
+  ownershipVerified?: boolean;
+  evidenceDisputed?: boolean;
+  exclusionMatch?: boolean;
+  claimContextComplete?: boolean;
+  voided?: boolean;
+  asOf?: string;
+}): WarrantyEvaluation {
+  const evaluatedAt = new Date(input.asOf ?? new Date().toISOString());
+  if (Number.isNaN(evaluatedAt.getTime())) throw new DomainError('INVALID_AS_OF');
+  const base = (manualReviewRequired: boolean, userExplanationCode: string): EvaluationBase => ({ evaluatedAt: evaluatedAt.toISOString(), manualReviewRequired, userExplanationCode });
+  const policy = input.policy;
+  if (!policy || policy.status !== 'APPROVED' || !Number.isInteger(policy.durationMonths) || Number(policy.durationMonths) <= 0)
+    return { ...base(true, 'WARRANTY_POLICY_NOT_APPROVED'), status: 'UNKNOWN_POLICY', eligible: null, reason: 'NO_APPROVED_POLICY', missingEvidence: ['APPROVED_POLICY'] };
+  if (input.ownershipVerified !== true)
+    return { ...base(true, 'WARRANTY_OWNERSHIP_REVIEW_REQUIRED'), status: 'REVIEW_REQUIRED', eligible: null, policyVersion: policy.version, reason: 'OWNERSHIP_UNVERIFIED', missingEvidence: ['VERIFIED_OWNERSHIP'] };
+  if (input.evidenceDisputed)
+    return { ...base(true, 'WARRANTY_EVIDENCE_REVIEW_REQUIRED'), status: 'REVIEW_REQUIRED', eligible: null, policyVersion: policy.version, reason: 'CONFLICTING_EVIDENCE', missingEvidence: ['RESOLVED_EVIDENCE'] };
+  if (!input.verifiedStartAt || Number.isNaN(Date.parse(input.verifiedStartAt)) || !input.startEvidence)
+    return { ...base(true, 'WARRANTY_START_EVIDENCE_REQUIRED'), status: 'PENDING_START_EVIDENCE', eligible: null, policyVersion: policy.version, reason: 'START_DATE_UNVERIFIED', missingEvidence: ['VERIFIED_START_DATE', 'START_DATE_PROVENANCE'] };
+  if (input.exclusionMatch)
+    return { ...base(true, 'WARRANTY_EXCLUSION_REVIEW_REQUIRED'), status: 'REVIEW_REQUIRED', eligible: null, policyVersion: policy.version, reason: 'POSSIBLE_EXCLUSION', missingEvidence: ['MANUAL_EXCLUSION_DECISION'] };
+  if (input.claimContextComplete === false)
+    return { ...base(true, 'WARRANTY_CLAIM_REVIEW_REQUIRED'), status: 'REVIEW_REQUIRED', eligible: null, policyVersion: policy.version, reason: 'CLAIM_CONTEXT_INCOMPLETE', missingEvidence: ['COMPLETE_CLAIM_CONTEXT'] };
+  if (input.voided) return { ...base(false, 'WARRANTY_COVERAGE_VOID'), status: 'VOID', eligible: false, policyVersion: policy.version, reason: 'COVERAGE_VOID', missingEvidence: [] };
+  const start = new Date(input.verifiedStartAt);
+  const end = new Date(start);
+  end.setUTCMonth(end.getUTCMonth() + Number(policy.durationMonths));
+  const dates = { policyVersion: policy.version, startsAt: start.toISOString(), endsAt: end.toISOString(), missingEvidence: [] as [] };
+  return evaluatedAt >= end
+    ? { ...base(false, 'WARRANTY_COVERAGE_EXPIRED'), status: 'EXPIRED', eligible: false, ...dates }
+    : { ...base(false, 'WARRANTY_COVERAGE_ELIGIBLE'), status: 'ELIGIBLE', eligible: true, ...dates };
+}
+
 export async function registerSerial(pool: pg.Pool, ctx: Ctx, serial: string, skuId: string, status = 'IN_STOCK') {
-  if (!/^[A-Z0-9-]{6,40}$/.test(serial ?? '')) throw new DomainError('INVALID_SERIAL');
+  serial = normalizeSerial(serial);
   return tx(pool, async (c) => {
     try {
       await c.query(`INSERT INTO domain.serial_units(serial, sku_id, status) VALUES ($1,$2,$3)`, [serial, skuId, status]);
@@ -33,6 +95,7 @@ export async function approveWarrantyPolicy(pool: pg.Pool, ctx: Ctx, version: nu
 }
 
 export async function activateCoverage(pool: pg.Pool, ctx: Ctx, serial: string, startsAt: string) {
+  serial = normalizeSerial(serial);
   if (Number.isNaN(Date.parse(startsAt))) throw new DomainError('INVALID_START');
   return tx(pool, async (c) => {
     const pol = await c.query(`SELECT id, duration_months FROM domain.warranty_policies WHERE status='APPROVED' ORDER BY version DESC LIMIT 1`);
@@ -57,6 +120,7 @@ export async function activateCoverage(pool: pg.Pool, ctx: Ctx, serial: string, 
 
 /** Coverage status as of now, computed from the stored row (expiry is derived, never silently extended). */
 export async function coverageStatus(c: pg.Pool | pg.PoolClient, serial: string): Promise<string> {
+  serial = normalizeSerial(serial);
   const r = await c.query(`SELECT status, ends_at FROM domain.warranty_coverage WHERE serial=$1 ORDER BY starts_at DESC NULLS LAST LIMIT 1`, [serial]);
   if (!r.rowCount) return 'NO_COVERAGE_RECORD';
   const row = r.rows[0];
@@ -70,18 +134,19 @@ export async function submitWarrantyClaim(pool: pg.Pool, ctx: Ctx, i: ClaimInput
   if (!String(i.contactName ?? '').trim()) throw new DomainError('CONTACT_REQUIRED');
   if (!i.contactEmail && !i.contactPhone) throw new DomainError('CONTACT_REQUIRED');
   if (String(i.description ?? '').trim().length < 20) throw new DomainError('DESCRIPTION_TOO_SHORT');
+  const serial = normalizeSerial(i.serial);
   return tx(pool, async (c) => {
-    const s = await c.query(`SELECT 1 FROM domain.serial_units WHERE serial=$1`, [i.serial]);
+    const s = await c.query(`SELECT 1 FROM domain.serial_units WHERE serial=$1`, [serial]);
     if (!s.rowCount) throw new DomainError('SERIAL_NOT_RECOGNISED');
-    const coverage = await coverageStatus(c, i.serial);
+    const coverage = await coverageStatus(c, serial);
     const id = randomUUID();
     const ref = randomRef('WCL');
     await c.query(
       `INSERT INTO domain.warranty_claims(id, ref, serial, contact_name, contact_email, contact_phone, description, coverage_at_submit, status)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'SUBMITTED')`,
-      [id, ref, i.serial, i.contactName.trim(), i.contactEmail ?? null, i.contactPhone ?? null, i.description.trim(), coverage],
+      [id, ref, serial, i.contactName.trim(), i.contactEmail ?? null, i.contactPhone ?? null, i.description.trim(), coverage],
     );
-    await audit(c, ctx, { action: 'warranty_claim.submit', entityType: 'warranty_claim', entityId: id, after: { ref, serial: i.serial, coverage } });
+    await audit(c, ctx, { action: 'warranty_claim.submit', entityType: 'warranty_claim', entityId: id, after: { ref, serial, coverage } });
     return { ref, coverageAtSubmit: coverage };
   });
 }

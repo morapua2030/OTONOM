@@ -42,6 +42,8 @@ export const PERMISSIONS = {
   'ownership.verify': ['OWNER', 'ADMIN', 'ENGINEER'],
   'service.manage': ['OWNER', 'ADMIN', 'ENGINEER'],
   'rma.decide': ['OWNER', 'ADMIN', 'ENGINEER'],
+  'product.draft': ['OWNER', 'ADMIN', 'EDITOR'],
+  'product.approve': ['OWNER', 'ADMIN'],
 } as const satisfies Record<string, readonly Role[]>;
 export type Permission = keyof typeof PERMISSIONS;
 
