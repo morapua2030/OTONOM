@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import type { Endpoint, PayloadRequest } from 'payload';
-import { verify as totpVerify } from 'otplib';
+import { generateSecret, generateURI, verify as totpVerify } from 'otplib';
 import {
   adjustContract,
   adjustStock,
@@ -46,6 +46,7 @@ import {
   verifyPayment,
   type Permission,
   passwordPolicyError,
+  STAFF_ROLES,
 } from '@otonom/domain';
 import { body, guard, jsonRes, mfaOk } from '../lib/access.ts';
 import { domainDb, internalCommerceLabEnabled, previewLocked } from '../lib/server.ts';
@@ -251,6 +252,81 @@ const randomRef = (prefix: string) => `${prefix}-${new Date().getUTCFullYear()}-
 export const endpoints: Endpoint[] = [
   // ---------------- MFA bound to the Payload session id (spike V-5) ----------------
   {
+    path: '/mfa/status',
+    method: 'get',
+    handler: async (req) => {
+      const u = req.user as any;
+      if (!u || !u._sid) return jsonRes(401, { code: 'UNAUTHENTICATED' });
+      if (!(STAFF_ROLES as readonly string[]).includes(String(u.role))) return jsonRes(403, { code: 'FORBIDDEN' });
+      const full = await loadUserSecrets(req, u.id);
+      return Response.json({ enrolled: full?.mfaEnabled === true && !!full?.totpSecret }, { headers: { 'cache-control': 'no-store' } });
+    },
+  },
+  {
+    path: '/mfa/enroll',
+    method: 'post',
+    handler: async (req) => {
+      const u = req.user as any;
+      if (!u || !u._sid) return jsonRes(401, { code: 'UNAUTHENTICATED' });
+      if (!(STAFF_ROLES as readonly string[]).includes(String(u.role))) return jsonRes(403, { code: 'FORBIDDEN' });
+      const rl = await rateLimit(`mfa-enroll:${u.id}`, 5, 10 * 60_000);
+      if (!rl.allowed) return jsonRes(429, { code: 'RATE_LIMITED' });
+      const full = await loadUserSecrets(req, u.id);
+      if (full?.mfaEnabled || full?.totpSecret) return jsonRes(409, { code: 'MFA_ALREADY_CONFIGURED' });
+      const secret = generateSecret();
+      await req.payload.update({
+        collection: 'users',
+        id: u.id,
+        data: { totpSecret: secret, mfaEnabled: false, mfaVerifiedSids: [], lastTotpStep: 0, recoveryCodes: [] } as any,
+        overrideAccess: true,
+        req,
+      });
+      await domainDb().query(
+        `INSERT INTO domain.audit_events(actor_type, actor_id, action, entity_type, entity_id, correlation_id) VALUES ('user',$1,'mfa.enrollment_started','user',$1,$2)`,
+        [String(u.id), cid(req)],
+      );
+      return Response.json(
+        { secret, uri: generateURI({ issuer: 'OTONOM', label: String(u.email), secret }) },
+        { headers: { 'cache-control': 'no-store' } },
+      );
+    },
+  },
+  {
+    path: '/mfa/enroll/verify',
+    method: 'post',
+    handler: async (req) => {
+      const u = req.user as any;
+      if (!u || !u._sid) return jsonRes(401, { code: 'UNAUTHENTICATED' });
+      if (!(STAFF_ROLES as readonly string[]).includes(String(u.role))) return jsonRes(403, { code: 'FORBIDDEN' });
+      const rl = await rateLimit(`mfa-enroll-verify:${u.id}`, 10, 10 * 60_000);
+      if (!rl.allowed) return jsonRes(429, { code: 'RATE_LIMITED' });
+      const full = await loadUserSecrets(req, u.id);
+      if (full?.mfaEnabled) return jsonRes(409, { code: 'MFA_ALREADY_CONFIGURED' });
+      if (!full?.totpSecret) return jsonRes(409, { code: 'MFA_ENROLLMENT_NOT_STARTED' });
+      const res = await totpVerify({ secret: full.totpSecret, token: String((await body(req)).code ?? ''), epochTolerance: 30 }).catch(() => null);
+      const step = res && res.valid && 'timeStep' in res ? Number(res.timeStep) : undefined;
+      if (step === undefined || step <= Number(full.lastTotpStep ?? 0)) return jsonRes(401, { code: 'MFA_INVALID' });
+      const recoveryCodes = Array.from({ length: 8 }, () => randomBytes(9).toString('base64url'));
+      await req.payload.update({
+        collection: 'users',
+        id: u.id,
+        data: {
+          mfaEnabled: true,
+          lastTotpStep: step,
+          mfaVerifiedSids: [u._sid],
+          recoveryCodes: recoveryCodes.map((code) => createHash('sha256').update(code).digest('hex')),
+        } as any,
+        overrideAccess: true,
+        req,
+      });
+      await domainDb().query(
+        `INSERT INTO domain.audit_events(actor_type, actor_id, action, entity_type, entity_id, correlation_id) VALUES ('user',$1,'mfa.enrolled','user',$1,$2)`,
+        [String(u.id), cid(req)],
+      );
+      return Response.json({ mfaVerified: true, recoveryCodes }, { headers: { 'cache-control': 'no-store' } });
+    },
+  },
+  {
     path: '/mfa/verify',
     method: 'post',
     handler: async (req) => {
@@ -260,7 +336,7 @@ export const endpoints: Endpoint[] = [
       if (!rl.allowed) return jsonRes(429, { code: 'RATE_LIMITED' });
       const b = await body(req);
       const full = await loadUserSecrets(req, u.id);
-      if (!full?.totpSecret) return jsonRes(401, { code: 'MFA_INVALID' });
+      if (!full?.mfaEnabled || !full?.totpSecret) return jsonRes(401, { code: 'MFA_INVALID' });
       const res = await totpVerify({ secret: full.totpSecret, token: String(b.code ?? ''), epochTolerance: 30 }).catch(() => null);
       const step = res && res.valid && 'timeStep' in res ? Number(res.timeStep) : undefined;
       if (step === undefined || step <= Number(full.lastTotpStep ?? 0)) return jsonRes(401, { code: 'MFA_INVALID' });

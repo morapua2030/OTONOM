@@ -65,6 +65,49 @@ async function main() {
   const editor = (await login('EDITOR')).c;
   const store = (await login('STORE')).c;
 
+  // ---------- first-login MFA enrollment for a newly provisioned staff account ----------
+  const enrollEmail = `mfa-enroll-${tag}@example.com`;
+  const enrollPassword = `Enroll-${randomBytes(12).toString('base64url')}aA1!`;
+  const created = await owner.post('/api/users', { email: enrollEmail, password: enrollPassword, role: 'OWNER' });
+  const enrollUserId = created.json?.doc?.id;
+  try {
+    const enrolling = new Client(BASE, 'mfa-enrolling', true);
+    const passwordLogin = await enrolling.post('/api/users/login', { email: enrollEmail, password: enrollPassword });
+    const statusBefore = await enrolling.get('/api/mfa/status');
+    const deniedBefore = await enrolling.get('/api/reports/kpi');
+    const start = await enrolling.post('/api/mfa/enroll', {});
+    const secret = start.json?.secret;
+    const duplicateStart = await enrolling.post('/api/mfa/enroll', {});
+    const normalVerifyBeforeEnrollment = secret ? await enrolling.post('/api/mfa/verify', { code: await generate({ secret }) }) : null;
+    const complete = secret ? await enrolling.post('/api/mfa/enroll/verify', { code: await generate({ secret }) }) : null;
+    const statusAfter = await enrolling.get('/api/mfa/status');
+    const allowedAfter = await enrolling.get('/api/reports/kpi');
+    const duplicateComplete = secret ? await enrolling.post('/api/mfa/enroll/verify', { code: await generate({ secret }) }) : null;
+    rec.add(
+      'SEC-MFA-FIRST-LOGIN',
+      'AUTH',
+      'a newly provisioned staff account is denied admin access until it completes first-login MFA enrollment',
+      created.status === 201 && passwordLogin.status === 200 && statusBefore.json?.enrolled === false && deniedBefore.status === 401 && start.status === 200 && typeof secret === 'string' && duplicateStart.status === 409 && normalVerifyBeforeEnrollment?.status === 401 && complete?.status === 200 && complete.json?.recoveryCodes?.length === 8 && statusAfter.json?.enrolled === true && allowedAfter.status === 200 && duplicateComplete?.status === 409,
+      {
+        created: created.status,
+        login: passwordLogin.status,
+        before: statusBefore.json?.enrolled,
+        deniedBefore: deniedBefore.status,
+        start: start.status,
+        noStore: start.headers.get('cache-control'),
+        duplicateStart: duplicateStart.status,
+        normalVerifyBeforeEnrollment: normalVerifyBeforeEnrollment?.status,
+        complete: complete?.status,
+        recoveryCount: complete?.json?.recoveryCodes?.length,
+        after: statusAfter.json?.enrolled,
+        allowedAfter: allowedAfter.status,
+        duplicateComplete: duplicateComplete?.status,
+      },
+    );
+  } finally {
+    if (enrollUserId) await owner.del(`/api/users/${enrollUserId}`);
+  }
+
   // ---------- query oracles on hidden fields ----------
   const base = await admin.get('/api/users?limit=100&depth=0');
   for (const q of ['where[totpSecret][like]=A', 'where[recoveryCodes][exists]=true', 'where[mfaVerifiedSids][exists]=true', 'where[lastTotpStep][greater_than]=0', 'sort=totpSecret', 'where[hash][like]=a', 'where[salt][like]=a']) {
