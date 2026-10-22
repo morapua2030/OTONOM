@@ -11,6 +11,17 @@ const RMA_FIELDS: Record<string, Field[]> = {
   REPLACED: [{ name: 'replacementSerial', label: 'Replacement serial (in stock)', type: 'text', required: true }],
 };
 
+function diagnosisSummary(raw: unknown) {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(String(raw));
+    if (parsed?.schema === 'OTONOM_SERVICE_DIAGNOSIS_V1') return `${parsed.diagnosticStatus}: ${parsed.observation}`;
+  } catch {
+    // Legacy diagnosis rows remain readable to authorized service staff.
+  }
+  return String(raw);
+}
+
 /** Service desk: safety tickets first, ownership claims, commissioning, RMA. The customer portal itself stays gated. */
 export async function ServiceView(props: AdminViewServerProps) {
   const staff = staffOf(props);
@@ -23,16 +34,32 @@ export async function ServiceView(props: AdminViewServerProps) {
   const status = statuses.includes(search.get('status') ?? '') ? search.get('status')! : '';
   const priority = priorities.includes(search.get('priority') ?? '') ? search.get('priority')! : '';
   const query = (search.get('q') ?? '').trim().slice(0, 80);
+  const assignee = (search.get('assignee') ?? '').trim().slice(0, 120);
+  const model = (search.get('model') ?? '').trim().slice(0, 40);
+  const unassigned = search.get('unassigned') === '1';
+  const validDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
+  const from = validDate(search.get('from') ?? '') ? search.get('from')! : '';
+  const to = validDate(search.get('to') ?? '') ? search.get('to')! : '';
   const page = Math.max(1, Math.min(10_000, Number.parseInt(search.get('page') ?? '1', 10) || 1));
   const ticketWhere: string[] = [];
   const ticketValues: unknown[] = [];
-  if (status) { ticketValues.push(status); ticketWhere.push(`status=$${ticketValues.length}`); }
-  if (priority) { ticketValues.push(priority); ticketWhere.push(`priority=$${ticketValues.length}`); }
-  if (query) { ticketValues.push(`%${query}%`); ticketWhere.push(`(ref ILIKE $${ticketValues.length} OR serial ILIKE $${ticketValues.length} OR category ILIKE $${ticketValues.length} OR description ILIKE $${ticketValues.length})`); }
+  if (status) { ticketValues.push(status); ticketWhere.push(`t.status=$${ticketValues.length}`); }
+  if (priority) { ticketValues.push(priority); ticketWhere.push(`t.priority=$${ticketValues.length}`); }
+  if (query) { ticketValues.push(`%${query}%`); ticketWhere.push(`(t.ref ILIKE $${ticketValues.length} OR t.serial ILIKE $${ticketValues.length} OR t.category ILIKE $${ticketValues.length} OR t.description ILIKE $${ticketValues.length})`); }
+  if (assignee) { ticketValues.push(assignee); ticketWhere.push(`t.assigned_to=$${ticketValues.length}`); }
+  if (model) { ticketValues.push(model); ticketWhere.push(`sku.model=$${ticketValues.length}`); }
+  if (unassigned) ticketWhere.push(`t.assigned_to IS NULL`);
+  if (from) { ticketValues.push(from); ticketWhere.push(`t.created_at >= $${ticketValues.length}::date`); }
+  if (to) { ticketValues.push(to); ticketWhere.push(`t.created_at < ($${ticketValues.length}::date + interval '1 day')`); }
   const ticketWhereSql = ticketWhere.length ? `WHERE ${ticketWhere.join(' AND ')}` : '';
-  const totalTickets = Number((await db.query(`SELECT count(*)::int AS n FROM domain.service_tickets ${ticketWhereSql}`, ticketValues)).rows[0].n);
+  const ticketFromSql = `FROM domain.service_tickets t LEFT JOIN domain.serial_units unit ON unit.serial=t.serial LEFT JOIN domain.skus sku ON sku.id=unit.sku_id`;
+  const totalTickets = Number((await db.query(`SELECT count(*)::int AS n ${ticketFromSql} ${ticketWhereSql}`, ticketValues)).rows[0].n);
   const pageSize = 25;
-  const tickets = (await db.query(`SELECT * FROM domain.service_tickets ${ticketWhereSql} ORDER BY (priority='URGENT') DESC, (status IN ('RESOLVED','CLOSED')), created_at DESC LIMIT $${ticketValues.length + 1} OFFSET $${ticketValues.length + 2}`, [...ticketValues, pageSize, (page - 1) * pageSize])).rows;
+  const tickets = (await db.query(`SELECT t.*, sku.model,
+      (SELECT diagnosis FROM domain.service_diagnoses d WHERE d.ticket_id=t.id ORDER BY d.created_at DESC LIMIT 1) AS latest_diagnosis
+    ${ticketFromSql} ${ticketWhereSql}
+    ORDER BY (t.priority='URGENT') DESC, (t.status IN ('RESOLVED','CLOSED')), t.created_at DESC
+    LIMIT $${ticketValues.length + 1} OFFSET $${ticketValues.length + 2}`, [...ticketValues, pageSize, (page - 1) * pageSize])).rows;
   const ticketPages = Math.max(1, Math.ceil(totalTickets / pageSize));
   const rmas = (await db.query(`
     SELECT r.*, i.condition AS inspection_condition,
@@ -56,6 +83,11 @@ export async function ServiceView(props: AdminViewServerProps) {
           <label>Status / الحالة <select name="status" defaultValue={status}><option value="">All / الكل</option>{statuses.map((value) => <option value={value} key={value}>{value}</option>)}</select></label>
           <label>Priority / الأولوية <select name="priority" defaultValue={priority}><option value="">All / الكل</option>{priorities.map((value) => <option value={value} key={value}>{value}</option>)}</select></label>
           <button className={s.btn} type="submit">Filter / تصفية</button>
+          <label>Assignee <input name="assignee" defaultValue={assignee} maxLength={120} /></label>
+          <label>Model <input name="model" defaultValue={model} maxLength={40} /></label>
+          <label>From <input name="from" type="date" defaultValue={from} /></label>
+          <label>To <input name="to" type="date" defaultValue={to} /></label>
+          <label><input name="unassigned" type="checkbox" value="1" defaultChecked={unassigned} /> Unassigned only</label>
         </form>
         {tickets.length === 0 && <EmptyState title="No service tickets / لا توجد تذاكر" detail="New requests will appear here with urgent safety issues placed first." />}
         {tickets.length > 0 && (
@@ -82,13 +114,15 @@ export async function ServiceView(props: AdminViewServerProps) {
                     <span className={`${s.badge} ${t.priority === 'URGENT' ? s.urgent : ''}`}>{t.priority}</span> {t.category}
                     {t.priority === 'URGENT' && <div className={s.muted}>{t.callback_done_at ? `callback ${when(t.callback_done_at)}` : 'callback REQUIRED'}</div>}
                   </td>
-                  <td data-label="Serial" className={s.mono}>{t.serial}</td>
+                  <td data-label="Serial" className={s.mono}>{t.serial}{t.model && <div className={s.muted}>{t.model}</div>}</td>
                   <td data-label="Description">
                     <bdi>{String(t.description).slice(0, 140)}</bdi>
                     {t.resolution && <div className={s.muted}>Resolution: {t.resolution}</div>}
+                    {t.latest_diagnosis && <div className={s.muted}>Latest diagnosis: {diagnosisSummary(t.latest_diagnosis)?.slice(0, 180)}</div>}
                   </td>
                   <td data-label="Status">
                     <span className={s.badge}>{t.status}</span> <span className={s.muted}>rev {t.revision}</span>
+                    <div className={s.muted}>Assigned: {t.assigned_to ?? 'unassigned'}</div>
                   </td>
                   <td data-label="Actions">
                     <div className={s.actions}>
@@ -107,7 +141,10 @@ export async function ServiceView(props: AdminViewServerProps) {
                         />
                       ))}
                       {['TRIAGE', 'IN_PROGRESS', 'WAITING_CUSTOMER'].includes(t.status) && (
-                        <ActionForm testId={`ticket-${t.ref}-diagnosis`} endpoint={`/api/admin/tickets/${t.id}/diagnoses`} label="Record diagnosis" secondary fields={[{ name: 'diagnosis', label: 'Diagnosis', type: 'text', required: true }, { name: 'partsNote', label: 'Parts note', type: 'text' }]} />
+                        <ActionForm testId={`ticket-${t.ref}-diagnosis`} endpoint={`/api/admin/tickets/${t.id}/diagnoses`} label="Record structured diagnosis" secondary fields={[{ name: 'diagnosticStatus', label: 'Diagnostic status', type: 'select', options: ['OBSERVED','REPRODUCED','HYPOTHESIS','CONFIRMED','INCONCLUSIVE'], required: true }, { name: 'observation', label: 'Observed symptom', type: 'text', required: true }, { name: 'reproduction', label: 'Safe reproduction steps', type: 'text', required: true }, { name: 'hypothesis', label: 'Hypothesis (not a final decision)', type: 'text' }, { name: 'finalDiagnosis', label: 'Final diagnosis (required if confirmed)', type: 'text' }, { name: 'hardwareRevision', label: 'Verified hardware revision', type: 'text' }, { name: 'softwareInfo', label: 'Verified firmware/app info', type: 'text' }, { name: 'partsNote', label: 'Parts note (no billing)', type: 'text' }]} />
+                      )}
+                      {!['RESOLVED', 'CLOSED'].includes(t.status) && (
+                        <ActionForm testId={`ticket-${t.ref}-assign`} endpoint={`/api/admin/tickets/${t.id}/assign`} label="Assign / reassign" secondary fixed={{ expectedRevision: t.revision }} fields={[{ name: 'assignedTo', label: 'Staff ID', type: 'text', required: true }, { name: 'reason', label: 'Assignment reason', type: 'text', required: true }]} />
                       )}
                       {staff.can('rma.decide') && !['RESOLVED', 'CLOSED'].includes(t.status) && !openRmaTickets.has(t.id) && (
                         <ActionForm testId={`ticket-${t.ref}-rma`} endpoint={`/api/admin/tickets/${t.id}/rma`} label="Open RMA" secondary />

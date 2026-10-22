@@ -23,6 +23,14 @@ export async function StoreView(props: AdminViewServerProps) {
   const validDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
   const from = validDate(search.get('from') ?? '') ? search.get('from')! : '';
   const to = validDate(search.get('to') ?? '') ? search.get('to')! : '';
+  const orderSorts = {
+    newest: 'created_at DESC, id DESC',
+    oldest: 'created_at ASC, id ASC',
+    status: 'status ASC, created_at DESC, id DESC',
+    'subtotal-desc': 'subtotal_minor DESC, created_at DESC, id DESC',
+  } as const;
+  const requestedSort = search.get('sort') ?? 'newest';
+  const sort = requestedSort in orderSorts ? requestedSort as keyof typeof orderSorts : 'newest';
   const page = Math.max(1, Math.min(10_000, Number.parseInt(search.get('page') ?? '1', 10) || 1));
   const pageSize = 25;
   const where: string[] = [];
@@ -38,7 +46,7 @@ export async function StoreView(props: AdminViewServerProps) {
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const totalOrders = Number((await db.query(`SELECT count(*)::int n FROM domain.orders ${whereSql}`, values)).rows[0].n);
   const orderParams = [...values, pageSize, (page - 1) * pageSize];
-  const orders = (await db.query(`SELECT * FROM domain.orders ${whereSql} ORDER BY created_at DESC LIMIT $${values.length + 1} OFFSET $${values.length + 2}`, orderParams)).rows;
+  const orders = (await db.query(`SELECT * FROM domain.orders ${whereSql} ORDER BY ${orderSorts[sort]} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`, orderParams)).rows;
   const pages = Math.max(1, Math.ceil(totalOrders / pageSize));
   const ids = orders.map((o) => o.id);
   const lines = ids.length ? (await db.query(`SELECT l.id, l.order_id, l.qty, l.unit_price_minor, s.code, s.serialised FROM domain.order_lines l JOIN domain.skus s ON s.id=l.sku_id WHERE l.order_id = ANY($1) ORDER BY s.code`, [ids])).rows : [];
@@ -51,6 +59,11 @@ export async function StoreView(props: AdminViewServerProps) {
        FROM domain.skus s LEFT JOIN domain.stock_levels l ON l.sku_id=s.id AND l.location_id='MAIN' ORDER BY s.code`,
   )).rows;
   const drafts = (await db.query(`SELECT p.id, s.code, p.price_minor, p.vat_included, p.proposed_by FROM domain.sku_prices p JOIN domain.skus s ON s.id=p.sku_id WHERE p.status='DRAFT' ORDER BY p.created_at`)).rows;
+  const ledger = staff.can('stock.adjust') ? (await db.query(
+    `SELECT l.id, l.type, l.qty, l.reference_type, l.reference_id, l.actor, l.reason, l.created_at, s.code
+       FROM domain.inventory_ledger l JOIN domain.skus s ON s.id=l.sku_id
+      ORDER BY l.created_at DESC, l.id DESC LIMIT 50`,
+  )).rows : [];
   const linesOf = (id: string) => lines.filter((l) => l.order_id === id);
   const paysOf = (id: string) => pays.filter((p) => p.order_id === id);
   return (
@@ -73,6 +86,7 @@ export async function StoreView(props: AdminViewServerProps) {
           <label>From / من <input name="from" type="date" defaultValue={from} /></label>
           <label>To / إلى <input name="to" type="date" defaultValue={to} /></label>
           <button className={s.btn} type="submit">Filter / تصفية</button>
+          <label>Sort <select name="sort" defaultValue={sort}><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="status">Status</option><option value="subtotal-desc">Subtotal, high to low</option></select></label>
         </form>
         <div className={s.tableWrap}>
           <table className={s.table}>
@@ -220,6 +234,31 @@ export async function StoreView(props: AdminViewServerProps) {
             </tbody>
           </table>
         </div>
+        {staff.can('stock.adjust') && (
+          <div className={s.section} data-testid="inventory-ledger">
+            <h2>Recent inventory ledger (last 50)</h2>
+            <p className={s.muted}>Authorized operational evidence only. Entries are server ordered and never expose payment credentials.</p>
+            <div className={s.tableWrap}>
+              <table className={s.table}>
+                <thead><tr><th>Time</th><th>SKU</th><th>Movement</th><th className={s.num}>Qty</th><th>Reference</th><th>Reason</th><th>Actor</th></tr></thead>
+                <tbody>
+                  {ledger.length === 0 && <tr><td colSpan={7}>No inventory movements recorded.</td></tr>}
+                  {ledger.map((entry) => (
+                    <tr key={entry.id}>
+                      <td data-label="Time">{when(entry.created_at)}</td>
+                      <td data-label="SKU" className={s.mono}>{entry.code}</td>
+                      <td data-label="Movement"><span className={s.badge}>{entry.type}</span></td>
+                      <td data-label="Qty" className={s.num}>{entry.qty}</td>
+                      <td data-label="Reference" className={s.mono}>{entry.reference_type}:{entry.reference_id}</td>
+                      <td data-label="Reason"><bdi>{String(entry.reason ?? '').slice(0, 160)}</bdi></td>
+                      <td data-label="Actor" className={s.mono}>{String(entry.actor ?? '').slice(0, 80)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
         {drafts.length > 0 && (
           <div className={s.section}>
             <h2>Price proposals awaiting owner approval</h2>

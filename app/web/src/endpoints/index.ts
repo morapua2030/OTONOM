@@ -4,9 +4,11 @@ import { generateSecret, generateURI, verify as totpVerify } from 'otplib';
 import {
   adjustContract,
   adjustStock,
+  assignTicket,
   acceptQuote,
   recordCallback,
   recordDiagnosis,
+  recordStructuredDiagnosis,
   recordRmaAction,
   recordRmaInspection,
   requestOwnershipTransfer,
@@ -866,7 +868,25 @@ export const endpoints: Endpoint[] = [
   },
   { path: '/admin/ownerships/:id/decision', method: 'post', handler: domainOp('ownership.verify', (req, b, ctx) => decideOwnership(domainDb(), ctx, param(req, 'id'), b.decision as any, String(b.reason ?? ''))) },
   { path: '/admin/tickets/:id/status', method: 'post', handler: domainOp('service.manage', (req, b, ctx) => updateTicket(domainDb(), ctx, param(req, 'id'), { status: String(b.status ?? ''), assignedTo: b.assignedTo ? String(b.assignedTo) : undefined, resolution: b.resolution ? String(b.resolution) : undefined, expectedRevision: b.expectedRevision === undefined ? undefined : Number(b.expectedRevision) })) },
-  { path: '/admin/tickets/:id/diagnoses', method: 'post', handler: domainOp('service.manage', (req, b, ctx) => recordDiagnosis(domainDb(), ctx, param(req, 'id'), String(b.diagnosis ?? ''), b.partsNote ? String(b.partsNote) : undefined)) },
+  { path: '/admin/tickets/:id/assign', method: 'post', handler: domainOp('service.manage', (req, b, ctx) => assignTicket(domainDb(), ctx, param(req, 'id'), { assignedTo: String(b.assignedTo ?? ''), reason: String(b.reason ?? ''), expectedRevision: Number(b.expectedRevision) })) },
+  {
+    path: '/admin/tickets/:id/diagnoses',
+    method: 'post',
+    handler: domainOp('service.manage', (req, b, ctx) =>
+      b.observation !== undefined || b.reproduction !== undefined
+        ? recordStructuredDiagnosis(domainDb(), ctx, param(req, 'id'), {
+            observation: String(b.observation ?? ''),
+            reproduction: String(b.reproduction ?? ''),
+            hypothesis: b.hypothesis ? String(b.hypothesis) : undefined,
+            finalDiagnosis: b.finalDiagnosis ? String(b.finalDiagnosis) : undefined,
+            hardwareRevision: b.hardwareRevision ? String(b.hardwareRevision) : undefined,
+            softwareInfo: b.softwareInfo ? String(b.softwareInfo) : undefined,
+            diagnosticStatus: String(b.diagnosticStatus ?? '') as any,
+            partsNote: b.partsNote ? String(b.partsNote) : undefined,
+          })
+        : recordDiagnosis(domainDb(), ctx, param(req, 'id'), String(b.diagnosis ?? ''), b.partsNote ? String(b.partsNote) : undefined),
+    ),
+  },
   // ---------------- consistency between the domain (source of truth) and the CMS (release blocker B-31) ----------------
   {
     path: '/admin/reconcile',

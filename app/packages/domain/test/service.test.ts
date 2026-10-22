@@ -121,6 +121,44 @@ test('tickets: only for own devices (IDOR guard), transitions enforced, resoluti
   assert.equal((await pool.query(`SELECT count(*)::int n FROM domain.service_ticket_events WHERE ticket_id=$1`, [tid])).rows[0].n, 3);
 });
 
+test('triage assignment is reasoned and revision-safe; diagnosis keeps observation separate from conclusions', async () => {
+  const ticket = await d.openTicket(pool, bob, {
+    serial: 'SVC-0002',
+    category: 'FAULT',
+    description: 'Synthetic: intermittent output observed during a controlled bench check.',
+    idempotencyKey: `triage:${key()}`,
+  });
+  const id = (await pool.query(`SELECT id FROM domain.service_tickets WHERE ref=$1`, [ticket.ref])).rows[0].id;
+  await d.updateTicket(pool, eng, id, { status: 'TRIAGE', expectedRevision: 1 });
+  await assert.rejects(d.assignTicket(pool, eng, id, { assignedTo: 'u-eng', reason: 'short', expectedRevision: 2 }), /REASON_REQUIRED/);
+  const assigned = await d.assignTicket(pool, eng, id, { assignedTo: 'u-eng', reason: 'Assigned for controlled diagnostic review.', expectedRevision: 2 });
+  assert.deepEqual(assigned, { assignedTo: 'u-eng', revision: 3 });
+  await assert.rejects(d.assignTicket(pool, eng, id, { assignedTo: 'u-owner', reason: 'Owner review requested after initial triage.', expectedRevision: 2 }), /STALE_REVISION/);
+  await assert.rejects(d.assignTicket(pool, eng, id, { assignedTo: 'u-eng', reason: 'No effective assignment change requested.', expectedRevision: 3 }), /NO_CHANGE/);
+  await assert.rejects(d.recordStructuredDiagnosis(pool, eng, id, {
+    diagnosticStatus: 'CONFIRMED',
+    observation: 'Synthetic output intermittently failed during the controlled check.',
+    reproduction: 'Used an isolated fixture and repeated the safe low-energy test.',
+  }), /FINAL_DIAGNOSIS_REQUIRED/);
+  await d.recordStructuredDiagnosis(pool, eng, id, {
+    diagnosticStatus: 'HYPOTHESIS',
+    observation: 'Synthetic output intermittently failed during the controlled check.',
+    reproduction: 'Used an isolated fixture and repeated the safe low-energy test.',
+    hypothesis: 'A relay contact may require further bench inspection.',
+    hardwareRevision: 'SYN-REV-A',
+    softwareInfo: 'Synthetic fixture firmware only',
+    partsNote: 'No part was consumed and no billing decision was made.',
+  });
+  const stored = (await pool.query(`SELECT diagnosis,parts_note FROM domain.service_diagnoses WHERE ticket_id=$1 ORDER BY created_at DESC LIMIT 1`, [id])).rows[0];
+  const diagnosis = JSON.parse(stored.diagnosis);
+  assert.equal(diagnosis.schema, 'OTONOM_SERVICE_DIAGNOSIS_V1');
+  assert.equal(diagnosis.diagnosticStatus, 'HYPOTHESIS');
+  assert.equal(diagnosis.finalDiagnosis, null);
+  assert.match(stored.parts_note, /No part was consumed/);
+  assert.equal((await pool.query(`SELECT count(*)::int n FROM domain.service_ticket_events WHERE ticket_id=$1 AND event_type='ASSIGNED'`, [id])).rows[0].n, 1);
+  assert.equal((await pool.query(`SELECT count(*)::int n FROM domain.audit_events WHERE entity_id=$1 AND action='ticket.assigned'`, [id])).rows[0].n, 1);
+});
+
 test('RMA: never auto-decided; replacement moves ownership, ledgers stock and keeps append-only history', async () => {
   const tid = (await pool.query(`SELECT id FROM domain.service_tickets WHERE serial='SVC-0001'`)).rows[0].id;
   const r = await d.openRma(pool, eng, tid);

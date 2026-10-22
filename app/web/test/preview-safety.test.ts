@@ -46,3 +46,19 @@ test('admin title does not mislabel hosted Preview as local', () => {
   assert.match(config, /titleSuffix:\s*['"]\s*— OTONOM['"]/);
   assert.doesNotMatch(config, /OTONOM \(local\)/);
 });
+
+test('synthetic checkout refresh state is tab-scoped, expiring and excludes customer-entered identity', () => {
+  const source = readFileSync(new URL('../src/components/admin/CommerceLab.tsx', import.meta.url), 'utf8');
+  assert.match(source, /sessionStorage\.setItem\(DRAFT_KEY/);
+  assert.match(source, /DRAFT_TTL_MS\s*=\s*2\s*\*\s*60\s*\*\s*60\s*\*\s*1000/);
+  assert.match(source, /JSON\.stringify\(\{ step, lines, governorate, expiresAt:/);
+  assert.doesNotMatch(source, /localStorage/);
+  assert.doesNotMatch(source, /JSON\.stringify\(\{[^}]*customerAlias/);
+});
+
+test('staff queue sorting remains a fixed server-side allowlist', () => {
+  const store = readFileSync(new URL('../src/components/admin/StoreView.tsx', import.meta.url), 'utf8');
+  assert.match(store, /const orderSorts = \{/);
+  assert.match(store, /requestedSort in orderSorts/);
+  assert.match(store, /data-testid="inventory-ledger"/);
+});

@@ -343,6 +343,82 @@ export async function updateTicket(pool: pg.Pool, ctx: Ctx, ticketId: string, i:
   });
 }
 
+/** Reassign a ticket without smuggling an unchanged status through the transition table. */
+export async function assignTicket(
+  pool: pg.Pool,
+  ctx: Ctx,
+  ticketId: string,
+  i: { assignedTo: string; reason: string; expectedRevision: number },
+) {
+  const assignedTo = String(i.assignedTo ?? '').trim();
+  const reason = String(i.reason ?? '').trim();
+  if (!/^[a-zA-Z0-9:@._-]{2,120}$/.test(assignedTo)) throw new DomainError('INVALID_ASSIGNEE');
+  if (reason.length < 10 || reason.length > 1000) throw new DomainError('REASON_REQUIRED');
+  if (!Number.isInteger(i.expectedRevision) || i.expectedRevision < 1) throw new DomainError('INVALID_REVISION');
+  return tx(pool, async (c) => {
+    const ticket = (await c.query(`SELECT status, revision, assigned_to FROM domain.service_tickets WHERE id=$1 FOR UPDATE`, [ticketId])).rows[0];
+    if (!ticket) throw new DomainError('NOT_FOUND');
+    if (ticket.revision !== i.expectedRevision) throw new DomainError('STALE_REVISION');
+    if (ticket.assigned_to === assignedTo) throw new DomainError('NO_CHANGE');
+    const updated = await c.query(
+      `UPDATE domain.service_tickets SET assigned_to=$2, revision=revision+1, updated_at=now()
+        WHERE id=$1 AND revision=$3 RETURNING revision`,
+      [ticketId, assignedTo, ticket.revision],
+    );
+    if (!updated.rowCount) throw new DomainError('STALE_REVISION');
+    await c.query(
+      `INSERT INTO domain.service_ticket_events(ticket_id,event_type,actor,from_status,to_status,note,revision)
+       VALUES ($1,'ASSIGNED',$2,$3,$3,$4,$5)`,
+      [ticketId, ctx.actor.id, ticket.status, reason, ticket.revision + 1],
+    );
+    await audit(c, ctx, {
+      action: 'ticket.assigned',
+      entityType: 'service_ticket',
+      entityId: ticketId,
+      before: { assignedTo: ticket.assigned_to },
+      after: { assignedTo },
+      reason,
+    });
+    return { assignedTo, revision: ticket.revision + 1 };
+  });
+}
+
+export type StructuredDiagnosis = {
+  observation: string;
+  reproduction: string;
+  hypothesis?: string;
+  finalDiagnosis?: string;
+  hardwareRevision?: string;
+  softwareInfo?: string;
+  diagnosticStatus: 'OBSERVED' | 'REPRODUCED' | 'HYPOTHESIS' | 'CONFIRMED' | 'INCONCLUSIVE';
+  partsNote?: string;
+};
+
+const boundedDiagnosisText = (value: unknown, name: string, min: number, max: number, required = false) => {
+  const text = String(value ?? '').trim();
+  if ((required && text.length < min) || text.length > max) throw new DomainError(`INVALID_${name}`);
+  return text;
+};
+
+/** Stores a stable structured envelope in the existing append-only diagnosis record. */
+export async function recordStructuredDiagnosis(pool: pg.Pool, ctx: Ctx, ticketId: string, input: StructuredDiagnosis) {
+  const allowed = new Set<StructuredDiagnosis['diagnosticStatus']>(['OBSERVED', 'REPRODUCED', 'HYPOTHESIS', 'CONFIRMED', 'INCONCLUSIVE']);
+  if (!allowed.has(input.diagnosticStatus)) throw new DomainError('INVALID_DIAGNOSTIC_STATUS');
+  const document = {
+    schema: 'OTONOM_SERVICE_DIAGNOSIS_V1',
+    diagnosticStatus: input.diagnosticStatus,
+    observation: boundedDiagnosisText(input.observation, 'OBSERVATION', 10, 2000, true),
+    reproduction: boundedDiagnosisText(input.reproduction, 'REPRODUCTION', 10, 2000, true),
+    hypothesis: boundedDiagnosisText(input.hypothesis, 'HYPOTHESIS', 0, 2000) || null,
+    finalDiagnosis: boundedDiagnosisText(input.finalDiagnosis, 'FINAL_DIAGNOSIS', 0, 2000) || null,
+    hardwareRevision: boundedDiagnosisText(input.hardwareRevision, 'HARDWARE_REVISION', 0, 120) || null,
+    softwareInfo: boundedDiagnosisText(input.softwareInfo, 'SOFTWARE_INFO', 0, 240) || null,
+  };
+  if (input.diagnosticStatus === 'CONFIRMED' && !document.finalDiagnosis) throw new DomainError('FINAL_DIAGNOSIS_REQUIRED');
+  const partsNote = boundedDiagnosisText(input.partsNote, 'PARTS_NOTE', 0, 4000) || undefined;
+  return recordDiagnosis(pool, ctx, ticketId, JSON.stringify(document), partsNote);
+}
+
 export async function recordDiagnosis(pool: pg.Pool, ctx: Ctx, ticketId: string, diagnosis: string, partsNote?: string) {
   const text = String(diagnosis ?? '').trim();
   if (text.length < 10 || text.length > 8000 || String(partsNote ?? '').length > 4000) throw new DomainError('DIAGNOSIS_REQUIRED');
