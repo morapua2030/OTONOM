@@ -12,5 +12,6 @@ export * from './commerce.ts';
 export * from './warranty.ts';
 export * from './orders.ts';
 export * from './service.ts';
+export * from './service-notifications.ts';
 export * from './ratelimit.ts';
 export * from './merchandising.ts';

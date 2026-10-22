@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import s from './staff.module.css';
 
 type Sku = { id: string; code: string; model?: string | null; available: number; approvedPrice: number | null };
@@ -14,6 +14,8 @@ type Review = {
 };
 
 const money = (minor: number) => new Intl.NumberFormat('en-EG', { style: 'currency', currency: 'EGP' }).format(minor / 100);
+const DRAFT_KEY = 'otonom:synthetic-commerce-lab:v1';
+const DRAFT_TTL_MS = 2 * 60 * 60 * 1000;
 
 export function CommerceLab({ skus }: { skus: Sku[] }) {
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
@@ -23,6 +25,53 @@ export function CommerceLab({ skus }: { skus: Sku[] }) {
   const [busy, setBusy] = useState(false);
   const [review, setReview] = useState<Review | null>(null);
   const [error, setError] = useState('');
+  const [hydrated, setHydrated] = useState(false);
+  const stepFocus = useRef<HTMLParagraphElement>(null);
+  const errorFocus = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(DRAFT_KEY) ?? 'null');
+      if (saved?.expiresAt > Date.now() && Array.isArray(saved.lines)) {
+        const allowed = new Set(skus.map((sku) => sku.id));
+        const safeLines = saved.lines
+          .filter((line: Line) => allowed.has(line?.skuId) && Number.isInteger(line?.qty) && line.qty >= 1 && line.qty <= 100)
+          .slice(0, 20);
+        if (safeLines.length) setLines(safeLines);
+        if ([1, 2, 3, 4].includes(saved.step)) setStep(saved.step);
+        if (saved.governorate === 'NOT_CONFIGURED') setGovernorate(saved.governorate);
+      } else {
+        sessionStorage.removeItem(DRAFT_KEY);
+      }
+    } catch {
+      sessionStorage.removeItem(DRAFT_KEY);
+    } finally {
+      setHydrated(true);
+    }
+  }, [skus]);
+
+  useEffect(() => {
+    if (!hydrated || step === 5) return;
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ step, lines, governorate, expiresAt: Date.now() + DRAFT_TTL_MS }));
+  }, [governorate, hydrated, lines, step]);
+
+  useEffect(() => {
+    stepFocus.current?.focus();
+  }, [step]);
+
+  useEffect(() => {
+    if (error) errorFocus.current?.focus();
+  }, [error]);
+
+  const discardDraft = () => {
+    sessionStorage.removeItem(DRAFT_KEY);
+    setLines(skus[0] ? [{ skuId: skus[0].id, qty: 1 }] : []);
+    setCustomerAlias('Synthetic customer');
+    setGovernorate('NOT_CONFIGURED');
+    setReview(null);
+    setError('');
+    setStep(1);
+  };
 
   const update = (index: number, patch: Partial<Line>) => {
     setReview(null);
@@ -44,6 +93,7 @@ export function CommerceLab({ skus }: { skus: Sku[] }) {
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.code ?? `HTTP_${response.status}`);
       setReview(result as Review);
+      sessionStorage.removeItem(DRAFT_KEY);
       setStep(5);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'REVIEW_FAILED');
@@ -57,7 +107,7 @@ export function CommerceLab({ skus }: { skus: Sku[] }) {
       <h2 id="commerce-lab-title">Synthetic cart review / مراجعة سلة اصطناعية</h2>
       <p className={s.muted}>Local test tool only. It never creates an order, reserves stock, captures payment or stores customer data.</p>
       <p className={s.muted} lang="ar" dir="rtl">أداة اختبار محلية فقط؛ لا تنشئ طلبًا ولا تحجز مخزونًا ولا تسجل دفعًا أو بيانات عميل.</p>
-      <p className={s.muted} aria-live="polite">Step {step} of 5: {['Cart', 'Synthetic details', 'Fulfilment', 'Review', 'Blocked confirmation'][step - 1]}</p>
+      <p ref={stepFocus} tabIndex={-1} className={s.muted} aria-live="polite">Step {step} of 5: {['Cart', 'Synthetic details', 'Fulfilment', 'Review', 'Blocked confirmation'][step - 1]}</p>
       <form onSubmit={submit} className={s.labForm} aria-busy={busy}>
         {step === 1 && lines.map((line, index) => (
           <div className={s.labLine} key={`${index}-${line.skuId}`}>
@@ -99,7 +149,7 @@ export function CommerceLab({ skus }: { skus: Sku[] }) {
             : <button className={s.btn} type="submit" disabled={busy}>{busy ? 'Reviewing…' : 'Server review / مراجعة خادمية'}</button>}
         </div>}
       </form>
-      <div role="status" aria-live="polite" className={s.labResult}>
+      <div ref={errorFocus} tabIndex={error ? -1 : undefined} role="status" aria-live="polite" className={s.labResult}>
         {error && <p className={s.err}>{error === 'PRICE_NOT_APPROVED' ? 'No approved price: checkout remains blocked / لا يوجد سعر معتمد: المسار مغلق' : error}</p>}
         {review && (
           <>
@@ -111,6 +161,7 @@ export function CommerceLab({ skus }: { skus: Sku[] }) {
           </>
         )}
       </div>
+      {step < 5 && <button className={`${s.btn} ${s.btnSecondary}`} type="button" onClick={discardDraft}>Discard synthetic draft</button>}
     </section>
   );
 }

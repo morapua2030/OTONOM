@@ -95,11 +95,23 @@ async function main() {
     rec.add('P-SAFETY', 'PORTAL', 'safety ticket: URGENT + guidance (not an emergency service); cannot be resolved before a human callback', sTicket.status === 201 && sTicket.json?.priority === 'URGENT' && sTicket.json?.emergencyService === false && early.status === 422 && early.json?.code === 'SAFETY_CALLBACK_REQUIRED' && cb.status === 200 && done.status === 200, { open: sTicket.json, early: early.json, cb: cb.status, done: done.status });
     // ---- staff service flow ----
     const tid = (await su.query(`SELECT id FROM domain.service_tickets WHERE ref=$1`, [aTicket.json?.ref])).rows[0]?.id;
-    const tri = await eng.post(`/api/admin/tickets/${tid}/status`, { status: 'TRIAGE', assignedTo: 'engineer' });
-    const diagnosis = await eng.post(`/api/admin/tickets/${tid}/diagnoses`, { diagnosis: 'Synthetic internal diagnosis must not appear in customer timeline.', partsNote: 'Synthetic internal parts note.' });
+    const tri = await eng.post(`/api/admin/tickets/${tid}/status`, { status: 'TRIAGE' });
+    const forbiddenAssignment = await store.post(`/api/admin/tickets/${tid}/assign`, { assignedTo: 'u-eng', reason: 'Synthetic unauthorized assignment attempt.', expectedRevision: tri.json?.revision });
+    const assignment = await eng.post(`/api/admin/tickets/${tid}/assign`, { assignedTo: 'u-eng', reason: 'Synthetic assignment after controlled triage.', expectedRevision: tri.json?.revision });
+    const staleAssignment = await eng.post(`/api/admin/tickets/${tid}/assign`, { assignedTo: 'u-owner', reason: 'Synthetic stale reassignment must be rejected.', expectedRevision: tri.json?.revision });
+    rec.add('P-TICKET-ASSIGN', 'PORTAL', 'assignment requires service permission, reason and current revision', forbiddenAssignment.status === 403 && assignment.status === 200 && assignment.json?.revision === tri.json?.revision + 1 && staleAssignment.status === 409, { forbidden: forbiddenAssignment.status, assigned: assignment.status, stale: staleAssignment.status });
+    const diagnosis = await eng.post(`/api/admin/tickets/${tid}/diagnoses`, {
+      diagnosticStatus: 'HYPOTHESIS',
+      observation: 'Synthetic internal observation must not appear in the customer timeline.',
+      reproduction: 'Controlled isolated fixture test repeated twice.',
+      hypothesis: 'Synthetic hypothesis awaiting supervisor review.',
+      hardwareRevision: 'SYN-REV-A',
+      softwareInfo: 'Synthetic fixture firmware only',
+      partsNote: 'No parts consumed and no billing decision.',
+    });
     const ownTimeline = await A.get(`/api/account/tickets/${aTicket.json?.ref}/timeline`);
     const foreignTimeline = await B.get(`/api/account/tickets/${aTicket.json?.ref}/timeline`);
-    rec.add('P-TICKET-TIMELINE', 'PORTAL', 'customer timeline is owner-scoped and excludes internal diagnosis text', diagnosis.status === 200 && ownTimeline.status === 200 && foreignTimeline.status === 404 && !JSON.stringify(ownTimeline.json).includes('internal diagnosis'), { diagnosis: diagnosis.status, own: ownTimeline.status, foreign: foreignTimeline.status });
+    rec.add('P-TICKET-TIMELINE', 'PORTAL', 'customer timeline is owner-scoped and excludes structured internal diagnosis text', diagnosis.status === 200 && ownTimeline.status === 200 && foreignTimeline.status === 404 && !JSON.stringify(ownTimeline.json).includes('internal observation'), { diagnosis: diagnosis.status, own: ownTimeline.status, foreign: foreignTimeline.status });
     const rma = await eng.post(`/api/admin/tickets/${tid}/rma`, {});
     const noReason = await eng.post(`/api/admin/rmas/${rma.json?.id}/transition`, { to: 'APPROVED' });
     const storeRma = await store.post(`/api/admin/rmas/${rma.json?.id}/transition`, { to: 'APPROVED', reason: 'x' });
