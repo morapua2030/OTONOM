@@ -58,7 +58,10 @@ test('synthetic checkout refresh state is tab-scoped, expiring and excludes cust
 
 test('staff queue sorting remains a fixed server-side allowlist', () => {
   const store = readFileSync(new URL('../src/components/admin/StoreView.tsx', import.meta.url), 'utf8');
+  const service = readFileSync(new URL('../src/components/admin/ServiceView.tsx', import.meta.url), 'utf8');
   assert.match(store, /const orderSorts = \{/);
   assert.match(store, /requestedSort in orderSorts/);
   assert.match(store, /data-testid="inventory-ledger"/);
+  assert.equal((store.match(/sort, page: String\(page [+-] 1\)/g) ?? []).length, 2);
+  assert.equal((service.match(/unassigned: '1'/g) ?? []).length, 2);
 });
