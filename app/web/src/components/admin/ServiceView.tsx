@@ -158,9 +158,9 @@ export async function ServiceView(props: AdminViewServerProps) {
         </div>
         )}
         {ticketPages > 1 && <nav className={s.pager} aria-label="Service ticket pages">
-          {page > 1 && <a href={`/admin/service-desk?${new URLSearchParams({ ...(query ? { q: query } : {}), ...(status ? { status } : {}), ...(priority ? { priority } : {}), page: String(page - 1) })}`}>Previous / السابق</a>}
+          {page > 1 && <a href={`/admin/service-desk?${new URLSearchParams({ ...(query ? { q: query } : {}), ...(status ? { status } : {}), ...(priority ? { priority } : {}), ...(assignee ? { assignee } : {}), ...(model ? { model } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}), ...(unassigned ? { unassigned: '1' } : {}), page: String(page - 1) })}`}>Previous / السابق</a>}
           <span>Page {Math.min(page, ticketPages)} of {ticketPages}</span>
-          {page < ticketPages && <a href={`/admin/service-desk?${new URLSearchParams({ ...(query ? { q: query } : {}), ...(status ? { status } : {}), ...(priority ? { priority } : {}), page: String(page + 1) })}`}>Next / التالي</a>}
+          {page < ticketPages && <a href={`/admin/service-desk?${new URLSearchParams({ ...(query ? { q: query } : {}), ...(status ? { status } : {}), ...(priority ? { priority } : {}), ...(assignee ? { assignee } : {}), ...(model ? { model } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}), ...(unassigned ? { unassigned: '1' } : {}), page: String(page + 1) })}`}>Next / التالي</a>}
         </nav>}
       </section>
 

@@ -182,9 +182,9 @@ export async function StoreView(props: AdminViewServerProps) {
           </table>
         </div>
         <nav className={s.pager} aria-label="Order pages">
-          {page > 1 && <a href={`/admin/store-ops?${new URLSearchParams({ ...(query ? { q: query } : {}), ...(sku ? { sku } : {}), ...(status ? { status } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}), page: String(page - 1) })}`}>Previous / السابق</a>}
+          {page > 1 && <a href={`/admin/store-ops?${new URLSearchParams({ ...(query ? { q: query } : {}), ...(sku ? { sku } : {}), ...(status ? { status } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}), sort, page: String(page - 1) })}`}>Previous / السابق</a>}
           <span>Page {Math.min(page, pages)} of {pages}</span>
-          {page < pages && <a href={`/admin/store-ops?${new URLSearchParams({ ...(query ? { q: query } : {}), ...(sku ? { sku } : {}), ...(status ? { status } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}), page: String(page + 1) })}`}>Next / التالي</a>}
+          {page < pages && <a href={`/admin/store-ops?${new URLSearchParams({ ...(query ? { q: query } : {}), ...(sku ? { sku } : {}), ...(status ? { status } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}), sort, page: String(page + 1) })}`}>Next / التالي</a>}
         </nav>
       </section>
 
