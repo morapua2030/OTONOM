@@ -79,6 +79,8 @@ test('staff queue sorting remains a fixed server-side allowlist', () => {
   assert.match(store, /const orderSorts = \{/);
   assert.match(store, /requestedSort in orderSorts/);
   assert.match(store, /data-testid="inventory-ledger"/);
+  assert.match(store, /l\.at AS created_at/);
+  assert.doesNotMatch(store, /l\.created_at/);
   assert.equal((store.match(/sort, page: String\(page [+-] 1\)/g) ?? []).length, 2);
   assert.equal((service.match(/unassigned: '1'/g) ?? []).length, 2);
 });
