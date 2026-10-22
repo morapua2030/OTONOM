@@ -38,3 +38,20 @@ export const uploadsDisabled = (env: NodeJS.ProcessEnv = process.env) => env.OTO
 /** Local-only synthetic commerce lab. It cannot be enabled on Vercel or a forced Preview runtime. */
 export const internalCommerceLabEnabled = (env: NodeJS.ProcessEnv = process.env) =>
   env.OTONOM_TEST_PAGES === '1' && env.VERCEL !== '1' && !previewLocked(env);
+
+/**
+ * Public order, warranty and customer-operation routes are executable only in the isolated local synthetic harness.
+ * Vercel is hard-denied even if an environment variable is accidentally copied to a hosted target.
+ */
+export const commercialOperationsEnabled = (env: NodeJS.ProcessEnv = process.env) =>
+  env.OTONOM_ENABLE_SYNTHETIC_COMMERCIAL_TESTS === '1' &&
+  env.OTONOM_TEST_PAGES === '1' &&
+  env.VERCEL !== '1' &&
+  !previewLocked(env);
+
+/** Personal-data RFQ writes remain local and synthetic until privacy/retention/consent are owner-approved. */
+export const publicRfqEnabled = (env: NodeJS.ProcessEnv = process.env) =>
+  env.OTONOM_ENABLE_SYNTHETIC_RFQ_TESTS === '1' &&
+  env.OTONOM_TEST_PAGES === '1' &&
+  env.VERCEL !== '1' &&
+  !previewLocked(env);

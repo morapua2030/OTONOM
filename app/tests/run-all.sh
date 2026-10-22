@@ -70,7 +70,7 @@ if ! npx --no-install tsx -e "import('./src/migrate.ts').then(async (m) => conso
 fi
 # Test-only: clear shared rate-limit buckets in the disposable clone (they persist across server restarts).
 "$PG/psql.exe" -q -d "$E2E_DB" -c 'DELETE FROM domain.rate_limits' > /dev/null
-cd "$APP/web" && (OTONOM_TRUST_PROXY=1 OTONOM_TEST_PAGES=1 npx --no-install next start -H 127.0.0.1 -p 3301 > "$OUT/server.log" 2>&1 &)
+cd "$APP/web" && (OTONOM_TRUST_PROXY=1 OTONOM_TEST_PAGES=1 OTONOM_ENABLE_SYNTHETIC_COMMERCIAL_TESTS=1 OTONOM_ENABLE_SYNTHETIC_RFQ_TESTS=1 npx --no-install next start -H 127.0.0.1 -p 3301 > "$OUT/server.log" 2>&1 &)
 for i in $(seq 1 90); do c=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3301/api/ready); [ "$c" = 200 ] && break; sleep 1; done
 echo "server ready=$c"
 cd "$APP/tests"

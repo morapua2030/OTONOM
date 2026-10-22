@@ -1,10 +1,9 @@
 import type { AdminViewServerProps } from 'payload';
 import { randomUUID } from 'node:crypto';
-import { domainDb } from '@/lib/server.ts';
+import { commercialOperationsEnabled, domainDb, internalCommerceLabEnabled } from '@/lib/server.ts';
 import { ActionForm } from './ActionForm.tsx';
 import { CommerceLab } from './CommerceLab.tsx';
 import { NoAccess, StaffShell, minorToEgp, staffOf, when } from './shell.tsx';
-import { internalCommerceLabEnabled } from '@/lib/server.ts';
 import s from './staff.module.css';
 
 /** Store back office. Customer-facing store routes stay gated by the stage (404 in PREVIEW); this view is staff-only. */
@@ -15,6 +14,7 @@ export async function StoreView(props: AdminViewServerProps) {
   if (!staff || !(staff.can('order.confirm') || staff.can('price.approve'))) return <StaffShell {...shell}>{<NoAccess need="order.confirm" />}</StaffShell>;
   const db = domainDb();
   const settings: any = await req.payload.findGlobal({ slug: 'settings', req, overrideAccess: true });
+  const effectiveStage = settings?.stage === 'COMMERCIAL' && commercialOperationsEnabled() ? 'COMMERCIAL' : 'PREVIEW';
   const search = req.searchParams;
   const allowedStatuses = ['QUOTE_PENDING', 'QUOTED', 'PENDING_REVIEW', 'CONFIRMED', 'ALLOCATED', 'SHIPPED', 'COMPLETED', 'CANCELLED', 'EXPIRED'];
   const status = allowedStatuses.includes(search.get('status') ?? '') ? search.get('status')! : '';
@@ -69,8 +69,8 @@ export async function StoreView(props: AdminViewServerProps) {
   return (
     <StaffShell {...shell}>
       <p className={s.banner} data-testid="store-stage">
-        Site stage: <strong>{settings?.stage ?? 'PREVIEW'}</strong>
-        {settings?.stage !== 'COMMERCIAL' ? ' — the customer-facing store, cart and checkout are CLOSED (server returns 404).' : ' — customer store routes are open.'}
+        Effective operations stage: <strong>{effectiveStage}</strong>
+        {effectiveStage !== 'COMMERCIAL' ? ' — the customer-facing store, cart and checkout are CLOSED (server returns 404).' : ' — local synthetic customer routes are open for isolated tests only.'}
       </p>
 
       {internalCommerceLabEnabled() && staff.can('order.confirm') && (
