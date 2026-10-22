@@ -60,9 +60,9 @@ export async function StoreView(props: AdminViewServerProps) {
   )).rows;
   const drafts = (await db.query(`SELECT p.id, s.code, p.price_minor, p.vat_included, p.proposed_by FROM domain.sku_prices p JOIN domain.skus s ON s.id=p.sku_id WHERE p.status='DRAFT' ORDER BY p.created_at`)).rows;
   const ledger = staff.can('stock.adjust') ? (await db.query(
-    `SELECT l.id, l.type, l.qty, l.reference_type, l.reference_id, l.actor, l.reason, l.created_at, s.code
+    `SELECT l.id, l.type, l.qty, l.reference_type, l.reference_id, l.actor, l.reason, l.at AS created_at, s.code
        FROM domain.inventory_ledger l JOIN domain.skus s ON s.id=l.sku_id
-      ORDER BY l.created_at DESC, l.id DESC LIMIT 50`,
+      ORDER BY l.at DESC, l.id DESC LIMIT 50`,
   )).rows : [];
   const linesOf = (id: string) => lines.filter((l) => l.order_id === id);
   const paysOf = (id: string) => pays.filter((p) => p.order_id === id);
