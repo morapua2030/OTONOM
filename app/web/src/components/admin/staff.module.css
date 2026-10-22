@@ -105,6 +105,8 @@ a.card:focus-visible { outline: 3px solid rgb(37 184 232 / 28%); outline-offset:
 .emptyState > span { display: grid; width: 42px; height: 42px; margin-block-end: 8px; place-items: center; border-radius: 50%; background: color-mix(in srgb, var(--otonom-cyan) 12%, var(--theme-elevation-0)); color: var(--otonom-blue); font-size: 25px; }
 .emptyState strong { font-size: 14px; }
 .emptyState p { max-width: 480px; margin: 4px 0 0; color: var(--theme-elevation-600); font-size: 12px; }
+.securityGrid { display: grid; gap: 13px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.securityValue { overflow-wrap: anywhere; font-size: 17px !important; letter-spacing: .01em; }
 .labForm { display: grid; gap: 10px; margin-block-start: 12px; }
 .labLine { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(100px, 160px) auto; gap: 8px; align-items: end; }
 .labLine label { display: grid; gap: 4px; font-size: 12px; }

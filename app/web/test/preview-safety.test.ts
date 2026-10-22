@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { afterEach, test } from 'node:test';
-import { internalCommerceLabEnabled, previewLocked, resolveSiteUrl, siteUsesHttps, uploadsDisabled } from '../src/lib/server.ts';
+import { commercialOperationsEnabled, internalCommerceLabEnabled, previewLocked, publicRfqEnabled, resolveSiteUrl, siteUsesHttps, uploadsDisabled } from '../src/lib/server.ts';
 
 const originalPreview = process.env.OTONOM_FORCE_PREVIEW;
 const originalUploads = process.env.OTONOM_DISABLE_UPLOADS;
@@ -30,6 +30,23 @@ test('synthetic commerce lab is local-test-only and cannot be enabled on hosted 
   assert.equal(internalCommerceLabEnabled({ OTONOM_TEST_PAGES: '1', VERCEL: '1' } as NodeJS.ProcessEnv), false);
   assert.equal(internalCommerceLabEnabled({ OTONOM_TEST_PAGES: '1', OTONOM_FORCE_PREVIEW: '1' } as NodeJS.ProcessEnv), false);
   assert.equal(internalCommerceLabEnabled({} as NodeJS.ProcessEnv), false);
+});
+
+test('commerce and warranty operations are hard-disabled on Vercel and require two explicit local test gates', () => {
+  const enabled = { OTONOM_TEST_PAGES: '1', OTONOM_ENABLE_SYNTHETIC_COMMERCIAL_TESTS: '1' } as NodeJS.ProcessEnv;
+  assert.equal(commercialOperationsEnabled(enabled), true);
+  assert.equal(commercialOperationsEnabled({ ...enabled, VERCEL: '1' } as NodeJS.ProcessEnv), false);
+  assert.equal(commercialOperationsEnabled({ ...enabled, OTONOM_FORCE_PREVIEW: '1' } as NodeJS.ProcessEnv), false);
+  assert.equal(commercialOperationsEnabled({ OTONOM_TEST_PAGES: '1' } as NodeJS.ProcessEnv), false);
+  assert.equal(commercialOperationsEnabled({ OTONOM_ENABLE_SYNTHETIC_COMMERCIAL_TESTS: '1' } as NodeJS.ProcessEnv), false);
+});
+
+test('personal-data RFQ intake is local-synthetic only until policy approval', () => {
+  const enabled = { OTONOM_TEST_PAGES: '1', OTONOM_ENABLE_SYNTHETIC_RFQ_TESTS: '1' } as NodeJS.ProcessEnv;
+  assert.equal(publicRfqEnabled(enabled), true);
+  assert.equal(publicRfqEnabled({ ...enabled, VERCEL: '1' } as NodeJS.ProcessEnv), false);
+  assert.equal(publicRfqEnabled({ ...enabled, OTONOM_FORCE_PREVIEW: '1' } as NodeJS.ProcessEnv), false);
+  assert.equal(publicRfqEnabled({ OTONOM_TEST_PAGES: '1' } as NodeJS.ProcessEnv), false);
 });
 
 test('Vercel URL fallback keeps server URLs and auth cookies on HTTPS', () => {

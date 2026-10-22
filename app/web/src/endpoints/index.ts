@@ -60,7 +60,7 @@ import {
   STAFF_ROLES,
 } from '@otonom/domain';
 import { body, guard, jsonRes, mfaOk } from '../lib/access.ts';
-import { domainDb, internalCommerceLabEnabled, previewLocked } from '../lib/server.ts';
+import { commercialOperationsEnabled, domainDb, internalCommerceLabEnabled, publicRfqEnabled } from '../lib/server.ts';
 import { validateRfq } from '../lib/rfq-validate.ts';
 import { clientIp, rateLimit } from '../lib/ratelimit.ts';
 import { chunksOf, collectPages } from '../lib/pagination.ts';
@@ -202,7 +202,7 @@ function customerOp(fn: (req: PayloadRequest, b: Record<string, unknown>, ctx: {
 }
 
 async function stage(req: PayloadRequest): Promise<string> {
-  if (previewLocked()) return 'PREVIEW';
+  if (!commercialOperationsEnabled()) return 'PREVIEW';
   const s: any = await req.payload.findGlobal({ slug: 'settings', overrideAccess: true, req });
   return s?.stage ?? 'PREVIEW';
 }
@@ -383,6 +383,7 @@ export const endpoints: Endpoint[] = [
     path: '/rfq',
     method: 'post',
     handler: async (req) => {
+      if (!publicRfqEnabled()) return jsonRes(404, { code: 'PUBLIC_INTAKE_DISABLED' });
       const rl = await rateLimit(`rfq:${clientIp(req.headers)}`, 5, 10 * 60_000);
       if (!rl.allowed) return Response.json({ code: 'RATE_LIMITED', retryAfterSec: rl.retryAfterSec }, { status: 429, headers: { 'retry-after': String(rl.retryAfterSec) } });
       const b = await body(req);

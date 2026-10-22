@@ -1,7 +1,7 @@
 import { getPayload } from 'payload';
 import config from '@payload-config';
 import type { Locale } from './i18n.ts';
-import { previewLocked } from './server.ts';
+import { commercialOperationsEnabled } from './server.ts';
 
 /** Public read model through Payload's Local API WITHOUT overrideAccess: collection read access applies (published only). */
 export async function publishedDoc(collection: 'pages' | 'case-studies', slug: string, locale: Locale) {
@@ -23,7 +23,7 @@ export async function publishableClaims(locale: Locale) {
 }
 
 export async function currentStage(): Promise<'PREVIEW' | 'COMMERCIAL'> {
-  if (previewLocked()) return 'PREVIEW';
+  if (!commercialOperationsEnabled()) return 'PREVIEW';
   const payload = await getPayload({ config });
   const s: any = await payload.findGlobal({ slug: 'settings', overrideAccess: true });
   return s?.stage ?? 'PREVIEW';

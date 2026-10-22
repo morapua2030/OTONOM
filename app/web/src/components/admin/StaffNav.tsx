@@ -14,6 +14,7 @@ export function StaffNav({ user }: ServerProps) {
     { href: '/admin/product-drafts', label: 'Product drafts', labelAr: 'مسودات المنتجات', description: 'Bilingual merchandising review', group: 'Govern', show: can(role, 'product.draft') || can(role, 'product.approve') },
     { href: '/admin/content-review', label: 'Content review', labelAr: 'مراجعة المحتوى', description: 'Editorial approval workflow', group: 'Govern', show: can(role, 'content.edit') || can(role, 'content.review') || can(role, 'content.publish') },
     { href: '/admin/kpi', label: 'KPI dashboard', labelAr: 'مؤشرات الأداء', description: 'Evidence-based commercial reporting', group: 'Govern', show: can(role, 'kpi.read') },
+    { href: '/admin/account-security', label: 'Account security', labelAr: 'أمان الحساب', description: 'Role, MFA and protected account controls', group: 'Govern', show: !!role },
   ].filter((link) => link.show).map(({ show: _show, ...link }) => link) as WorkspaceLink[];
   if (!links.length) return null;
   return <AdminWorkspaceNav links={links} />;

@@ -2,6 +2,8 @@ import type { GlobalConfig } from 'payload';
 import { perm, staffOnly } from '../lib/access.ts';
 import { KPI_IDS } from '@otonom/domain';
 import { auditRow } from '../lib/audit.ts';
+import { BusinessRuleError } from '../lib/errors.ts';
+import { commercialOperationsEnabled } from '../lib/server.ts';
 
 export const Settings: GlobalConfig = {
   slug: 'settings',
@@ -18,6 +20,12 @@ export const Settings: GlobalConfig = {
     },
   ],
   hooks: {
+    beforeChange: [
+      ({ data }) => {
+        if (data?.stage === 'COMMERCIAL' && !commercialOperationsEnabled()) throw new BusinessRuleError('COMMERCIAL_OPERATIONS_DISABLED', 503);
+        return data;
+      },
+    ],
     afterChange: [
       async ({ doc, previousDoc, req }) => {
         // every PREVIEW ⇄ COMMERCIAL flip is audited (G-1: commerce must never be switched on silently)

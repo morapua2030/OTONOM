@@ -1,5 +1,5 @@
 import type { AdminViewServerProps } from 'payload';
-import { domainDb } from '@/lib/server.ts';
+import { commercialOperationsEnabled, domainDb } from '@/lib/server.ts';
 import { NoAccess, StaffShell, minorToEgp, staffOf } from './shell.tsx';
 import s from './staff.module.css';
 
@@ -33,6 +33,7 @@ export async function OverviewView(props: AdminViewServerProps) {
   const db = domainDb();
   const count = async (collection: any, where: any) => (await req.payload.count({ collection, where, req, overrideAccess: false })).totalDocs;
   const settings: any = await req.payload.findGlobal({ slug: 'settings', req, overrideAccess: true });
+  const effectiveStage = settings?.stage === 'COMMERCIAL' && commercialOperationsEnabled() ? 'COMMERCIAL' : 'PREVIEW';
   const year = new Date().getUTCFullYear();
 
   const crm = staff.can('crm.read')
@@ -70,7 +71,7 @@ export async function OverviewView(props: AdminViewServerProps) {
   return (
     <StaffShell {...shell}>
       <p className={s.banner} data-testid="overview-stage">
-        Site stage: <strong>{settings?.stage ?? 'PREVIEW'}</strong> — customer store and warranty portal are {settings?.stage === 'COMMERCIAL' ? 'OPEN' : 'CLOSED (server returns 404)'}.
+        Effective operations stage: <strong>{effectiveStage}</strong> — customer store and warranty portal are {effectiveStage === 'COMMERCIAL' ? 'OPEN IN LOCAL SYNTHETIC TESTS' : 'CLOSED (server returns 404)'}.
       </p>
       {crm && (
         <section className={s.section} data-testid="overview-crm">

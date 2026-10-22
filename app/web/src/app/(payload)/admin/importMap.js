@@ -6,6 +6,8 @@ import { ProjectsView as ProjectsView_52b0369b50b14f6311ca8629549163eb } from '.
 import { KpiView as KpiView_109205f83ea2a8cc06c0d5512f810249 } from '../../../components/admin/KpiView'
 import { StoreView as StoreView_c5823b9986fc4257cc0312f4ce4a9e1d } from '../../../components/admin/StoreView'
 import { ServiceView as ServiceView_ad3e27291416f1a56784160d533bb966 } from '../../../components/admin/ServiceView'
+import { ProductDraftsView as ProductDraftsView_4b5ed9de17a411a0756c39d8be000287 } from '../../../components/admin/ProductDraftsView'
+import { AccountSecurityView as AccountSecurityView_3cb9f6abf7e0ca5b8b9ba5fd88383603 } from '../../../components/admin/AccountSecurityView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
 /** @type import('payload').ImportMap */
@@ -18,5 +20,7 @@ export const importMap = {
   "/components/admin/KpiView#KpiView": KpiView_109205f83ea2a8cc06c0d5512f810249,
   "/components/admin/StoreView#StoreView": StoreView_c5823b9986fc4257cc0312f4ce4a9e1d,
   "/components/admin/ServiceView#ServiceView": ServiceView_ad3e27291416f1a56784160d533bb966,
+  "/components/admin/ProductDraftsView#ProductDraftsView": ProductDraftsView_4b5ed9de17a411a0756c39d8be000287,
+  "/components/admin/AccountSecurityView#AccountSecurityView": AccountSecurityView_3cb9f6abf7e0ca5b8b9ba5fd88383603,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }

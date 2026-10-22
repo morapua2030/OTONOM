@@ -199,6 +199,12 @@ async function main() {
     const ov = { crm: await owner.exists('[data-testid="overview-crm"]'), kpi: await owner.exists('[data-testid="overview-kpi"]'), content: await owner.exists('[data-testid="overview-content"]'), store: await owner.exists('[data-testid="overview-store"]'), stage: await owner.text('[data-testid="overview-stage"]') };
     await owner.screenshot('staff-overview-owner-1366.png');
     rec.add('E2E-OVERVIEW-OWNER', 'KPI', 'owner overview shows projects, contracts, content and store blocks with the PREVIEW stage banner', ov.crm && ov.kpi && ov.content && ov.store && /PREVIEW/.test(ov.stage), ov);
+    await reload(owner, '/admin/account-security', '[data-testid="security-current"]');
+    const securityText = await owner.text('[data-testid="security-current"]');
+    const securityDirectory = await owner.exists('[data-testid="security-directory"]');
+    const ownerEmail = users.find((x) => x.role === 'OWNER')!.email;
+    rec.add('E2E-OWNER-SECURITY', 'ROLES', 'owner security view shows role and MFA posture plus the masked staff directory without the raw account address', /OWNER/.test(securityText) && /ENROLLED/.test(securityText) && /MFA VERIFIED/.test(securityText) && securityDirectory && !securityText.includes(ownerEmail), { securityDirectory, rawEmailVisible: securityText.includes(ownerEmail) });
+    await owner.screenshot('staff-account-security-owner-1366.png');
     await reload(owner, '/admin/kpi', '[data-testid="drill-totals"]');
     await owner.fill('[data-testid="drill-attribution"]', 'WEBSITE_SOURCED');
     await owner.click('[data-testid="drill-apply"]');
@@ -241,6 +247,9 @@ async function main() {
     await reload(editor, '/admin/overview', '[data-testid="overview-stage"]');
     const edOverview = { content: await editor.exists('[data-testid="overview-content"]'), crm: await editor.exists('[data-testid="overview-crm"]'), kpi: await editor.exists('[data-testid="overview-kpi"]'), store: await editor.exists('[data-testid="overview-store"]') };
     rec.add('E2E-OVERVIEW-EDITOR', 'ROLES', 'editor overview shows the content block only (no CRM, KPI or store figures)', edOverview.content && !edOverview.crm && !edOverview.kpi && !edOverview.store, edOverview);
+    await reload(editor, '/admin/account-security', '[data-testid="security-current"]');
+    const editorSecurity = { current: await editor.exists('[data-testid="security-current"]'), directory: await editor.exists('[data-testid="security-directory"]'), denied: await editor.exists('[data-testid="security-directory-denied"]') };
+    rec.add('E2E-EDITOR-SECURITY', 'ROLES', 'editor sees only their own MFA posture and an explicit OWNER-only directory state', editorSecurity.current && !editorSecurity.directory && editorSecurity.denied, editorSecurity);
     const store = await browser.newPage();
     await staffLogin(store, 'STORE');
     await reload(store, '/admin/store-ops', '[data-testid="store-stage"]');
