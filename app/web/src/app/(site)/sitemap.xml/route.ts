@@ -1,5 +1,4 @@
-import { getPayload } from 'payload';
-import config from '@payload-config';
+import { publicMarketingOnly } from '@/lib/deployment.ts';
 import { SITE_URL } from '@/lib/server.ts';
 
 export const dynamic = 'force-dynamic';
@@ -8,9 +7,14 @@ const STATIC = ['', '/about', '/solutions', '/solutions/multi-unit-developments'
 
 /** Built from PUBLISHED content only, with reciprocal hreflang alternates. */
 export async function GET() {
-  const payload = await getPayload({ config });
-  const cases = await payload.find({ collection: 'case-studies', overrideAccess: false, draft: false, depth: 0, limit: 1000 });
-  const paths = [...STATIC, ...cases.docs.map((c: any) => `/projects/${encodeURIComponent(c.slug)}`)];
+  let casePaths: string[] = [];
+  if (!publicMarketingOnly()) {
+    const [{ getPayload }, { default: config }] = await Promise.all([import('payload'), import('@payload-config')]);
+    const payload = await getPayload({ config });
+    const cases = await payload.find({ collection: 'case-studies', overrideAccess: false, draft: false, depth: 0, limit: 1000 });
+    casePaths = cases.docs.map((c: any) => `/projects/${encodeURIComponent(c.slug)}`);
+  }
+  const paths = [...STATIC, ...casePaths];
   const url = (l: string, p: string) => `${SITE_URL}/${l}${p}`;
   const body = paths
     .map((p) => `<url><loc>${url('ar', p)}</loc><xhtml:link rel="alternate" hreflang="ar" href="${url('ar', p)}"/><xhtml:link rel="alternate" hreflang="en" href="${url('en', p)}"/><xhtml:link rel="alternate" hreflang="x-default" href="${url('ar', p)}"/></url>`)

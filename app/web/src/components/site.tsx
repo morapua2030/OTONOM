@@ -50,7 +50,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
   );
 }
 
-export function SiteFooter({ locale }: { locale: Locale }) {
+export function SiteFooter({ locale, publicRelease = false }: { locale: Locale; publicRelease?: boolean }) {
   const d = t(locale);
   const L = (p: string) => `/${locale}${p}`;
   return (
@@ -84,10 +84,10 @@ export function SiteFooter({ locale }: { locale: Locale }) {
           <a href={L('/contact')}>{d.nav.contact}</a>
           <a href={L('/support')}>{d.nav.support}</a>
           <a href={L('/legal/privacy')}>{d.footer.legal}</a>
-          <a href={L('/preview')}>{d.footer.preview}</a>
+          {!publicRelease && <a href={L('/preview')}>{d.footer.preview}</a>}
         </nav>
       </div>
-      <div className="wrap footer-bottom"><span>© {d.footer.rights}</span><span>{locale === 'ar' ? 'معاينة داخلية · لا بيع عام' : 'Internal preview · no public selling'}</span></div>
+      <div className="wrap footer-bottom"><span>© {d.footer.rights}</span><span>{publicRelease ? (locale === 'ar' ? 'موقع معلومات عام · البيع الإلكتروني غير متاح' : 'Public information site · online selling unavailable') : (locale === 'ar' ? 'معاينة داخلية · لا بيع عام' : 'Internal preview · no public selling')}</span></div>
     </footer>
   );
 }

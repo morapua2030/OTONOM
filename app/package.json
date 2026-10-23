@@ -26,13 +26,13 @@
   "pnpm": {
     "onlyBuiltDependencies": [],
     "overrides": {
-      "dompurify": "3.4.16",
+      "dompurify": "3.4.17",
       "esbuild": "0.28.2",
       "sass": "1.105.2",
       "undici": "7.29.1"
     }
   },
   "devDependencies": {
-    "next": "16.4.0"
+    "next": "16.4.1"
   }
 }

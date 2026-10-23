@@ -8,6 +8,7 @@ import { Cards, Checklist, CtaBand, Faq, Steps } from '@/components/blocks.tsx';
 import { c } from '@/lib/content.ts';
 import { pageMetadata, summarise } from '@/lib/seo.ts';
 import { ProductGrid } from '@/components/products.tsx';
+import { publicMarketingOnly } from '@/lib/deployment.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,6 +54,7 @@ export default async function MarketingPage({ params }: P) {
   const locale = l as Locale;
   const d = t(locale);
   const cms = await publishedDoc('pages', slug.join('-'), locale);
+  const publicRelease = publicMarketingOnly();
   const L = (p: string) => `/${locale}${p}`;
   return (
     <>
@@ -62,7 +64,7 @@ export default async function MarketingPage({ params }: P) {
         <span aria-current="page"><Bidi text={cms?.title ?? d.pages[key].title} locale={locale} /></span>
       </nav>
       <section className="hero">
-        {!cms && <Placeholder locale={locale} />}
+        {!cms && !publicRelease && <Placeholder locale={locale} />}
         <h1>
           <Bidi text={cms?.title ?? d.pages[key].title} locale={locale} />
         </h1>
