@@ -9,6 +9,7 @@ import { Bidi } from '@/components/bidi.tsx';
 import { Cards, CtaBand, Steps } from '@/components/blocks.tsx';
 import Image from 'next/image';
 import { ProductGrid } from '@/components/products.tsx';
+import { publicMarketingOnly } from '@/lib/deployment.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +33,7 @@ export default async function Home({ params }: P) {
   const d = t(locale);
   const k = c(locale);
   const cms = await publishedDoc('pages', 'home', locale);
+  const publicRelease = publicMarketingOnly();
   const L = (p: string) => `/${locale}${p}`;
   const B = (s: string) => <Bidi text={s} locale={locale} />;
   return (
@@ -39,8 +41,8 @@ export default async function Home({ params }: P) {
       <section className="hero">
         <div className="hero-grid">
           <div className="hero-copy">
-            {!cms && <Placeholder locale={locale} />}
-            <p className="eyebrow">{B(locale === 'ar' ? 'معاينة B2B · هندسة سكنية' : 'B2B PREVIEW · RESIDENTIAL ENGINEERING')}</p>
+            {!cms && !publicRelease && <Placeholder locale={locale} />}
+            <p className="eyebrow">{B(publicRelease ? (locale === 'ar' ? 'حلول B2B · هندسة سكنية' : 'B2B SOLUTIONS · RESIDENTIAL ENGINEERING') : (locale === 'ar' ? 'معاينة B2B · هندسة سكنية' : 'B2B PREVIEW · RESIDENTIAL ENGINEERING'))}</p>
             <h1>{B(cms?.title ?? d.home.heroTitle)}</h1>
             <p className="lead">{B(cms?.summary ?? d.home.heroBody)}</p>
             <div className="actions">
@@ -51,7 +53,7 @@ export default async function Home({ params }: P) {
                 {locale === 'ar' ? 'اكتشف وحدات التحكم' : 'Explore controllers'}
               </a>
             </div>
-            <p className="hero-note">{locale === 'ar' ? 'يُراجع كل نطاق هندسيًا قبل تقديم العرض. لا توجد طلبات شراء عامة في المعاينة.' : 'Every scope is reviewed by engineering before proposal. Public ordering is not available in preview.'}</p>
+            <p className="hero-note">{publicRelease ? (locale === 'ar' ? 'يُراجع كل نطاق هندسيًا قبل تقديم العرض. البيع الإلكتروني غير متاح.' : 'Every scope is reviewed by engineering before proposal. Online selling is unavailable.') : (locale === 'ar' ? 'يُراجع كل نطاق هندسيًا قبل تقديم العرض. لا توجد طلبات شراء عامة في المعاينة.' : 'Every scope is reviewed by engineering before proposal. Public ordering is not available in preview.')}</p>
           </div>
           <aside className="hero-panel home-hero-product" aria-label={locale === 'ar' ? 'وحدة تحكم OTONOM فعلية' : 'Genuine OTONOM controller'}>
             <span>{B(locale === 'ar' ? 'وحدات تحكم OTONOM الفعلية' : 'GENUINE OTONOM CONTROLLERS')}</span>

@@ -1,5 +1,11 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { contentSecurityPolicy } from './lib/csp.ts';
+import { isAdministrativePath, isPrivatePublicRoute, protectedAdminOrigin, publicMarketingOnly } from './lib/deployment.ts';
+
+function secured(response: NextResponse, policy: string) {
+  response.headers.set('Content-Security-Policy', policy);
+  return response;
+}
 
 /**
  * Next 16 request proxy: gives every dynamic response an unpredictable CSP
@@ -9,16 +15,35 @@ import { contentSecurityPolicy } from './lib/csp.ts';
 export function proxy(request: NextRequest) {
   const nonce = crypto.randomUUID().replaceAll('-', '');
   const policy = contentSecurityPolicy(nonce);
+
+  if (publicMarketingOnly()) {
+    const { pathname, search } = request.nextUrl;
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      return secured(new NextResponse('Not Found', { status: 404, headers: { 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } }), policy);
+    }
+    if (isAdministrativePath(pathname)) {
+      const adminOrigin = protectedAdminOrigin();
+      if (!adminOrigin) {
+        return secured(new NextResponse('Not Found', { status: 404, headers: { 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } }), policy);
+      }
+      const destination = new URL(adminOrigin);
+      destination.pathname = pathname;
+      destination.search = search;
+      return secured(NextResponse.redirect(destination, 307), policy);
+    }
+    if (isPrivatePublicRoute(pathname)) {
+      return secured(new NextResponse('Not Found', { status: 404, headers: { 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } }), policy);
+    }
+  }
+
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('content-security-policy', policy);
   requestHeaders.set('x-nonce', nonce);
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
-  response.headers.set('Content-Security-Policy', policy);
-  return response;
+  return secured(response, policy);
 }
 
 export const config = {
   matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
-

@@ -34,12 +34,13 @@ test('pure Arabic text has no LTR runs; reconstruction is lossless', () => {
   for (const x of ['مثال (RC16) و 4 و6 و16 قناة — 80%.', 'OTONOM شركة مصرية']) assert.equal(isolateRuns(x).map((r) => r.s).join(''), x);
 });
 
-test('pageMetadata: canonical + reciprocal hreflang for the same path, always noindex', () => {
+test('pageMetadata: canonical, hreflang and explicit indexing mode', () => {
   const m = pageMetadata({ locale: 'ar', path: '/business/developers', title: 't' }) as any;
   assert.equal(m.alternates.canonical, '/ar/business/developers');
   assert.deepEqual(m.alternates.languages, { ar: '/ar/business/developers', en: '/en/business/developers', 'x-default': '/ar/business/developers' });
   assert.equal(m.robots.index, false);
   assert.equal((pageMetadata({ locale: 'en', path: '/', title: 't' }) as any).alternates.canonical, '/en');
+  assert.equal((pageMetadata({ locale: 'en', path: '/', title: 't', noindex: false }) as any).robots.index, true);
 });
 
 test('summarise keeps the first sentence and caps the length', () => {

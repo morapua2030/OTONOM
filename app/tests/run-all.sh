@@ -2,12 +2,14 @@
 # Full local regression: unit/domain → production build → start server (127.0.0.1:3301) → every HTTP/browser suite.
 # Writes logs + results/run-all/summary.json. Synthetic data only. Never deploys anything.
 set -u
-APP=/d/otonom/app
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+APP="$(cd "$SCRIPT_DIR/.." && pwd -P)"
+REPO_ROOT="$(cd "$APP/.." && pwd -P)"
 OUT=$APP/tests/results/run-all
 RUN_ID="$(date +%Y%m%d_%H%M%S)_$$"
-ARCHIVE=/d/otonom/execution/evidence/automated-$RUN_ID
-PG=/d/otonom/spike/architecture-feasibility-20261014/tools/pgsql/bin
-PG_PW_FILE=/d/otonom/spike/architecture-feasibility-20261014/.local-secrets/pg_superuser_pw.txt
+ARCHIVE="${OTONOM_EVIDENCE_ROOT:-$REPO_ROOT/execution/evidence}/automated-$RUN_ID"
+PG="${OTONOM_PG_BIN:-/d/otonom/spike/architecture-feasibility-20261014/tools/pgsql/bin}"
+PG_PW_FILE="${OTONOM_PG_SUPERUSER_PW_FILE:-/d/otonom/spike/architecture-feasibility-20261014/.local-secrets/pg_superuser_pw.txt}"
 E2E_DB="otonom_e2e_$(date +%Y%m%d_%H%M%S)_$$"
 CLONE_DUMP="$OUT/$E2E_DB.dump"
 CLONE_READY=0

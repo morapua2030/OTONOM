@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import type { Locale } from './i18n.ts';
 import { isolateText } from '../components/bidi.tsx';
+import { publicMarketingOnly } from './deployment.ts';
 
 /**
  * Per-page metadata: localized title/description, canonical and reciprocal hreflang for the SAME path in both locales.
@@ -10,6 +11,7 @@ export function pageMetadata(o: { locale: Locale; path: string; title: string; d
   const p = o.path === '/' ? '' : o.path;
   const title = isolateText(o.title, o.locale);
   const description = o.description ? isolateText(o.description, o.locale) : undefined;
+  const noindex = o.noindex ?? !publicMarketingOnly();
   return {
     title,
     description,
@@ -19,7 +21,7 @@ export function pageMetadata(o: { locale: Locale; path: string; title: string; d
     },
     openGraph: { title, description, locale: o.locale === 'ar' ? 'ar_EG' : 'en_US', alternateLocale: o.locale === 'ar' ? 'en_US' : 'ar_EG', type: 'website', images: ['/brand/otonom-logo.png'] },
     twitter: { card: 'summary', title, description, images: ['/brand/otonom-logo.png'] },
-    robots: { index: false, follow: false },
+    robots: { index: !noindex, follow: !noindex },
   };
 }
 
