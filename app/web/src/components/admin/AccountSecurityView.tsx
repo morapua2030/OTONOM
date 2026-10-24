@@ -1,6 +1,7 @@
 import type { AdminViewServerProps } from 'payload';
 import { STAFF_ROLES } from '@otonom/domain';
 import { mfaOk } from '@/lib/access.ts';
+import { productionOwnerPasswordOnly } from '@/lib/production-owner-auth.ts';
 import { accountSecurityProjection } from '@/lib/security-display.ts';
 import { StaffShell, staffOf } from './shell.tsx';
 import s from './staff.module.css';
@@ -12,6 +13,7 @@ export async function AccountSecurityView(props: AdminViewServerProps) {
   const currentRaw = req.user as unknown as Record<string, unknown>;
   const current = accountSecurityProjection(currentRaw);
   const isOwner = staff?.role === 'OWNER';
+  const passwordOnlyOwner = productionOwnerPasswordOnly(req.user as any);
   const shell = {
     ...props,
     title: 'Account security / أمان الحساب',
@@ -39,8 +41,8 @@ export async function AccountSecurityView(props: AdminViewServerProps) {
         <div className={s.securityGrid}>
           <div className={s.card}><span className={s.muted}>Masked identity</span><strong className={s.securityValue}><bdi>{current.email}</bdi></strong></div>
           <div className={s.card}><span className={s.muted}>Active role</span><strong className={s.securityValue}>{current.role}</strong></div>
-          <div className={s.card}><span className={s.muted}>MFA enrollment</span><strong className={s.securityValue}>{current.mfaEnabled ? 'ENROLLED' : 'ACTION REQUIRED'}</strong></div>
-          <div className={s.card}><span className={s.muted}>This session</span><strong className={s.securityValue}>{mfaOk(req.user as any) ? 'MFA VERIFIED' : 'NOT VERIFIED'}</strong></div>
+          <div className={s.card}><span className={s.muted}>Authentication policy</span><strong className={s.securityValue}>{passwordOnlyOwner ? 'OWNER PASSWORD-ONLY EXCEPTION' : current.mfaEnabled ? 'MFA ENROLLED' : 'MFA ACTION REQUIRED'}</strong></div>
+          <div className={s.card}><span className={s.muted}>This session</span><strong className={s.securityValue}>{mfaOk(req.user as any) ? (passwordOnlyOwner ? 'AUTHORIZED' : 'MFA VERIFIED') : 'NOT VERIFIED'}</strong></div>
         </div>
         <div className={s.actions}>
           <a className={`${s.btn} ${s.btnSecondary}`} href="/admin/account">Account settings</a>

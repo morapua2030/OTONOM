@@ -51,7 +51,7 @@ Test suite keys:
 | 27 | SEO | Localized title/description, canonical, hreflang, sitemap, robots noindex (preview), SEO fields | VIS SEO (79), ACC SEO | IMPLEMENTED+TESTED (indexing intentionally off) |
 | 28 | No fake app badges | CL-10 PROHIBITED in the registry; no badges in the code | ACC claims | IMPLEMENTED+TESTED |
 | 29 | Least privilege | Permission matrix, explicit access, separate DB roles | SURF (84), SEC, spike V-2 | IMPLEMENTED+TESTED |
-| 30 | Admin account safety | Session-bound TOTP, recovery codes, lockout, session invalidation | ACC MFA, CMS SESS-*, SEC AUTH | IMPLEMENTED+TESTED |
+| 30 | Admin account safety | Session-bound TOTP/recovery by default; exact DR-063 Production OWNER exception is a separate post-Payload server authorization decision bound to immutable ID/email/role/environment. Shared account/IP throttles, lockout, session invalidation and audit remain enforced | ACC MFA, CMS SESS-*, SEC AUTH; `web/test/production-owner-auth.test.ts` | IMPLEMENTED+TESTED LOCALLY; hosted Production acceptance pending |
 | 31 | Audit integrity | Append-only audit (trigger + grants), correlation ids, CMS decisions audited | CMS AUDIT-*, D-* | IMPLEMENTED+TESTED |
 | 32 | Privacy compliance | Placeholder notice only | — | **BLOCKED** (legal, B-11) |
 | 33 | Correct product choice (catalogue) | Controller / variant / addition model | D-lifecycle | PARTIAL: real catalogue BLOCKED |

@@ -15,20 +15,42 @@ export type RemoteMigrationGate = {
   expectedHost?: string;
   expectedDatabase?: string;
   forcePreview?: string;
+  forceProduction?: string;
+  neonProjectId?: string;
+  expectedNeonProjectId?: string;
 };
 
-export function assertSafeTarget(db = DB_NAME, host = PG_HOST, remote: RemoteMigrationGate = {}) {
+export type MigrationEnvironment = 'local' | 'preview' | 'production';
+
+export function assertSafeTarget(db = DB_NAME, host = PG_HOST, remote: RemoteMigrationGate = {}): MigrationEnvironment {
   const normalizedHost = host.toLowerCase();
   if (['127.0.0.1', 'localhost', '::1'].includes(normalizedHost)) {
     if (!/^otonom_(dev|test_[a-z0-9_]+|e2e_[a-z0-9_]+|restore_drill)$/.test(db)) throw new Error(`refusing to run setup/migrations against unexpected database ${db}`);
-    return;
+    return 'local';
   }
 
-  if (remote.authorization !== 'SYNTHETIC_PREVIEW_ONLY') throw new Error(`refusing to run setup/migrations against non-local host ${normalizedHost}`);
-  if (remote.forcePreview !== '1') throw new Error('remote migrations require OTONOM_FORCE_PREVIEW=1');
+  if (!['SYNTHETIC_PREVIEW_ONLY', 'ISOLATED_PRODUCTION_ONLY'].includes(remote.authorization ?? '')) {
+    throw new Error(`refusing to run setup/migrations against non-local host ${normalizedHost}`);
+  }
   if (!remote.expectedHost || normalizedHost !== remote.expectedHost.toLowerCase()) throw new Error('remote migration host does not match the explicit expected host');
   if (!remote.expectedDatabase || db !== remote.expectedDatabase) throw new Error('remote migration database does not match the explicit expected database');
-  if (/(^|[_-])(prod|production|live|customer)([_-]|$)/i.test(db)) throw new Error('remote migration database name appears production-like');
+
+  if (remote.authorization === 'SYNTHETIC_PREVIEW_ONLY') {
+    if (remote.forcePreview !== '1' || remote.forceProduction === '1') throw new Error('Preview migrations require OTONOM_FORCE_PREVIEW=1 and no Production gate');
+    if (/(^|[_-])(prod|production|live|customer)([_-]|$)/i.test(db)) throw new Error('remote migration database name appears production-like');
+    return 'preview';
+  }
+
+  if (remote.authorization === 'ISOLATED_PRODUCTION_ONLY') {
+    if (remote.forceProduction !== '1' || remote.forcePreview === '1') throw new Error('Production migrations require OTONOM_FORCE_PRODUCTION=1 and no Preview gate');
+    if (!normalizedHost.endsWith('.neon.tech')) throw new Error('Production migrations require an explicitly expected Neon host');
+    if (!remote.expectedNeonProjectId || !remote.neonProjectId || remote.neonProjectId !== remote.expectedNeonProjectId) {
+      throw new Error('Production migration Neon project id does not match the explicit expected project');
+    }
+    return 'production';
+  }
+
+  throw new Error('unreachable remote migration gate');
 }
 
 export function assertConfiguredMigrationTarget(
@@ -39,13 +61,16 @@ export function assertConfiguredMigrationTarget(
     expectedHost: process.env.OTONOM_EXPECTED_MIGRATION_HOST,
     expectedDatabase: process.env.OTONOM_EXPECTED_MIGRATION_DATABASE,
     forcePreview: process.env.OTONOM_FORCE_PREVIEW,
+    forceProduction: process.env.OTONOM_FORCE_PRODUCTION,
+    neonProjectId: process.env.NEON_PROJECT_ID,
+    expectedNeonProjectId: process.env.OTONOM_EXPECTED_NEON_PROJECT_ID,
   },
 ) {
   if (target.configuredUrl && configuredDatabase !== target.database) {
     throw new Error('OTONOM_DB does not match the database in OTONOM_ADMIN_DATABASE_URL');
   }
-  assertSafeTarget(target.database, target.host, remote);
-  return target;
+  const migrationEnvironment = assertSafeTarget(target.database, target.host, remote);
+  return { ...target, migrationEnvironment };
 }
 
 const ROLE_LOCK = 0x07070001; // arbitrary constant key for pg_advisory_lock
@@ -58,8 +83,8 @@ function ensureSecret(name: string) {
   return readFileSync(p, 'utf8').trim();
 }
 
-export function roleSecretFileName(role: 'domain' | 'cms', remoteConfigured: boolean) {
-  return remoteConfigured ? `pg_preview_${role}_pw.txt` : `pg_${role}_pw.txt`;
+export function roleSecretFileName(role: 'domain' | 'cms', environment: MigrationEnvironment) {
+  return environment === 'local' ? `pg_${role}_pw.txt` : `pg_${environment}_${role}_pw.txt`;
 }
 
 /** Create login roles (idempotent). Passwords are generated locally and never printed. */
@@ -72,7 +97,7 @@ export async function ensureRoles(): Promise<void> {
   try {
     for (const role of ['domain', 'cms'] as const) {
       const name = ROLE_NAMES[role];
-      const pw = ensureSecret(roleSecretFileName(role, target.configuredUrl));
+      const pw = ensureSecret(roleSecretFileName(role, target.migrationEnvironment));
       const ex = await c.query(`SELECT 1 FROM pg_roles WHERE rolname=$1`, [name]);
       // Neon grants a newly created role back to its creator with ADMIN but without SET.
       // SET lets the owner become the login role, rotate that role's own password, and create

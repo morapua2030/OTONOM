@@ -129,3 +129,10 @@ This record is append-only. It must distinguish local evidence, external identit
 - Vercel Git linking stopped safely with `Login Connection` required. `app/vercel.json` still sets `git.deploymentEnabled=false`; therefore no Git-triggered Preview or Production deployment occurred. Completing that persistent GitHub connection is the remaining owner-side integration action.
 - Post-push Vercel verification still showed `ssoProtection.deploymentType=all`, no Git link, exactly two READY Preview deployments, zero Production deployments, 25 Preview-only environment entries, anonymous 302 authentication redirects, and a 404 Production alias.
 - Sanitized structured evidence: `execution/evidence/s8-hosted-20261020/summary.json`.
+
+## 2026-10-24 — Production OWNER password-only decision
+
+- The owner explicitly approved DR-063 for exactly the immutable Production `team@otonomiot.com` OWNER record and accepted credential-stuffing, phishing, password-reuse, account-takeover and privileged-modification risk. No named technical approver is claimed; repository instructions name none.
+- The server policy requires the exact enable flag, Vercel Production, no Preview or marketing-only lock, the configured immutable Payload subject ID, exact canonical lower-case email and `OWNER` role. Any mismatch restores normal MFA. Actual MFA state remains separately reported; it is not synthesized.
+- Compensating controls implemented locally include three shared-database account/IP throttle buckets, Payload lockout, existing password policy/hash, generic denial responses, same-origin login protection, secure session settings, session revocation and append-only login/security auditing.
+- Focused web tests are 39/39 PASS and TypeScript is clean at this checkpoint. Production database binding, migration, private password entry, account provisioning, PR/CI, staged deployment and hosted Edge acceptance are not yet claimed.

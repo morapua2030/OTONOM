@@ -108,7 +108,10 @@ export function StaffLogin() {
       setErr(t.statusFailed);
       return;
     }
-    if (data.emailOtpRequired && !data.emailOtpVerified) await requestEmailCode();
+    if (data.passwordOnlyAuthorized === true && data.authorized === true) {
+      setStep('done');
+      window.location.assign('/admin');
+    } else if (data.emailOtpRequired && !data.emailOtpVerified) await requestEmailCode();
     else setStep(data.enrolled ? 'totp' : 'enroll');
   }
 

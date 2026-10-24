@@ -155,7 +155,7 @@ Each requirement is testable. Its acceptance tests are in doc 20.
 |---|---|---|---|
 | FR-ADM-001 | Distinct Store, Projects, Service and Content workspaces with shared identity | P0 | APR |
 | FR-IAM-001 | Role/permission model (doc 18 §3), enforced server-side, even with one account | P0 | APR |
-| FR-IAM-002 | MFA for admin and privileged staff | P0 | APR |
+| FR-IAM-002 | MFA for admin and privileged staff. Narrow exception: only the immutable Production `team@otonomiot.com` OWNER record may use password-only authentication under DR-063; every identity/environment mismatch fails closed and all other staff still require session-bound MFA | P0 | APR |
 | FR-AUD-001 | Tamper-evident audit for contract values, attribution, approvals, stock, payment verification, warranty, publication, permissions | P0 | APR |
 
 ## 7. User-visible states and exceptions

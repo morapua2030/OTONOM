@@ -10,6 +10,7 @@
     "db:setup": "tsx scripts/setup.ts",
     "payload": "payload",
     "seed": "tsx scripts/seed.ts",
+    "owner:provision:production": "tsx scripts/provision-production-owner.ts",
     "test": "node --import tsx --test test/*.test.ts"
   },
   "dependencies": {
