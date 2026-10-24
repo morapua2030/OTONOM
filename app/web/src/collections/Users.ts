@@ -56,7 +56,12 @@ export const Users: CollectionConfig = {
       },
     ],
     beforeChange: [
-      async ({ data, originalDoc, operation }) => {
+      async ({ data, originalDoc, operation, context }) => {
+        if (operation === 'update' && originalDoc && data.password !== undefined) {
+          data.sessions = [];
+          data.mfaVerifiedSids = [];
+          if (context) (context as Record<string, unknown>).passwordChanged = true;
+        }
         // Role change must invalidate every existing session of that user (not done by Payload itself)
         if (operation === 'update' && originalDoc && data.role && data.role !== originalDoc.role) {
           data.sessions = [];
@@ -66,7 +71,20 @@ export const Users: CollectionConfig = {
       },
     ],
     afterChange: [
-      async ({ doc, previousDoc, operation, req }) => {
+      async ({ doc, previousDoc, operation, req, context }) => {
+        if (operation === 'update' && context && (context as Record<string, unknown>).passwordChanged === true) {
+          await domainDb().query(`UPDATE domain.staff_auth_factors SET expires_at=now() WHERE user_id=$1`, [String(doc.id)]);
+          await domainDb().query(
+            `UPDATE domain.staff_email_otp_challenges SET status='SUPERSEDED'
+              WHERE user_id=$1 AND status IN ('PENDING','SENT')`,
+            [String(doc.id)],
+          );
+          await domainDb().query(
+            `INSERT INTO domain.audit_events(actor_type, actor_id, action, entity_type, entity_id, correlation_id)
+             VALUES ('user',$1,'user.password_changed','user',$2,$3)`,
+            [String(req.user?.id ?? doc.id), String(doc.id), randomUUID()],
+          );
+        }
         if (operation === 'update' && previousDoc && previousDoc.role !== doc.role) {
           // NOTE: separate pool => not in the same transaction as Payload's write (documented limitation)
           await domainDb().query(
