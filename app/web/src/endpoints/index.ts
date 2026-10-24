@@ -59,11 +59,25 @@ import {
   transitionProductDraft,
   STAFF_ROLES,
 } from '@otonom/domain';
-import { body, guard, jsonRes, mfaOk } from '../lib/access.ts';
+import { body, guard, jsonRes, mfaOk, mutationOriginGuard } from '../lib/access.ts';
 import { commercialOperationsEnabled, domainDb, internalCommerceLabEnabled, publicRfqEnabled } from '../lib/server.ts';
 import { validateRfq } from '../lib/rfq-validate.ts';
 import { clientIp, rateLimit } from '../lib/ratelimit.ts';
 import { chunksOf, collectPages } from '../lib/pagination.ts';
+import {
+  EMAIL_OTP_FACTOR_TTL_SECONDS,
+  EMAIL_OTP_MAX_ATTEMPTS,
+  EMAIL_OTP_RESEND_SECONDS,
+  EMAIL_OTP_TTL_SECONDS,
+  emailOtpCodeDigest,
+  emailOtpDigestMatches,
+  emailOtpIpDigest,
+  emailOtpRequiredForUser,
+  emailOtpSessionDigest,
+  generateEmailOtp,
+  sendOwnerEmailOtp,
+} from '../lib/email-otp.ts';
+import { maskEmail } from '../lib/security-display.ts';
 
 const cid = (req: PayloadRequest) => req.headers.get('x-correlation-id')?.slice(0, 80) || randomUUID();
 const param = (req: PayloadRequest, k: string) => String((req.routeParams as any)?.[k] ?? '');
@@ -260,6 +274,63 @@ async function matchesFor(req: PayloadRequest, rfq: any) {
 const loadUserSecrets =(req: PayloadRequest, id: string | number): Promise<any> =>
   req.payload.findByID({ collection: 'users', id, overrideAccess: true, showHiddenFields: true, depth: 0, req });
 
+type StaffFactor = 'EMAIL_OTP' | 'TOTP' | 'RECOVERY';
+
+async function staffFactors(req: PayloadRequest, user: any): Promise<Set<StaffFactor>> {
+  const sessionDigest = emailOtpSessionDigest(String(user._sid ?? ''));
+  const result = await domainDb().query(
+    `SELECT factor FROM domain.staff_auth_factors
+      WHERE user_id=$1 AND session_digest=$2 AND expires_at > now()`,
+    [String(user.id), sessionDigest],
+  );
+  return new Set(result.rows.map((row) => row.factor as StaffFactor));
+}
+
+async function recordStaffFactor(req: PayloadRequest, user: any, factor: StaffFactor): Promise<void> {
+  const sessionDigest = emailOtpSessionDigest(String(user._sid ?? ''));
+  await domainDb().query(
+    `INSERT INTO domain.staff_auth_factors(user_id, session_digest, factor, expires_at)
+     VALUES ($1,$2,$3,now() + ($4 * interval '1 second'))
+     ON CONFLICT (user_id, session_digest, factor)
+     DO UPDATE SET verified_at=now(), expires_at=excluded.expires_at`,
+    [String(user.id), sessionDigest, factor, EMAIL_OTP_FACTOR_TTL_SECONDS],
+  );
+}
+
+async function authorizeStaffSession(req: PayloadRequest, user: any): Promise<boolean> {
+  const factors = await staffFactors(req, user);
+  const strongSecondFactor = factors.has('TOTP') || factors.has('RECOVERY');
+  if (!strongSecondFactor || (emailOtpRequiredForUser(user) && !factors.has('EMAIL_OTP'))) return false;
+  const full = await loadUserSecrets(req, user.id);
+  const sids = Array.isArray(full?.mfaVerifiedSids) ? full.mfaVerifiedSids : [];
+  if (!sids.includes(user._sid)) {
+    await req.payload.update({
+      collection: 'users',
+      id: user.id,
+      data: { mfaVerifiedSids: [...sids, user._sid].slice(-20) } as any,
+      overrideAccess: true,
+      req,
+    });
+  }
+  return true;
+}
+
+async function requireEmailFactor(req: PayloadRequest, user: any): Promise<Response | null> {
+  if (!emailOtpRequiredForUser(user)) return null;
+  const factors = await staffFactors(req, user);
+  return factors.has('EMAIL_OTP') ? null : jsonRes(401, { code: 'EMAIL_OTP_REQUIRED' });
+}
+
+async function completeStrongFactor(req: PayloadRequest, user: any, factor: Exclude<StaffFactor, 'EMAIL_OTP'>, existingSids: unknown): Promise<boolean> {
+  if (!emailOtpRequiredForUser(user)) {
+    const sids = Array.isArray(existingSids) ? existingSids : [];
+    await req.payload.update({ collection: 'users', id: user.id, data: { mfaVerifiedSids: [...sids, user._sid].slice(-20) } as any, overrideAccess: true, req });
+    return true;
+  }
+  await recordStaffFactor(req, user, factor);
+  return authorizeStaffSession(req, user);
+}
+
 const B32 = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const randomRef = (prefix: string) => `${prefix}-${new Date().getUTCFullYear()}-${Array.from(randomBytes(6), (b) => B32[b % 32]).join('')}`;
 
@@ -273,16 +344,193 @@ export const endpoints: Endpoint[] = [
       if (!u || !u._sid) return jsonRes(401, { code: 'UNAUTHENTICATED' });
       if (!(STAFF_ROLES as readonly string[]).includes(String(u.role))) return jsonRes(403, { code: 'FORBIDDEN' });
       const full = await loadUserSecrets(req, u.id);
-      return Response.json({ enrolled: full?.mfaEnabled === true && !!full?.totpSecret }, { headers: { 'cache-control': 'no-store' } });
+      const emailOtpRequired = emailOtpRequiredForUser(u);
+      const factors = emailOtpRequired ? await staffFactors(req, u) : new Set<StaffFactor>();
+      return Response.json(
+        {
+          enrolled: full?.mfaEnabled === true && !!full?.totpSecret,
+          emailOtpRequired,
+          emailOtpVerified: factors.has('EMAIL_OTP'),
+          mfaVerified: mfaOk(u),
+        },
+        { headers: { 'cache-control': 'no-store' } },
+      );
+    },
+  },
+  {
+    path: '/mfa/email/request',
+    method: 'post',
+    handler: async (req) => {
+      const csrf = mutationOriginGuard(req);
+      if (csrf) return csrf;
+      const u = req.user as any;
+      if (!u || !u._sid) return jsonRes(401, { code: 'UNAUTHENTICATED' });
+      if (!emailOtpRequiredForUser(u)) return jsonRes(404, { code: 'EMAIL_OTP_NOT_AVAILABLE' });
+
+      const requestBody = await body(req);
+      const locale = requestBody.locale === 'ar' ? 'ar' : 'en';
+      const sessionDigest = emailOtpSessionDigest(String(u._sid));
+      const requestIpDigest = emailOtpIpDigest(clientIp(req.headers));
+      const [accountLimit, ipLimit] = await Promise.all([
+        rateLimit(`email-otp-account:${u.id}`, 5, 15 * 60_000),
+        rateLimit(`email-otp-ip:${requestIpDigest}`, 10, 15 * 60_000),
+      ]);
+      if (!accountLimit.allowed || !ipLimit.allowed) {
+        const retryAfterSec = Math.max(accountLimit.retryAfterSec, ipLimit.retryAfterSec);
+        return Response.json({ code: 'RATE_LIMITED', retryAfterSec }, { status: 429, headers: { 'cache-control': 'no-store', 'retry-after': String(retryAfterSec) } });
+      }
+
+      const recent = await domainDb().query(
+        `SELECT greatest(1, ceil(extract(epoch from (created_at + ($3 * interval '1 second') - now()))))::int AS retry_after
+           FROM domain.staff_email_otp_challenges
+          WHERE user_id=$1 AND session_digest=$2 AND status IN ('PENDING','SENT')
+            AND created_at > now() - ($3 * interval '1 second')
+          ORDER BY created_at DESC LIMIT 1`,
+        [String(u.id), sessionDigest, EMAIL_OTP_RESEND_SECONDS],
+      );
+      if (recent.rows[0]) {
+        const retryAfterSec = Number(recent.rows[0].retry_after);
+        return Response.json({ code: 'RESEND_COOLDOWN', retryAfterSec }, { status: 429, headers: { 'cache-control': 'no-store', 'retry-after': String(retryAfterSec) } });
+      }
+
+      const challengeId = randomUUID();
+      const code = generateEmailOtp();
+      const codeDigest = emailOtpCodeDigest({ challengeId, userId: String(u.id), sessionDigest, code });
+      await domainDb().query(
+        `INSERT INTO domain.staff_email_otp_challenges
+          (id,user_id,session_digest,code_digest,request_ip_digest,status,max_attempts,expires_at)
+         VALUES ($1,$2,$3,$4,$5,'PENDING',$6,now() + ($7 * interval '1 second'))`,
+        [challengeId, String(u.id), sessionDigest, codeDigest, requestIpDigest, EMAIL_OTP_MAX_ATTEMPTS, EMAIL_OTP_TTL_SECONDS],
+      );
+
+      let providerMessageId: string;
+      try {
+        ({ providerMessageId } = await sendOwnerEmailOtp({ to: String(u.email), code, challengeId, locale }));
+      } catch {
+        await domainDb().query(`UPDATE domain.staff_email_otp_challenges SET status='FAILED' WHERE id=$1 AND status='PENDING'`, [challengeId]);
+        await domainDb().query(
+          `INSERT INTO domain.audit_events(actor_type,actor_id,action,entity_type,entity_id,correlation_id)
+           VALUES ('user',$1,'mfa.email_otp_delivery_failed','user',$1,$2)`,
+          [String(u.id), cid(req)],
+        );
+        return jsonRes(503, { code: 'EMAIL_OTP_UNAVAILABLE' });
+      }
+
+      const client = await domainDb().connect();
+      try {
+        await client.query('BEGIN');
+        await client.query(
+          `UPDATE domain.staff_email_otp_challenges SET status='SUPERSEDED'
+            WHERE user_id=$1 AND session_digest=$2 AND id<>$3 AND status IN ('PENDING','SENT')`,
+          [String(u.id), sessionDigest, challengeId],
+        );
+        await client.query(
+          `UPDATE domain.staff_email_otp_challenges SET status='SENT', sent_at=now(), provider_message_id=$2
+            WHERE id=$1 AND status='PENDING'`,
+          [challengeId, providerMessageId],
+        );
+        await client.query('COMMIT');
+      } catch {
+        await client.query('ROLLBACK').catch(() => undefined);
+        return jsonRes(503, { code: 'EMAIL_OTP_UNAVAILABLE' });
+      } finally {
+        client.release();
+      }
+
+      await domainDb().query(
+        `INSERT INTO domain.audit_events(actor_type,actor_id,action,entity_type,entity_id,correlation_id)
+         VALUES ('user',$1,'mfa.email_otp_sent','user',$1,$2)`,
+        [String(u.id), cid(req)],
+      );
+      return Response.json(
+        { sent: true, expiresInSec: EMAIL_OTP_TTL_SECONDS, resendAfterSec: EMAIL_OTP_RESEND_SECONDS, destination: maskEmail(String(u.email)) },
+        { status: 202, headers: { 'cache-control': 'no-store' } },
+      );
+    },
+  },
+  {
+    path: '/mfa/email/verify',
+    method: 'post',
+    handler: async (req) => {
+      const csrf = mutationOriginGuard(req);
+      if (csrf) return csrf;
+      const u = req.user as any;
+      if (!u || !u._sid) return jsonRes(401, { code: 'UNAUTHENTICATED' });
+      if (!emailOtpRequiredForUser(u)) return jsonRes(404, { code: 'EMAIL_OTP_NOT_AVAILABLE' });
+      const code = String((await body(req)).code ?? '').trim();
+      const sessionDigest = emailOtpSessionDigest(String(u._sid));
+      const requestIpDigest = emailOtpIpDigest(clientIp(req.headers));
+      const [accountLimit, ipLimit] = await Promise.all([
+        rateLimit(`email-otp-verify-account:${u.id}`, 15, 15 * 60_000),
+        rateLimit(`email-otp-verify-ip:${requestIpDigest}`, 30, 15 * 60_000),
+      ]);
+      if (!accountLimit.allowed || !ipLimit.allowed) return jsonRes(429, { code: 'RATE_LIMITED' });
+
+      const client = await domainDb().connect();
+      let failure: 'EMAIL_OTP_INVALID' | 'EMAIL_OTP_EXPIRED' | 'EMAIL_OTP_LOCKED' | null = null;
+      try {
+        await client.query('BEGIN');
+        const challenge = (
+          await client.query(
+            `SELECT id::text, code_digest, attempts, max_attempts, expires_at
+               FROM domain.staff_email_otp_challenges
+              WHERE user_id=$1 AND session_digest=$2 AND status='SENT' AND used_at IS NULL
+              ORDER BY created_at DESC LIMIT 1 FOR UPDATE`,
+            [String(u.id), sessionDigest],
+          )
+        ).rows[0];
+        if (!challenge) {
+          failure = 'EMAIL_OTP_INVALID';
+        } else if (new Date(challenge.expires_at).getTime() <= Date.now()) {
+          await client.query(`UPDATE domain.staff_email_otp_challenges SET status='EXPIRED' WHERE id=$1`, [challenge.id]);
+          failure = 'EMAIL_OTP_EXPIRED';
+        } else if (Number(challenge.attempts) >= Number(challenge.max_attempts)) {
+          await client.query(`UPDATE domain.staff_email_otp_challenges SET status='LOCKED' WHERE id=$1`, [challenge.id]);
+          failure = 'EMAIL_OTP_LOCKED';
+        } else if (!emailOtpDigestMatches(String(challenge.code_digest), { challengeId: challenge.id, userId: String(u.id), sessionDigest, code })) {
+          const attempts = Number(challenge.attempts) + 1;
+          await client.query(
+            `UPDATE domain.staff_email_otp_challenges SET attempts=$2, status=CASE WHEN $2 >= max_attempts THEN 'LOCKED' ELSE status END WHERE id=$1`,
+            [challenge.id, attempts],
+          );
+          failure = attempts >= Number(challenge.max_attempts) ? 'EMAIL_OTP_LOCKED' : 'EMAIL_OTP_INVALID';
+        } else {
+          await client.query(
+            `UPDATE domain.staff_email_otp_challenges SET status='VERIFIED', used_at=now() WHERE id=$1 AND status='SENT' AND used_at IS NULL`,
+            [challenge.id],
+          );
+        }
+        await client.query('COMMIT');
+      } catch {
+        await client.query('ROLLBACK').catch(() => undefined);
+        return jsonRes(503, { code: 'EMAIL_OTP_UNAVAILABLE' });
+      } finally {
+        client.release();
+      }
+
+      if (failure) return jsonRes(401, { code: failure });
+      await recordStaffFactor(req, u, 'EMAIL_OTP');
+      const mfaVerified = await authorizeStaffSession(req, u);
+      await domainDb().query(
+        `INSERT INTO domain.audit_events(actor_type,actor_id,action,entity_type,entity_id,correlation_id)
+         VALUES ('user',$1,'mfa.email_otp_verified','user',$1,$2)`,
+        [String(u.id), cid(req)],
+      );
+      const full = await loadUserSecrets(req, u.id);
+      return jsonRes(200, { emailOtpVerified: true, mfaVerified, next: mfaVerified ? 'done' : full?.mfaEnabled ? 'totp' : 'enroll' });
     },
   },
   {
     path: '/mfa/enroll',
     method: 'post',
     handler: async (req) => {
+      const csrf = mutationOriginGuard(req);
+      if (csrf) return csrf;
       const u = req.user as any;
       if (!u || !u._sid) return jsonRes(401, { code: 'UNAUTHENTICATED' });
       if (!(STAFF_ROLES as readonly string[]).includes(String(u.role))) return jsonRes(403, { code: 'FORBIDDEN' });
+      const emailGate = await requireEmailFactor(req, u);
+      if (emailGate) return emailGate;
       const rl = await rateLimit(`mfa-enroll:${u.id}`, 5, 10 * 60_000);
       if (!rl.allowed) return jsonRes(429, { code: 'RATE_LIMITED' });
       const full = await loadUserSecrets(req, u.id);
@@ -309,9 +557,13 @@ export const endpoints: Endpoint[] = [
     path: '/mfa/enroll/verify',
     method: 'post',
     handler: async (req) => {
+      const csrf = mutationOriginGuard(req);
+      if (csrf) return csrf;
       const u = req.user as any;
       if (!u || !u._sid) return jsonRes(401, { code: 'UNAUTHENTICATED' });
       if (!(STAFF_ROLES as readonly string[]).includes(String(u.role))) return jsonRes(403, { code: 'FORBIDDEN' });
+      const emailGate = await requireEmailFactor(req, u);
+      if (emailGate) return emailGate;
       const rl = await rateLimit(`mfa-enroll-verify:${u.id}`, 10, 10 * 60_000);
       if (!rl.allowed) return jsonRes(429, { code: 'RATE_LIMITED' });
       const full = await loadUserSecrets(req, u.id);
@@ -327,7 +579,6 @@ export const endpoints: Endpoint[] = [
         data: {
           mfaEnabled: true,
           lastTotpStep: step,
-          mfaVerifiedSids: [u._sid],
           recoveryCodes: recoveryCodes.map((code) => createHash('sha256').update(code).digest('hex')),
         } as any,
         overrideAccess: true,
@@ -337,15 +588,20 @@ export const endpoints: Endpoint[] = [
         `INSERT INTO domain.audit_events(actor_type, actor_id, action, entity_type, entity_id, correlation_id) VALUES ('user',$1,'mfa.enrolled','user',$1,$2)`,
         [String(u.id), cid(req)],
       );
-      return Response.json({ mfaVerified: true, recoveryCodes }, { headers: { 'cache-control': 'no-store' } });
+      const mfaVerified = await completeStrongFactor(req, u, 'TOTP', full.mfaVerifiedSids);
+      return Response.json({ mfaVerified, recoveryCodes }, { headers: { 'cache-control': 'no-store' } });
     },
   },
   {
     path: '/mfa/verify',
     method: 'post',
     handler: async (req) => {
+      const csrf = mutationOriginGuard(req);
+      if (csrf) return csrf;
       const u = req.user as any;
       if (!u || !u._sid) return jsonRes(401, { code: 'UNAUTHENTICATED' });
+      const emailGate = await requireEmailFactor(req, u);
+      if (emailGate) return emailGate;
       const rl = await rateLimit(`mfa:${u.id}`, 10, 10 * 60_000);
       if (!rl.allowed) return jsonRes(429, { code: 'RATE_LIMITED' });
       const b = await body(req);
@@ -355,27 +611,33 @@ export const endpoints: Endpoint[] = [
       const step = res && res.valid && 'timeStep' in res ? Number(res.timeStep) : undefined;
       if (step === undefined || step <= Number(full.lastTotpStep ?? 0)) return jsonRes(401, { code: 'MFA_INVALID' });
       const sids = Array.isArray(full.mfaVerifiedSids) ? full.mfaVerifiedSids : [];
-      await req.payload.update({ collection: 'users', id: u.id, data: { lastTotpStep: step, mfaVerifiedSids: [...sids, u._sid].slice(-20) } as any, overrideAccess: true, req });
-      return jsonRes(200, { mfaVerified: true });
+      await req.payload.update({ collection: 'users', id: u.id, data: { lastTotpStep: step } as any, overrideAccess: true, req });
+      const mfaVerified = await completeStrongFactor(req, u, 'TOTP', sids);
+      return jsonRes(200, { mfaVerified });
     },
   },
   {
     path: '/mfa/recovery',
     method: 'post',
     handler: async (req) => {
+      const csrf = mutationOriginGuard(req);
+      if (csrf) return csrf;
       const u = req.user as any;
       if (!u || !u._sid) return jsonRes(401, { code: 'UNAUTHENTICATED' });
+      const emailGate = await requireEmailFactor(req, u);
+      if (emailGate) return emailGate;
       const h = createHash('sha256').update(String((await body(req)).code ?? '').trim()).digest('hex');
       const full = await loadUserSecrets(req, u.id);
       const codes: string[] = Array.isArray(full.recoveryCodes) ? full.recoveryCodes : [];
       if (!codes.includes(h)) return jsonRes(401, { code: 'RECOVERY_CODE_INVALID' });
       const sids = Array.isArray(full.mfaVerifiedSids) ? full.mfaVerifiedSids : [];
-      await req.payload.update({ collection: 'users', id: u.id, data: { recoveryCodes: codes.filter((c) => c !== h), mfaVerifiedSids: [...sids, u._sid].slice(-20) } as any, overrideAccess: true, req });
+      await req.payload.update({ collection: 'users', id: u.id, data: { recoveryCodes: codes.filter((c) => c !== h) } as any, overrideAccess: true, req });
       await domainDb().query(
         `INSERT INTO domain.audit_events(actor_type, actor_id, action, entity_type, entity_id, correlation_id) VALUES ('user',$1,'mfa.recovery_code_used','user',$1,$2)`,
         [String(u.id), cid(req)],
       );
-      return jsonRes(200, { mfaVerified: true });
+      const mfaVerified = await completeStrongFactor(req, u, 'RECOVERY', sids);
+      return jsonRes(200, { mfaVerified });
     },
   },
   // ---------------- Public intake: RFQ / consultation / partner inquiry (P-A, no files) ----------------

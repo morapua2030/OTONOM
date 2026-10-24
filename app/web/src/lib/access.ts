@@ -28,21 +28,25 @@ export function jsonRes(status: number, body: unknown) {
   return Response.json(body, { status, headers: { 'cache-control': 'no-store' } });
 }
 
+/** Reject cross-origin state changes while allowing non-browser clients that omit Origin. */
+export function mutationOriginGuard(req: PayloadRequest): Response | null {
+  const origin = req.headers.get('origin');
+  if (!origin || req.method === 'GET') return null;
+  try {
+    if (new URL(origin).host !== req.headers.get('host')) return jsonRes(403, { code: 'CSRF_ORIGIN_MISMATCH' });
+  } catch {
+    return jsonRes(403, { code: 'CSRF_ORIGIN_MISMATCH' });
+  }
+  return null;
+}
+
 /** Guard for custom endpoints: 401 (no session / MFA pending) or 403 (role). */
 export function guard(req: PayloadRequest, p: Permission): Response | null {
   const u = req.user as U;
   if (!u) return jsonRes(401, { code: 'UNAUTHENTICATED' });
   if (!mfaOk(u)) return jsonRes(401, { code: 'MFA_REQUIRED' });
   if (!can((u as any).role, p)) return jsonRes(403, { code: 'FORBIDDEN' });
-  const origin = req.headers.get('origin');
-  if (origin && req.method !== 'GET') {
-    try {
-      if (new URL(origin).host !== req.headers.get('host')) return jsonRes(403, { code: 'CSRF_ORIGIN_MISMATCH' });
-    } catch {
-      return jsonRes(403, { code: 'CSRF_ORIGIN_MISMATCH' });
-    }
-  }
-  return null;
+  return mutationOriginGuard(req);
 }
 
 export async function body(req: PayloadRequest): Promise<Record<string, unknown>> {

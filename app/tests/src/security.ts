@@ -65,6 +65,73 @@ async function main() {
   const editor = (await login('EDITOR')).c;
   const store = (await login('STORE')).c;
 
+  // ---------- OWNER password -> real transport seam -> email OTP -> TOTP ----------
+  const otpOwnerEmail = 'otp-owner@otonom.local';
+  const otpOwnerPassword = `Email-Otp-${randomBytes(12).toString('base64url')}aA1!`;
+  const otpCreated = await owner.post('/api/users', { email: otpOwnerEmail, password: otpOwnerPassword, role: 'OWNER' });
+  const otpOwnerId = otpCreated.json?.doc?.id;
+  try {
+    const duplicate = await owner.post('/api/users', { email: otpOwnerEmail, password: otpOwnerPassword, role: 'OWNER' });
+    const otpClient = new Client(BASE, 'email-otp-owner', true);
+    const passwordLogin = await otpClient.post('/api/users/login', { email: otpOwnerEmail, password: otpOwnerPassword });
+    const statusBefore = await otpClient.get('/api/mfa/status');
+    const deniedBefore = await otpClient.get('/api/reports/kpi');
+    const totpBeforeEmail = await otpClient.post('/api/mfa/enroll', {});
+    const csrfRequest = await otpClient.req('POST', '/api/mfa/email/request', { json: {}, headers: { origin: 'http://evil.example', 'sec-fetch-site': 'cross-site' } });
+    const requested = await otpClient.post('/api/mfa/email/request', { locale: 'ar' });
+    const cooldown = await otpClient.post('/api/mfa/email/request', {});
+    const wrong = await otpClient.post('/api/mfa/email/verify', { code: '000000' });
+    const emailVerified = await otpClient.post('/api/mfa/email/verify', { code: '483921' });
+    const replayed = await otpClient.post('/api/mfa/email/verify', { code: '483921' });
+    const deniedBeforeTotp = await otpClient.get('/api/reports/kpi');
+    const enrollment = await otpClient.post('/api/mfa/enroll', {});
+    const otpSecret = enrollment.json?.secret;
+    const enrolled = otpSecret ? await otpClient.post('/api/mfa/enroll/verify', { code: await generate({ secret: otpSecret }) }) : null;
+    const allowed = await otpClient.get('/api/reports/kpi');
+    const persisted = await otpClient.get('/api/reports/kpi');
+
+    const secondSession = new Client(BASE, 'email-otp-owner-second', true);
+    const secondLogin = await secondSession.post('/api/users/login', { email: otpOwnerEmail, password: otpOwnerPassword });
+    const crossSessionReplay = await secondSession.post('/api/mfa/email/verify', { code: '483921' });
+    const expiring = await secondSession.post('/api/mfa/email/request', {});
+    if (otpOwnerId) {
+      await su.query(
+        `UPDATE domain.staff_email_otp_challenges SET expires_at=now() - interval '1 second'
+          WHERE id=(SELECT id FROM domain.staff_email_otp_challenges WHERE user_id=$1 AND status='SENT' ORDER BY created_at DESC LIMIT 1)`,
+        [String(otpOwnerId)],
+      );
+    }
+    const expired = await secondSession.post('/api/mfa/email/verify', { code: '483921' });
+    const locking = await secondSession.post('/api/mfa/email/request', {});
+    const lockAttempts = [];
+    for (let i = 0; i < 5; i++) lockAttempts.push(await secondSession.post('/api/mfa/email/verify', { code: `00000${i}` }));
+    const lockedReplay = await secondSession.post('/api/mfa/email/verify', { code: '483921' });
+
+    const databaseState = otpOwnerId
+      ? (
+          await su.query(
+            `SELECT
+               (SELECT count(*)::int FROM cms.users WHERE lower(email)=lower($1) AND role='OWNER') AS owner_count,
+               (SELECT bool_and(length(code_digest)=64 AND code_digest <> '483921') FROM domain.staff_email_otp_challenges WHERE user_id=$2) AS codes_hashed,
+               (SELECT count(*)::int FROM domain.audit_events WHERE entity_type='user' AND entity_id=$2 AND action IN ('mfa.email_otp_sent','mfa.email_otp_verified')) AS audit_count`,
+            [otpOwnerEmail, String(otpOwnerId)],
+          )
+        ).rows[0]
+      : null;
+    const logout = await otpClient.post('/api/users/logout', {});
+    const deniedAfterLogout = await otpClient.get('/api/reports/kpi');
+
+    rec.add('SEC-EMAIL-OTP-OWNER-UNIQUE', 'AUTH', 'the configured hosted-owner path creates exactly one OWNER identity and rejects a duplicate', otpCreated.status === 201 && duplicate.status >= 400 && databaseState?.owner_count === 1, { created: otpCreated.status, duplicate: duplicate.status, ownerCount: databaseState?.owner_count });
+    rec.add('SEC-EMAIL-OTP-PASSWORD-GATE', 'AUTH', 'password establishes only an MFA-pending session; TOTP enrollment and cross-origin OTP sends are refused before email verification', passwordLogin.status === 200 && statusBefore.json?.emailOtpRequired === true && statusBefore.json?.emailOtpVerified === false && deniedBefore.status === 401 && totpBeforeEmail.status === 401 && totpBeforeEmail.json?.code === 'EMAIL_OTP_REQUIRED' && csrfRequest.status === 403, { login: passwordLogin.status, status: statusBefore.status, denied: deniedBefore.status, totpBeforeEmail: totpBeforeEmail.status, csrf: csrfRequest.status });
+    rec.add('SEC-EMAIL-OTP-SEND-COOLDOWN', 'AUTH', 'mocked delivery returns masked/no-store metadata and durable resend cooldown', requested.status === 202 && requested.headers.get('cache-control') === 'no-store' && /•/.test(String(requested.json?.destination)) && cooldown.status === 429, { requested: requested.status, cooldown: cooldown.status, destinationMasked: /•/.test(String(requested.json?.destination)) });
+    rec.add('SEC-EMAIL-OTP-VERIFY-REPLAY', 'AUTH', 'incorrect email OTP fails, correct OTP is single-use, and TOTP remains required', wrong.status === 401 && emailVerified.status === 200 && emailVerified.json?.mfaVerified === false && replayed.status === 401 && deniedBeforeTotp.status === 401, { wrong: wrong.status, correct: emailVerified.status, replay: replayed.status, beforeTotp: deniedBeforeTotp.status });
+    rec.add('SEC-EMAIL-OTP-TOTP-SESSION', 'AUTH', 'fresh TOTP enrollment completes OWNER MFA, persists the session, and logout revokes it', enrollment.status === 200 && enrolled?.status === 200 && enrolled.json?.mfaVerified === true && allowed.status === 200 && persisted.status === 200 && logout.status === 200 && deniedAfterLogout.status === 401, { enrollment: enrollment.status, complete: enrolled?.status, allowed: allowed.status, persisted: persisted.status, logout: logout.status, afterLogout: deniedAfterLogout.status });
+    rec.add('SEC-EMAIL-OTP-SESSION-EXPIRY-LOCK', 'AUTH', 'OTP challenges are session-bound, expire, and lock after five incorrect attempts', secondLogin.status === 200 && crossSessionReplay.status === 401 && expiring.status === 202 && expired.json?.code === 'EMAIL_OTP_EXPIRED' && locking.status === 202 && lockAttempts.at(-1)?.json?.code === 'EMAIL_OTP_LOCKED' && lockedReplay.status === 401, { login: secondLogin.status, crossSession: crossSessionReplay.status, expired: expired.json?.code, attempts: lockAttempts.map((attempt) => attempt.status), lockedReplay: lockedReplay.status });
+    rec.add('SEC-EMAIL-OTP-NO-PLAINTEXT', 'AUTH', 'OTP values are keyed hashes and security events are audit-recorded without OTP material', databaseState?.codes_hashed === true && Number(databaseState?.audit_count) >= 2, { codesHashed: databaseState?.codes_hashed, auditCount: databaseState?.audit_count });
+  } finally {
+    if (otpOwnerId) await owner.del(`/api/users/${otpOwnerId}`);
+  }
+
   // ---------- first-login MFA enrollment for a newly provisioned staff account ----------
   const enrollEmail = `mfa-enroll-${tag}@example.com`;
   const enrollPassword = `Enroll-${randomBytes(12).toString('base64url')}aA1!`;
