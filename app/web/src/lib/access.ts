@@ -1,14 +1,25 @@
 import type { Access, PayloadRequest } from 'payload';
 import { can, isStaff, type Permission } from '@otonom/domain';
+import { productionOwnerPasswordOnly } from './production-owner-auth.ts';
 
-type U = { id: string | number; role?: string; _sid?: string; mfaVerifiedSids?: unknown } | null | undefined;
+type U = { id: string | number; email?: string; role?: string; _sid?: string; mfaVerifiedSids?: unknown } | null | undefined;
 
-/** Staff sessions are usable only after TOTP verification bound to the Payload session id (req.user._sid). */
-export function mfaOk(user: U): boolean {
+/** True only for an actual MFA verification bound to the current Payload session id. */
+export function mfaSessionVerified(user: U): boolean {
   if (!user) return false;
   if (!isStaff(user.role)) return true;
   const sids = Array.isArray(user.mfaVerifiedSids) ? (user.mfaVerifiedSids as string[]) : [];
   return !!user._sid && sids.includes(user._sid);
+}
+
+/**
+ * Staff authorization boundary: normal session-bound MFA, or the one explicit
+ * immutable Production OWNER password-only policy after genuine Payload login.
+ */
+export function mfaOk(user: U, env: NodeJS.ProcessEnv = process.env): boolean {
+  if (!user) return false;
+  if (!isStaff(user.role)) return true;
+  return mfaSessionVerified(user) || productionOwnerPasswordOnly(user, env);
 }
 
 export const perm =

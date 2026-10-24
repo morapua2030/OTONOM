@@ -59,7 +59,7 @@ import {
   transitionProductDraft,
   STAFF_ROLES,
 } from '@otonom/domain';
-import { body, guard, jsonRes, mfaOk, mutationOriginGuard } from '../lib/access.ts';
+import { body, guard, jsonRes, mfaOk, mfaSessionVerified, mutationOriginGuard } from '../lib/access.ts';
 import { commercialOperationsEnabled, domainDb, internalCommerceLabEnabled, publicRfqEnabled } from '../lib/server.ts';
 import { validateRfq } from '../lib/rfq-validate.ts';
 import { clientIp, rateLimit } from '../lib/ratelimit.ts';
@@ -78,6 +78,7 @@ import {
   sendOwnerEmailOtp,
 } from '../lib/email-otp.ts';
 import { maskEmail } from '../lib/security-display.ts';
+import { productionOwnerPasswordOnly } from '../lib/production-owner-auth.ts';
 
 const cid = (req: PayloadRequest) => req.headers.get('x-correlation-id')?.slice(0, 80) || randomUUID();
 const param = (req: PayloadRequest, k: string) => String((req.routeParams as any)?.[k] ?? '');
@@ -344,6 +345,7 @@ export const endpoints: Endpoint[] = [
       if (!u || !u._sid) return jsonRes(401, { code: 'UNAUTHENTICATED' });
       if (!(STAFF_ROLES as readonly string[]).includes(String(u.role))) return jsonRes(403, { code: 'FORBIDDEN' });
       const full = await loadUserSecrets(req, u.id);
+      const passwordOnlyAuthorized = productionOwnerPasswordOnly(u);
       const emailOtpRequired = emailOtpRequiredForUser(u);
       const factors = emailOtpRequired ? await staffFactors(req, u) : new Set<StaffFactor>();
       return Response.json(
@@ -351,7 +353,10 @@ export const endpoints: Endpoint[] = [
           enrolled: full?.mfaEnabled === true && !!full?.totpSecret,
           emailOtpRequired,
           emailOtpVerified: factors.has('EMAIL_OTP'),
-          mfaVerified: mfaOk(u),
+          mfaVerified: mfaSessionVerified(u),
+          passwordOnlyAuthorized,
+          authorized: mfaOk(u),
+          authenticationPolicy: passwordOnlyAuthorized ? 'PRODUCTION_OWNER_PASSWORD_ONLY' : 'MFA_REQUIRED',
         },
         { headers: { 'cache-control': 'no-store' } },
       );
@@ -365,6 +370,7 @@ export const endpoints: Endpoint[] = [
       if (csrf) return csrf;
       const u = req.user as any;
       if (!u || !u._sid) return jsonRes(401, { code: 'UNAUTHENTICATED' });
+      if (productionOwnerPasswordOnly(u)) return jsonRes(404, { code: 'MFA_NOT_AVAILABLE' });
       if (!emailOtpRequiredForUser(u)) return jsonRes(404, { code: 'EMAIL_OTP_NOT_AVAILABLE' });
 
       const requestBody = await body(req);
@@ -456,6 +462,7 @@ export const endpoints: Endpoint[] = [
       if (csrf) return csrf;
       const u = req.user as any;
       if (!u || !u._sid) return jsonRes(401, { code: 'UNAUTHENTICATED' });
+      if (productionOwnerPasswordOnly(u)) return jsonRes(404, { code: 'MFA_NOT_AVAILABLE' });
       if (!emailOtpRequiredForUser(u)) return jsonRes(404, { code: 'EMAIL_OTP_NOT_AVAILABLE' });
       const code = String((await body(req)).code ?? '').trim();
       const sessionDigest = emailOtpSessionDigest(String(u._sid));
@@ -528,6 +535,7 @@ export const endpoints: Endpoint[] = [
       if (csrf) return csrf;
       const u = req.user as any;
       if (!u || !u._sid) return jsonRes(401, { code: 'UNAUTHENTICATED' });
+      if (productionOwnerPasswordOnly(u)) return jsonRes(404, { code: 'MFA_NOT_AVAILABLE' });
       if (!(STAFF_ROLES as readonly string[]).includes(String(u.role))) return jsonRes(403, { code: 'FORBIDDEN' });
       const emailGate = await requireEmailFactor(req, u);
       if (emailGate) return emailGate;
@@ -561,6 +569,7 @@ export const endpoints: Endpoint[] = [
       if (csrf) return csrf;
       const u = req.user as any;
       if (!u || !u._sid) return jsonRes(401, { code: 'UNAUTHENTICATED' });
+      if (productionOwnerPasswordOnly(u)) return jsonRes(404, { code: 'MFA_NOT_AVAILABLE' });
       if (!(STAFF_ROLES as readonly string[]).includes(String(u.role))) return jsonRes(403, { code: 'FORBIDDEN' });
       const emailGate = await requireEmailFactor(req, u);
       if (emailGate) return emailGate;
@@ -600,6 +609,7 @@ export const endpoints: Endpoint[] = [
       if (csrf) return csrf;
       const u = req.user as any;
       if (!u || !u._sid) return jsonRes(401, { code: 'UNAUTHENTICATED' });
+      if (productionOwnerPasswordOnly(u)) return jsonRes(404, { code: 'MFA_NOT_AVAILABLE' });
       const emailGate = await requireEmailFactor(req, u);
       if (emailGate) return emailGate;
       const rl = await rateLimit(`mfa:${u.id}`, 10, 10 * 60_000);
@@ -624,6 +634,7 @@ export const endpoints: Endpoint[] = [
       if (csrf) return csrf;
       const u = req.user as any;
       if (!u || !u._sid) return jsonRes(401, { code: 'UNAUTHENTICATED' });
+      if (productionOwnerPasswordOnly(u)) return jsonRes(404, { code: 'MFA_NOT_AVAILABLE' });
       const emailGate = await requireEmailFactor(req, u);
       if (emailGate) return emailGate;
       const h = createHash('sha256').update(String((await body(req)).code ?? '').trim()).digest('hex');

@@ -59,3 +59,17 @@ export async function consumeRateLimit(pool: pg.Pool, key: string, limit: number
   const hits = Number(r.rows[0].hits);
   return hits > limit ? { allowed: false, retryAfterSec: Math.max(1, Number(r.rows[0].remaining)) } : { allowed: true, retryAfterSec: 0 };
 }
+
+/** Read a bucket without consuming it. Used to count only failed authentication attempts. */
+export async function rateLimitStatus(pool: pg.Pool, key: string, limit: number, windowMs: number): Promise<{ allowed: boolean; retryAfterSec: number }> {
+  const bucket = createHmac('sha256', keySalt()).update(key).digest('base64url');
+  const r = await pool.query(
+    `SELECT hits, extract(epoch FROM (window_start + make_interval(secs => $2) - now()))::int AS remaining
+       FROM domain.rate_limits
+      WHERE bucket=$1 AND window_start > now() - make_interval(secs => $2)`,
+    [bucket, windowMs / 1000],
+  );
+  if (!r.rows[0]) return { allowed: true, retryAfterSec: 0 };
+  const hits = Number(r.rows[0].hits);
+  return hits >= limit ? { allowed: false, retryAfterSec: Math.max(1, Number(r.rows[0].remaining)) } : { allowed: true, retryAfterSec: 0 };
+}

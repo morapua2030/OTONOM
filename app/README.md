@@ -1,6 +1,6 @@
 # OTONOM Web Platform
 
-> **Synthetic data only. Public production is not authorized.** The owner deliberately keeps the source repository public; deployment is limited to an authenticated, noncommercial Vercel Preview with isolated staging infrastructure.
+> **Production marketing/admin delivery is owner-authorized subject to release gates.** Public commerce, payments, checkout, warranty activation, device control and real customer data remain prohibited. The source repository is intentionally public, so secrets, database material and private evidence must never be committed.
 > Architecture: **PROVISIONAL** (Option A from the spike: Next.js 16 + Payload CMS 3 + PostgreSQL, with a framework-independent domain package).
 > Public Commerce and Warranty remain disabled in PREVIEW. Local secrets, databases, uploads, browser profiles, and generated evidence must never be committed.
 
@@ -60,16 +60,20 @@ Settings global `stage` = PREVIEW (default) → every public commerce/portal end
 ## What is intentionally NOT done / BLOCKED
 | Item | Status | Why |
 |---|---|---|
-| Public production launch | NOT AUTHORISED | Only a protected, noncommercial Vercel Preview is approved |
+| Production marketing/admin release | IN PREPARATION | Requires isolated Neon Free migration, exact OWNER provisioning, PR/CI, staged deployment and hosted acceptance; long-term commercial use is not certified on Vercel Hobby |
 | Protected Vercel Preview | IN PREPARATION | Requires verified Vercel identity/project, deployment protection, isolated synthetic PostgreSQL, and target-platform checks |
 | Privacy notice text | BLOCKED (legal) | The RFQ form links to a placeholder |
 | Acknowledgement emails | NOT SENT | No email provider approved |
 | File uploads in public RFQ | DISABLED (variant P-A) | Security gate items (AV scanning, approved retention) not met |
 | Prices, SKUs, shipping, warranty duration, policies | BLOCKED | Owner/legal inputs missing. Placeholders only |
+| Product ratings, prices and warranty terms | BLOCKED | Only the owner-confirmed 4R/6R/16R channel counts and genuine images are public; technical/commercial fields await approval |
 | Case studies | None published | Written consent required |
 | Compatibility claims | None publishable | Evidence not reviewed (registry seeded with OWNER_REPORTED / PROHIBITED) |
 
 ## Protected Preview database migration safety
 
-Remote migrations are never automatic during a Vercel build or runtime start. An operator must use the admin connection from a secured workstation and provide all one-shot gates shown in `.env.example`: `OTONOM_ALLOW_REMOTE_MIGRATIONS=SYNTHETIC_PREVIEW_ONLY`, `OTONOM_FORCE_PREVIEW=1`, and exact expected host/database values. The guard derives the real target from `OTONOM_ADMIN_DATABASE_URL`, refuses production-like names, and requires `OTONOM_DB` to match the URL database. Do not store the admin URL or migration gate in Vercel.
-| Product ratings, prices and warranty terms | BLOCKED | Only the owner-confirmed 4R/6R/16R channel counts and genuine images are public; technical/commercial fields await approval |
+Remote migrations are never automatic during a Vercel build or runtime start. A synthetic Preview requires `OTONOM_ALLOW_REMOTE_MIGRATIONS=SYNTHETIC_PREVIEW_ONLY`, `OTONOM_FORCE_PREVIEW=1`, and exact expected host/database values. The separately approved isolated Production path instead requires `OTONOM_ALLOW_REMOTE_MIGRATIONS=ISOLATED_PRODUCTION_ONLY`, `OTONOM_FORCE_PRODUCTION=1`, exact expected host/database values, and an exact match between the provider-supplied `NEON_PROJECT_ID` and `OTONOM_EXPECTED_NEON_PROJECT_ID`. Preview and Production gates are mutually exclusive. The guard derives the real target from `OTONOM_ADMIN_DATABASE_URL` and requires `OTONOM_DB` to match its database. Do not store the admin URL or any one-shot migration gate in Vercel.
+
+## Production OWNER authentication (DR-063)
+
+One owner-approved exception permits password-only authorization for the exact immutable Production `team@otonomiot.com` OWNER record. It is evaluated server-side after genuine Payload login and requires exact Vercel Production, enable flag, canonical email, OWNER role and configured immutable subject ID; Preview, local, a recreated user or any mismatch still requires normal MFA. Actual MFA status is reported separately. Login is protected by shared account/IP throttles, Payload lockout, the 14–128 character password policy, secure cookies, origin checks, session revocation and append-only audit. The one-time provisioning script reads the owner-entered password only from stdin and must be run against the explicitly guarded Production Neon target.

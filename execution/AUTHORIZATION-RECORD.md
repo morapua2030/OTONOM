@@ -57,3 +57,14 @@ The A1–A10 decisions are recorded verbatim in the spike-level record.
 | Still prohibited | Public production launch, public commerce/warranty activation, real customer/payment data, invented claims/prices/policies, uploading local backups/databases, force-push/history rewrite, paid provisioning without owner review |
 | External stop conditions | Identity/login/2FA, charges or billing, unintended public exposure, secrets/confidential data in an upload, overwrite risk, or a critical security failure |
 | Evidence | `reports/deployment-decision-evidence.md` and `reports/private-github-protected-vercel-backup-plan.md` |
+
+## Production OWNER continuation (2026-10-24)
+
+| Field | Value |
+|---|---|
+| Provenance | Explicit owner file `OTONOM_PRODUCTION_OWNER_APPROVED_CONTINUE.md` supplied in the current conversation; no independent or named technical signoff is claimed |
+| Authorized target | Existing Vercel Production project plus the already-prepared isolated Neon Free resource `otonom-production-admin`; no paid plan, card, automatic upgrade or duplicate resource |
+| Authentication decision | Password-only for exactly one immutable Production `team@otonomiot.com` record with role `OWNER`; risks expressly accepted under DR-063; MFA unchanged for all other identities/environments |
+| Required safeguards | Strong password policy, account/IP throttling and cooldown, Payload lockout/hash, generic errors, secure cookies/origin checks, session revocation, append-only security audit, exact ID/email/role/environment binding |
+| Still prohibited | Public commerce, payments, checkout, warranty activation, device control, real customer/payment data, copying Preview/dev identities or secrets, and any unapproved cost |
+| Human gates | Official provider authentication/MFA, private password entry, unavoidable high-impact Production authorization, or unexpected cost/destructive action |

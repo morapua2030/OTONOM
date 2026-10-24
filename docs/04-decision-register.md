@@ -87,11 +87,12 @@ Owner abbreviations:
 | DR-060 | Unexplained `.git` directory in `D:\otonom` | Must not be modified or deleted | APPROVED (restriction, owner round 2) | BO | None |
 | DR-061 | Windows/VS Code/Claude Code workspace | No development there without separate authorisation | APPROVED (restriction, owner round 2) | BO | None |
 | DR-062 | Antigravity cloud workspace availability | Not verifiable from the Claude Code session (no Antigravity tool). Public sources describe Antigravity as local-first. Remote use via SSH to a cloud VM is unverified | BLOCKED | BO | Owner picks A1/A2/A3 and runs doc 31 §4 Step B |
+| DR-063 | Production OWNER authentication exception | The exact immutable Production `team@otonomiot.com` OWNER record may authenticate with owner-chosen password only. Owner explicitly accepted credential-stuffing, phishing, reuse, takeover and privileged-modification risk. Exact environment/ID/email/role matching, throttling, lockout, audit, secure cookies, CSRF controls and session revocation are mandatory; MFA remains mandatory everywhere else | APPROVED (owner, 2026-10-24) | BO | Implement, test and verify hosted Production without weakening other identities |
 
 ## 4. Status summary
 | Status | Count | Decisions |
 |---|---|---|
-| APPROVED (incl. "in principle") | 26 | DR-001–006, 008–012, 015, 017, 021, 023, 025, 027–029, 035, 038, 039, 040, 055, 060, 061 |
+| APPROVED (incl. "in principle") | 27 | DR-001–006, 008–012, 015, 017, 021, 023, 025, 027–029, 035, 038, 039, 040, 055, 060, 061, 063 |
 | CONFIRMED_BY_USER | 9 | DR-013, 014, 018, 019, 020, 026, 030, 031, 033 |
 | PROPOSED | 13 | DR-007, 037, 041 (owner-preferred), 045, 046, 047, 048, 049, 050, 051, 052, 053, 058 |
 | OPEN | 5 | DR-016, 036, 042, 044, 057 |
@@ -99,9 +100,11 @@ Owner abbreviations:
 | DEFERRED | 2 | DR-022, 034 |
 | VERIFIED_BY_AGENT | 1 | DR-056 |
 
-Total: 62 decisions (updated after owner round 2 on 2026-10-13).
+Total: 63 decisions (updated with owner Production authentication decision on 2026-10-24).
 
 ## Change log
+2.1-draft, 2026-10-24: DR-063 added from explicit owner approval; no named technical approver is recorded or invented.
+
 2.0-draft, 2026-10-13: register rebuilt from master prompt v2. DR-046…058 added. The v1 register (D-001…D-032) is archived and superseded.
 
 ## Next review decision

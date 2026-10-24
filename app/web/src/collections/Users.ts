@@ -1,8 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { ValidationError, type CollectionConfig, type FieldAccess } from 'payload';
+import { APIError, ValidationError, type CollectionConfig, type FieldAccess } from 'payload';
 import { STAFF_ROLES, can, passwordPolicyError } from '@otonom/domain';
-import { mfaOk, nobody, perm, staffOnly } from '../lib/access.ts';
-import { domainDb, siteUsesHttps } from '../lib/server.ts';
+import { mfaOk, mutationOriginGuard, nobody, perm, staffOnly } from '../lib/access.ts';
+import { domainDb, payloadSecret, siteUsesHttps } from '../lib/server.ts';
+import { clientIp, rateLimit, rateLimitStatus } from '../lib/ratelimit.ts';
+import { isUsersLoginRequest, loginIdentityDigest, normalizeLoginIdentity } from '../lib/login-security.ts';
+import { productionOwnerPasswordOnly } from '../lib/production-owner-auth.ts';
 
 const ROLES = [...STAFF_ROLES, 'CUSTOMER'];
 const ownerOnlyField: FieldAccess = ({ req }) => !!req.user && mfaOk(req.user as any) && can((req.user as any).role, 'user.role_change');
@@ -46,6 +49,85 @@ export const Users: CollectionConfig = {
     { name: 'recoveryCodes', type: 'json', access: hiddenField, admin: { hidden: true } },
   ],
   hooks: {
+    beforeOperation: [
+      async ({ args, operation, req }) => {
+        if (operation !== 'login' || !isUsersLoginRequest(req.method, req.url)) return args;
+
+        if (mutationOriginGuard(req)) {
+          throw new APIError('Authentication failed.', 403, { code: 'AUTHENTICATION_FAILED' }, true);
+        }
+
+        const submittedEmail = normalizeLoginIdentity((args as any).data?.email ?? (req as any).data?.email);
+        const accountDigest = loginIdentityDigest(submittedEmail, payloadSecret());
+        const ip = clientIp(req.headers);
+        const limits = await Promise.all([
+          rateLimitStatus(`staff-login-account-fast:${accountDigest}`, 12, 60_000),
+          rateLimitStatus(`staff-login-account-cooldown:${accountDigest}`, 25, 10 * 60_000),
+          rateLimitStatus(`staff-login-ip:${ip}`, 60, 10 * 60_000),
+        ]);
+        const denied = limits.filter((limit) => !limit.allowed);
+        if (denied.length) {
+          const retryAfterSec = Math.max(...denied.map((limit) => limit.retryAfterSec));
+          req.responseHeaders?.set('retry-after', String(retryAfterSec));
+          req.responseHeaders?.set('cache-control', 'no-store');
+          throw new APIError('Authentication failed.', 429, { code: 'AUTH_RATE_LIMITED', retryAfterSec }, true);
+        }
+        return args;
+      },
+    ],
+    afterLogin: [
+      async ({ req, user }) => {
+        await domainDb().query(
+          `INSERT INTO domain.audit_events(actor_type, actor_id, action, entity_type, entity_id, after, correlation_id)
+           VALUES ('user',$1,'user.login_succeeded','authentication',$1,$2,$3)`,
+          [
+            String(user.id),
+            JSON.stringify({ policy: productionOwnerPasswordOnly(user as any) ? 'PRODUCTION_OWNER_PASSWORD_ONLY' : 'MFA_PENDING' }),
+            req.headers.get('x-correlation-id')?.slice(0, 80) || randomUUID(),
+          ],
+        );
+        return user;
+      },
+    ],
+    afterLogout: [
+      async ({ req }) => {
+        await domainDb().query(
+          `INSERT INTO domain.audit_events(actor_type, actor_id, action, entity_type, entity_id, after, correlation_id)
+           VALUES ('user',$1,'user.logout_requested','authentication',$1,$2,$3)`,
+          [
+            String(req.user?.id ?? 'unknown'),
+            JSON.stringify({ allSessions: req.searchParams.get('allSessions') === 'true' }),
+            req.headers.get('x-correlation-id')?.slice(0, 80) || randomUUID(),
+          ],
+        );
+      },
+    ],
+    afterError: [
+      async ({ error, req }) => {
+        if (!isUsersLoginRequest(req.method, req.url)) return;
+        const submittedEmail = (req as any).data?.email;
+        const identity = loginIdentityDigest(submittedEmail, payloadSecret());
+        const ip = clientIp(req.headers);
+        try {
+          await Promise.all([
+            rateLimit(`staff-login-account-fast:${identity}`, 12, 60_000),
+            rateLimit(`staff-login-account-cooldown:${identity}`, 25, 10 * 60_000),
+            rateLimit(`staff-login-ip:${ip}`, 60, 10 * 60_000),
+            domainDb().query(
+              `INSERT INTO domain.audit_events(actor_type, actor_id, action, entity_type, entity_id, after, correlation_id)
+               VALUES ('anonymous','anonymous','user.login_failed','authentication',$1,$2,$3)`,
+              [
+                identity,
+                JSON.stringify({ outcome: 'DENIED', category: error.name === 'LockedAuth' ? 'LOCKED' : (error as Error & { status?: number }).status === 429 ? 'RATE_LIMITED' : 'AUTHENTICATION_FAILED' }),
+                req.headers.get('x-correlation-id')?.slice(0, 80) || randomUUID(),
+              ],
+            ),
+          ]);
+        } catch (auditError) {
+          req.payload.logger.error({ err: auditError, msg: 'Failed to append login denial audit event' });
+        }
+      },
+    ],
     beforeValidate: [
       ({ data, req }) => {
         if (data?.password !== undefined) {

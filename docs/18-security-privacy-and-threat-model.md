@@ -20,8 +20,8 @@ This platform handles corporate blueprints, prospective contract values, custome
 | ID | Threat | Mitigations | Test |
 |---|---|---|---|
 | T-01 | IDOR/BOLA on RFQ files, orders, tickets, devices | Server-side ownership checks on every query. Non-enumerable references. Signed short-lived URLs issued only after authz | SEC-AT-001, RFQ-AT-003, WAR-AT-001 |
-| T-02 | Admin compromise alters contracts, stock, payments, claims | MFA, re-auth for sensitive actions, least privilege, audit with reason, weekly sensitive-change digest | SEC-AT-002 |
-| T-03 | Brute force, credential stuffing, session fixation/theft | Rate limits, lockout with backoff, secure cookies (HttpOnly, Secure, SameSite), session rotation on login, idle/absolute timeouts | SEC-AT-003 |
+| T-02 | Admin compromise alters contracts, stock, payments, claims | MFA by default; DR-063 is an owner-accepted password-only exception for one immutable Production OWNER identity. Least privilege, strict RBAC, security-change audit and session revocation remain mandatory | SEC-AT-002 |
+| T-03 | Brute force, credential stuffing, session fixation/theft | Account and IP rate limits, progressive cooldown buckets, Payload lockout, strong passphrase policy, generic errors, secure cookies (HttpOnly, Secure, SameSite), session expiry/revocation | SEC-AT-003 |
 | T-04 | Malicious uploads (malware, decompression bombs, polyglots, path traversal) | Allow-list, magic bytes, size quotas, no archives, opaque keys, quarantine + scan, no server-side CAD parsing at launch | RFQ-AT-002 |
 | T-05 | Stored XSS (CMS rich text, RFQ text, service notes) | Sanitised rich text, output encoding, strict CSP with nonces, admin views escape customer text | SEC-AT-004 |
 | T-06 | CSRF / confused deputy on privileged routes | CSRF tokens or same-site + origin checks on mutations. No GET mutations | SEC-AT-005 |
@@ -82,7 +82,17 @@ Environment separation (local/test/staging/production) · secrets in a managed s
 ## 8. Single-operator risk
 No segregation of duties is possible with one person. Compensating controls: mandatory reasons on sensitive changes, immutable audit, weekly digest to a second named person, MFA, and a two-person rule enabled as soon as a second account exists (DR-051).
 
+### 8.1 Production OWNER password-only exception (DR-063)
+
+On 2026-10-24 the owner explicitly accepted credential-stuffing, phishing, password-reuse, account-takeover and privileged-modification risk for exactly one Production record: canonical email `team@otonomiot.com`, role `OWNER`, and its configured immutable Payload subject ID. The exception is not an MFA success: authorization is a separate server-side policy decision after genuine Payload password authentication.
+
+The decision fails closed unless all exact conditions hold: explicit enable flag, Vercel Production, Preview lock absent, public-marketing-only mode absent, canonical lower-case email, OWNER role and immutable subject ID. Deletion/recreation, a case variant, missing configuration, local/Preview execution or any other account restores normal session-bound MFA. Email OTP, TOTP and recovery endpoints are unavailable only to that exact exempt identity.
+
+Compensating controls are mandatory: the existing 14–128 character password policy, Payload password hashing, per-account and per-IP shared-database throttles, one-minute burst cooldown plus ten-minute account/IP windows, Payload lockout, generic login errors, Secure/HttpOnly/SameSite cookies, origin checks, eight-hour session expiry, session revocation on password/role changes, pseudonymous failed-login audit, successful-login/logout/security-change audit and unchanged OWNER RBAC. Provisioning and recovery use an owner-controlled one-time local workflow with the password on stdin; secrets must never enter argv, environment variables, files, Git, screenshots or reports.
+
 ## Change log
+2.1-draft, 2026-10-24: recorded DR-063 and the exact owner-approved Production OWNER password-only exception with compensating controls; MFA remains mandatory elsewhere.
+
 2.0-draft, 2026-10-13: created. Permission matrix from master v2 §9.2, extended with payment verification and exports.
 
 ## Next review decision

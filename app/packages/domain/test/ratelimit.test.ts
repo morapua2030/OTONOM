@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { consumeRateLimit, hostedRateLimitSalt } from '../src/ratelimit.ts';
+import { consumeRateLimit, hostedRateLimitSalt, rateLimitStatus } from '../src/ratelimit.ts';
 
 test('hosted rate-limit salt prefers the dedicated secret', () => {
   const dedicated = 'd'.repeat(43);
@@ -72,5 +72,25 @@ test('Vercel rate limiting runs without a local secret file', async () => {
     else process.env.PAYLOAD_SECRET = previous.PAYLOAD_SECRET;
     if (previous.OTONOM_RATE_LIMIT_SALT === undefined) delete process.env.OTONOM_RATE_LIMIT_SALT;
     else process.env.OTONOM_RATE_LIMIT_SALT = previous.OTONOM_RATE_LIMIT_SALT;
+  }
+});
+
+test('rate-limit status checks a failure bucket without consuming another hit', async () => {
+  const previous = process.env.PAYLOAD_SECRET;
+  process.env.PAYLOAD_SECRET = 'p'.repeat(43);
+  let sql = '';
+  const fakePool = {
+    async query(statement: string) {
+      sql = statement;
+      return { rows: [{ hits: 12, remaining: 42 }] };
+    },
+  };
+  try {
+    assert.deepEqual(await rateLimitStatus(fakePool as never, 'staff-login:synthetic', 12, 60_000), { allowed: false, retryAfterSec: 42 });
+    assert.match(sql, /^SELECT hits/);
+    assert.doesNotMatch(sql, /INSERT|UPDATE/i);
+  } finally {
+    if (previous === undefined) delete process.env.PAYLOAD_SECRET;
+    else process.env.PAYLOAD_SECRET = previous;
   }
 });
