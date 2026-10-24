@@ -103,6 +103,6 @@ export const productByModel = (model: string) => PRODUCTS.find((product) => prod
 export const localProductText = (value: Localized, locale: Locale) => value[locale];
 
 export const PRODUCT_REVIEW_NOTICE: Localized = {
-  ar: 'المواصفات الكهربائية والميكانيكية والتوافق والسعر والضمان بانتظار اعتماد المالك والمراجعة الهندسية، وليست منشورة في هذه المعاينة.',
-  en: 'Electrical, mechanical, compatibility, price and warranty details await owner approval and engineering validation and are not published in this preview.',
+  ar: 'المواصفات الكهربائية والميكانيكية والتوافق والسعر والضمان بانتظار اعتماد المالك والمراجعة الهندسية، وليست منشورة على موقع المعلومات العام.',
+  en: 'Electrical, mechanical, compatibility, price and warranty details await owner approval and engineering validation and are not published on the public information site.',
 };

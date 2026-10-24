@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { PRODUCTS, PRODUCT_MODELS, productByModel, publicProductProjection } from '../src/lib/products.ts';
+import { PRODUCTS, PRODUCT_MODELS, PRODUCT_REVIEW_NOTICE, productByModel, publicProductProjection } from '../src/lib/products.ts';
 
 const webRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -41,6 +41,12 @@ test('runtime public projection strips review-only and commercial fields', () =>
   assert.deepEqual(Object.keys(projected).sort(), ['alt', 'channels', 'fit', 'image', 'model', 'name', 'publicationStatus', 'summary']);
   assert.equal(JSON.stringify(projected).includes('UNVERIFIED'), false);
   assert.equal(JSON.stringify(projected).includes('123'), false);
+});
+
+test('public product notice uses launch-safe wording', () => {
+  assert.doesNotMatch(PRODUCT_REVIEW_NOTICE.en, /preview/i);
+  assert.doesNotMatch(PRODUCT_REVIEW_NOTICE.ar, /معاينة/);
+  assert.match(PRODUCT_REVIEW_NOTICE.en, /public information site/i);
 });
 
 test('website chrome uses the original reviewed logo asset', () => {
