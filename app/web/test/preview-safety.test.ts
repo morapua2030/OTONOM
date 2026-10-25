@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { afterEach, test } from 'node:test';
-import { commercialOperationsEnabled, internalCommerceLabEnabled, previewLocked, publicRfqEnabled, resolveSiteUrl, siteUsesHttps, uploadsDisabled } from '../src/lib/server.ts';
+import { commercialOperationsEnabled, internalCommerceLabEnabled, previewLocked, publicRfqEnabled, resolveSiteUrl, siteUsesHttps, trustedCsrfOrigins, uploadsDisabled } from '../src/lib/server.ts';
 
 const originalPreview = process.env.OTONOM_FORCE_PREVIEW;
 const originalUploads = process.env.OTONOM_DISABLE_UPLOADS;
@@ -56,6 +56,28 @@ test('Vercel URL fallback keeps server URLs and auth cookies on HTTPS', () => {
   assert.equal(resolveSiteUrl({ OTONOM_SITE_URL: 'https://preview.example.test' } as NodeJS.ProcessEnv), 'https://preview.example.test');
   assert.equal(resolveSiteUrl({} as NodeJS.ProcessEnv), 'http://127.0.0.1:3301');
   assert.equal(siteUsesHttps({} as NodeJS.ProcessEnv), false);
+});
+
+test('Payload CSRF origins include only exact explicit aliases and the immutable Vercel deployment', () => {
+  const env = {
+    VERCEL: '1',
+    VERCEL_URL: 'otonom-git-abc-team.vercel.app',
+    OTONOM_CSRF_ORIGINS: 'https://otonom-smart-home-web-team-1626.vercel.app, https://admin.example.test',
+  } as NodeJS.ProcessEnv;
+  assert.deepEqual(trustedCsrfOrigins(env), [
+    'https://otonom-smart-home-web-team-1626.vercel.app',
+    'https://admin.example.test',
+    'https://otonom-git-abc-team.vercel.app',
+  ]);
+  assert.deepEqual(trustedCsrfOrigins({ OTONOM_CSRF_ORIGINS: 'http://127.0.0.1:3301' } as NodeJS.ProcessEnv), ['http://127.0.0.1:3301']);
+  assert.throws(
+    () => trustedCsrfOrigins({ OTONOM_CSRF_ORIGINS: 'http://admin.example.test' } as NodeJS.ProcessEnv),
+    /exact HTTPS origins/,
+  );
+  assert.throws(
+    () => trustedCsrfOrigins({ OTONOM_CSRF_ORIGINS: 'https://admin.example.test/path' } as NodeJS.ProcessEnv),
+    /exact HTTPS origins/,
+  );
 });
 
 test('admin title does not mislabel hosted Preview as local', () => {

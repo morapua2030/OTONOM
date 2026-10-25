@@ -15,6 +15,42 @@ export function resolveSiteUrl(env: NodeJS.ProcessEnv = process.env): string {
   return 'http://127.0.0.1:3301';
 }
 
+/**
+ * Extra exact origins that may authenticate with Payload's session cookie.
+ *
+ * Payload automatically trusts `serverURL`; Vercel's immutable deployment URL
+ * and explicitly configured aliases are added here so protected staged aliases
+ * can perform authenticated mutations such as logout. Entries are origins only:
+ * credentials, paths, queries, fragments and insecure hosted URLs fail closed.
+ */
+export function trustedCsrfOrigins(env: NodeJS.ProcessEnv = process.env): string[] {
+  const candidates = [
+    ...(env.OTONOM_CSRF_ORIGINS ?? '').split(','),
+    env.VERCEL === '1' && env.VERCEL_URL ? `https://${env.VERCEL_URL.replace(/^https?:\/\//, '')}` : '',
+  ];
+  const origins = new Set<string>();
+
+  for (const candidate of candidates) {
+    const value = candidate.trim();
+    if (!value) continue;
+    const url = new URL(value);
+    const localHttp = url.protocol === 'http:' && (url.hostname === '127.0.0.1' || url.hostname === 'localhost');
+    if (
+      (!localHttp && url.protocol !== 'https:') ||
+      url.username ||
+      url.password ||
+      url.pathname !== '/' ||
+      url.search ||
+      url.hash
+    ) {
+      throw new Error('OTONOM_CSRF_ORIGINS must contain exact HTTPS origins only');
+    }
+    origins.add(url.origin);
+  }
+
+  return [...origins];
+}
+
 export const siteUsesHttps = (env: NodeJS.ProcessEnv = process.env) => resolveSiteUrl(env).startsWith('https://');
 export const SITE_URL = resolveSiteUrl();
 
