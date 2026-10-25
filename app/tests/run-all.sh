@@ -10,6 +10,14 @@ RUN_ID="$(date +%Y%m%d_%H%M%S)_$$"
 ARCHIVE="${OTONOM_EVIDENCE_ROOT:-$REPO_ROOT/execution/evidence}/automated-$RUN_ID"
 PG="${OTONOM_PG_BIN:-/d/otonom/spike/architecture-feasibility-20261014/tools/pgsql/bin}"
 PG_PW_FILE="${OTONOM_PG_SUPERUSER_PW_FILE:-/d/otonom/spike/architecture-feasibility-20261014/.local-secrets/pg_superuser_pw.txt}"
+# Node resolves the default secret relative to the active worktree. Export the
+# explicit host path so isolated worktrees use the same approved local test
+# cluster without copying its credential into the worktree or command line.
+if command -v cygpath >/dev/null 2>&1; then
+  export OTONOM_PG_SUPERUSER_PW_FILE="$(cygpath -w "$PG_PW_FILE")"
+else
+  export OTONOM_PG_SUPERUSER_PW_FILE="$PG_PW_FILE"
+fi
 E2E_DB="otonom_e2e_$(date +%Y%m%d_%H%M%S)_$$"
 CLONE_DUMP="$OUT/$E2E_DB.dump"
 CLONE_READY=0
@@ -50,6 +58,7 @@ trap cleanup EXIT INT TERM
 
 cd "$APP/packages/domain" && step domain pnpm test
 cd "$APP/web" && step web-unit node --import tsx --test test/*.test.ts
+cd "$APP/tests" && step release-gate pnpm run test:release-gate
 stop_server
 cd "$APP/web" && step build npx --no-install next build
 # Clone the known synthetic development database into a unique disposable target. All HTTP/browser suites and
@@ -86,6 +95,7 @@ const count=(f)=>{const t=fs.readFileSync(path.join(out,f+'.log'),'utf8');const 
 const suites={};
 suites.domain=count('domain');suites['web-unit']=count('web-unit');
 const exitOf=Object.fromEntries(steps.map(x=>[x.name,x.exit]));
+suites['release-gate']=count('release-gate');
 for (const s of ['acceptance','surface','journey','cms','portal','security','csp-edge','e2e','visual']){try{const j=JSON.parse(fs.readFileSync(path.join(out,'..',s+'-latest.json'),'utf8'));suites[s]={tests:j.total,pass:j.total-j.failed,fail:j.failed,exit:exitOf[s],at:j.at};}catch(e){suites[s]={tests:0,pass:0,fail:1,exit:exitOf[s],error:'NO FRESH RESULT (suite crashed or did not run)'};}}
 const total=Object.values(suites).reduce((a,s)=>({tests:a.tests+(s.tests||0),pass:a.pass+(s.pass||0),fail:a.fail+(s.fail||0)}),{tests:0,pass:0,fail:0});
 const summary={at:new Date().toISOString(),environment:'local Windows, 127.0.0.1, synthetic data',database:'$E2E_DB (disposable clone of otonom_dev; dropped after run)',steps,suites,total};

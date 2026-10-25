@@ -21,7 +21,10 @@
     "test:cms": "pnpm --filter @otonom/tests run cms",
     "test:portal": "pnpm --filter @otonom/tests run portal",
     "test:security": "pnpm --filter @otonom/tests run security",
-    "test:e2e": "pnpm --filter @otonom/tests run e2e"
+    "test:e2e": "pnpm --filter @otonom/tests run e2e",
+    "release:verify": "pnpm --filter @otonom/tests run release:verify",
+    "release:promote": "pnpm --filter @otonom/tests run release:promote",
+    "test:release-gate": "pnpm --filter @otonom/tests run test:release-gate"
   },
   "pnpm": {
     "onlyBuiltDependencies": [],
