@@ -60,6 +60,7 @@ export interface ReleaseEvidence {
     logoutHttpStatus: number;
     sessionCountBefore: number;
     sessionCountAfter: number;
+    sessionUnderTestRevoked: boolean;
     logoutAuditBefore: number;
     logoutAuditAfter: number;
     afterLogoutAdminDenied: boolean;
@@ -206,7 +207,19 @@ export function evaluateRelease(evidence: ReleaseEvidence, now = new Date()): Re
     result('G05', 'Auth/OWNER', [b?.realEdge, b?.deploymentId !== undefined ? b.deploymentId === c.deploymentId : undefined, b?.loginSucceeded, b?.ownerEmailMatched, b?.ownerRoleMatched], 'Real Edge OWNER password login must succeed on this deployment.', b ? [`observed=${b.observedAt}`] : []),
     result('G06', 'RBAC/anonymous', [p?.protectionEnabled, b?.anonymousAdminDenied, b?.anonymousPrivilegedApiDenied, b?.ownerRoutesAllowed], 'Staging protection, anonymous denial and OWNER authorization must all hold.', []),
     result('G07', 'Session persistence', [b?.sessionSurvivedRefresh, b?.noSessionConfusion], 'The authenticated session must survive refresh without identity confusion.', []),
-    result('G08', 'Server-side logout', [b ? b.logoutHttpStatus >= 200 && b.logoutHttpStatus < 300 : undefined, b ? b.sessionCountBefore >= 1 : undefined, b ? b.sessionCountAfter === 0 : undefined, b ? b.logoutAuditAfter === b.logoutAuditBefore + 1 : undefined], 'Logout must return success, remove the DB session and append one audit event.', b ? [`http=${b.logoutHttpStatus}`, `sessions=${b.sessionCountBefore}->${b.sessionCountAfter}`, `audits=${b.logoutAuditBefore}->${b.logoutAuditAfter}`] : []),
+    result(
+      'G08',
+      'Server-side logout',
+      [
+        b ? b.logoutHttpStatus >= 200 && b.logoutHttpStatus < 300 : undefined,
+        b ? b.sessionCountBefore >= 1 : undefined,
+        b ? b.sessionCountAfter === b.sessionCountBefore - 1 : undefined,
+        b?.sessionUnderTestRevoked,
+        b ? b.logoutAuditAfter === b.logoutAuditBefore + 1 : undefined,
+      ],
+      'Logout must return success, revoke the exact tested DB session, reduce its account session count by one and append one audit event.',
+      b ? [`http=${b.logoutHttpStatus}`, `sessions=${b.sessionCountBefore}->${b.sessionCountAfter}`, `testedSessionRevoked=${b.sessionUnderTestRevoked}`, `audits=${b.logoutAuditBefore}->${b.logoutAuditAfter}`] : [],
+    ),
     result('G09', 'After-logout denial', [b?.afterLogoutAdminDenied, b ? b.afterLogoutMeFormerOwner === false : undefined, b?.afterLogoutPrivilegedApiDenied], 'The former session must not authorize any protected surface.', []),
     result('G10', 'CSRF', [b?.csrfTrustedStaged, b?.csrfTrustedCanonical, b?.csrfUntrustedDenied, b?.csrfExactOriginsOnly], 'Exact staged and canonical origins must work; untrusted/wildcard origins must not.', []),
     result('G11', 'CSP/cookies', [b?.cspNonceObserved, b?.cspStrictDynamic, b?.cspScriptUnsafeInlineAbsent, b?.secureCookieObserved, b?.privateNoStoreObserved], 'Strict CSP, nonce, secure cookies and private no-store behavior are required.', []),
