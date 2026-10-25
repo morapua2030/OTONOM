@@ -1,6 +1,7 @@
 const ADMIN_PREFIXES = ['/admin', '/staff'];
 const PRIVATE_PREFIXES = ['/api', '/graphql'];
 const PRIVATE_LOCALIZED_PREFIXES = ['/account', '/cart', '/checkout', '/shop', '/preview', '/support/warranty'];
+const PUBLIC_ADMIN_PATHS = ['/admin/login', '/admin/forgot', '/admin/reset', '/admin/logout', '/admin/unauthorized'];
 
 const hasPathPrefix = (pathname: string, prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
 
@@ -14,6 +15,16 @@ export function publicMarketingOnly(env: NodeJS.ProcessEnv = process.env): boole
 
 export function isAdministrativePath(pathname: string): boolean {
   return ADMIN_PREFIXES.some((prefix) => hasPathPrefix(pathname, prefix));
+}
+
+/**
+ * Payload's admin shell can remain in the browser's client cache after logout.
+ * A fresh admin request without the HttpOnly auth cookie must therefore be
+ * redirected before any admin shell or cached custom view can be rendered.
+ */
+export function adminPathRequiresSessionCookie(pathname: string, hasSessionCookie: boolean): boolean {
+  if (!hasPathPrefix(pathname, '/admin') || PUBLIC_ADMIN_PATHS.some((path) => hasPathPrefix(pathname, path))) return false;
+  return !hasSessionCookie;
 }
 
 /** Routes that must never be served by the public marketing runtime. */

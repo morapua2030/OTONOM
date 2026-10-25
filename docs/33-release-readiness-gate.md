@@ -19,7 +19,7 @@ The private evidence file must contain no password, OTP/TOTP/recovery material, 
 - Provider: immutable deployment ID/URL, `READY`, Production-staged target, project identity, stable alias and deployment protection.
 - GitHub: approved protected `main` SHA and required checks.
 - Database: approved Neon Production project ID, migration count, isolation and aggregate-only session/audit evidence.
-- Browser: real Microsoft Edge login, OWNER/RBAC, refresh, logout HTTP result, DB session/audit deltas, post-logout denial, bilingual hydration, CSP/CSRF and feature-gate observations.
+- Browser: real Microsoft Edge login, OWNER/RBAC, refresh, logout HTTP result, proof that the exact tested DB session was revoked, account session/audit deltas, post-logout denial, bilingual hydration, CSP/CSRF and feature-gate observations. Other legitimate device sessions may remain; the account session count must decrease by exactly one.
 - Tooling: local regression count, build, dependency audit and secret/history scan.
 - Rollback: prior READY deployment identity, backup/hash, restore drill and migration history.
 
