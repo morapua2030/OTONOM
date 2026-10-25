@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { isAdministrativePath, isPrivatePublicRoute, protectedAdminOrigin, publicMarketingOnly } from '../src/lib/deployment.ts';
+import { adminPathRequiresSessionCookie, isAdministrativePath, isPrivatePublicRoute, protectedAdminOrigin, publicMarketingOnly } from '../src/lib/deployment.ts';
 
 test('public marketing mode is fail-closed outside Vercel Production', () => {
   const enabled = { OTONOM_PUBLIC_MARKETING_ONLY: '1', VERCEL: '1', VERCEL_ENV: 'production' } as NodeJS.ProcessEnv;
@@ -27,4 +27,15 @@ test('admin redirects accept only credential-free HTTPS Vercel deployment origin
   assert.equal(protectedAdminOrigin({ OTONOM_ADMIN_URL: 'http://protected-team.vercel.app' } as NodeJS.ProcessEnv), undefined);
   assert.equal(protectedAdminOrigin({ OTONOM_ADMIN_URL: 'https://user:pass@protected-team.vercel.app' } as NodeJS.ProcessEnv), undefined);
   assert.equal(protectedAdminOrigin({ OTONOM_ADMIN_URL: 'https://example.com' } as NodeJS.ProcessEnv), undefined);
+});
+
+test('admin shell requires the HttpOnly session cookie while authentication routes stay public', () => {
+  assert.equal(adminPathRequiresSessionCookie('/admin', false), true);
+  assert.equal(adminPathRequiresSessionCookie('/admin/account-security', false), true);
+  assert.equal(adminPathRequiresSessionCookie('/admin/account-security', true), false);
+  for (const path of ['/admin/login', '/admin/forgot', '/admin/reset/token', '/admin/logout', '/admin/unauthorized']) {
+    assert.equal(adminPathRequiresSessionCookie(path, false), false, path);
+  }
+  assert.equal(adminPathRequiresSessionCookie('/staff/login', false), false);
+  assert.equal(adminPathRequiresSessionCookie('/administrator', false), false);
 });

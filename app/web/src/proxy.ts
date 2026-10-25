@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { contentSecurityPolicy } from './lib/csp.ts';
-import { isAdministrativePath, isPrivatePublicRoute, protectedAdminOrigin, publicMarketingOnly } from './lib/deployment.ts';
+import { adminPathRequiresSessionCookie, isAdministrativePath, isPrivatePublicRoute, protectedAdminOrigin, publicMarketingOnly } from './lib/deployment.ts';
 
 function secured(response: NextResponse, policy: string) {
   response.headers.set('Content-Security-Policy', policy);
@@ -34,6 +34,16 @@ export function proxy(request: NextRequest) {
     if (isPrivatePublicRoute(pathname)) {
       return secured(new NextResponse('Not Found', { status: 404, headers: { 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } }), policy);
     }
+  }
+
+  if (adminPathRequiresSessionCookie(request.nextUrl.pathname, request.cookies.has('payload-token'))) {
+    const destination = request.nextUrl.clone();
+    destination.pathname = '/staff/login';
+    destination.search = '';
+    const response = NextResponse.redirect(destination, 307);
+    response.headers.set('cache-control', 'private, no-cache, no-store, max-age=0, must-revalidate');
+    response.headers.set('x-robots-tag', 'noindex');
+    return secured(response, policy);
   }
 
   const requestHeaders = new Headers(request.headers);

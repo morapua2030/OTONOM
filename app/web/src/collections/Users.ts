@@ -91,6 +91,12 @@ export const Users: CollectionConfig = {
     ],
     afterLogout: [
       async ({ req }) => {
+        // Prevent Back/refresh from restoring a privileged Payload shell after
+        // the durable session and cookie have been revoked.
+        const responseHeaders = req.responseHeaders ?? new Headers();
+        responseHeaders.set('cache-control', 'no-store');
+        responseHeaders.set('clear-site-data', '"cache"');
+        req.responseHeaders = responseHeaders;
         await domainDb().query(
           `INSERT INTO domain.audit_events(actor_type, actor_id, action, entity_type, entity_id, after, correlation_id)
            VALUES ('user',$1,'user.logout_requested','authentication',$1,$2,$3)`,

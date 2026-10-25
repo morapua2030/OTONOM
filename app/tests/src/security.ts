@@ -55,7 +55,14 @@ async function main() {
   const jwt = pending.c.cookies.get('payload-token') ?? '';
   const hdr = await new Client(BASE).req('GET', '/api/reports/kpi', { headers: { authorization: `JWT ${jwt}` } });
   rec.add('SEC-JWT-HEADER-MFA', 'AUTH', 'Authorization: JWT header from an MFA-pending session is still refused', hdr.status === 401, hdr.status);
-  await pending.c.post('/api/users/logout', {});
+  const pendingLogout = await pending.c.post('/api/users/logout', {});
+  rec.add(
+    'SEC-LOGOUT-CACHE-EVICTION',
+    'SESSION',
+    'logout is no-store and evicts cached privileged admin views',
+    pendingLogout.status === 200 && pendingLogout.headers.get('cache-control')?.includes('no-store') === true && pendingLogout.headers.get('clear-site-data')?.includes('"cache"') === true,
+    { status: pendingLogout.status, noStore: pendingLogout.headers.get('cache-control')?.includes('no-store') === true, cacheEviction: pendingLogout.headers.get('clear-site-data')?.includes('"cache"') === true },
+  );
   const hdr2 = await new Client(BASE).req('GET', '/api/users/me', { headers: { authorization: `JWT ${jwt}` } });
   rec.add('SEC-JWT-AFTER-LOGOUT', 'AUTH', 'a token from a logged-out session is no longer accepted', !hdr2.json?.user, hdr2.json?.user ? 'still valid' : 'rejected');
 
