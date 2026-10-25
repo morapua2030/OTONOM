@@ -5,13 +5,14 @@ import { postgresAdapter } from '@payloadcms/db-postgres';
 import { collections } from './collections/index.ts';
 import { Settings } from './globals/Settings.ts';
 import { endpoints } from './endpoints/index.ts';
-import { cmsConnString, payloadSecret, SITE_URL } from './lib/server.ts';
+import { cmsConnString, payloadSecret, SITE_URL, trustedCsrfOrigins } from './lib/server.ts';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default buildConfig({
   secret: payloadSecret(),
   serverURL: SITE_URL,
+  csrf: trustedCsrfOrigins(),
   admin: {
     user: 'users',
     importMap: { baseDir: path.resolve(dirname) },
