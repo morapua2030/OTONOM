@@ -1,48 +1,46 @@
 import type { ReactNode } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { t, type Locale } from '@/lib/i18n.ts';
+import { wave } from '@/lib/wave1.ts';
 import { Bidi } from './bidi.tsx';
 import { LangSwitch } from './LangSwitch.tsx';
 
 function NavLinks({ locale }: { locale: Locale }) {
-  const d = t(locale);
-  const L = (p: string) => `/${locale}${p}`;
-  return (
-    <>
-      <a href={L('/solutions')}>{d.nav.solutions}</a>
-      <a href={L('/business/developers')}>{d.nav.business}</a>
-      <a href={L('/products')}>{d.nav.controllers}</a>
-      <a href={L('/about')}>{d.nav.about}</a>
-      <a href={L('/contact')}>{d.nav.contact}</a>
-    </>
-  );
+  const d = wave(locale);
+  const links = [
+    ['/services', d.nav.services],
+    ['/solutions', d.nav.solutions],
+    ['/projects', d.nav.work],
+    ['/products', d.nav.products],
+    ['/about', d.nav.company],
+  ] as const;
+  return <>{links.map(([href, label]) => <Link href={`/${locale}${href}`} key={href}>{label}</Link>)}</>;
 }
 
 export function SiteHeader({ locale }: { locale: Locale }) {
   const d = t(locale);
-  const L = (p: string) => `/${locale}${p}`;
+  const w = wave(locale);
   const navLabel = locale === 'ar' ? 'القائمة الرئيسية' : 'Main navigation';
   return (
     <header className="header">
       <div className="wrap header-row">
-        <a className="brand" href={L('')} aria-label={locale === 'ar' ? 'OTONOM — الصفحة الرئيسية' : 'OTONOM — home'}>
+        <Link className="brand" href={`/${locale}`} aria-label={locale === 'ar' ? 'OTONOM — الصفحة الرئيسية' : 'OTONOM — home'}>
           <Image className="brand-logo" src="/brand/otonom-logo.png" alt="" width={776} height={719} priority />
           <span className="brand-name">{d.brand}</span>
-        </a>
-        <nav className="nav nav-desktop" aria-label={navLabel}>
-          <NavLinks locale={locale} />
-        </nav>
+        </Link>
+        <nav className="nav nav-desktop" aria-label={navLabel}><NavLinks locale={locale} /></nav>
         <div className="header-actions">
           <LangSwitch locale={locale} label={d.switchLang} />
-          <a className="btn btn-sm" href={L('/business/request-a-proposal')}>
-            {d.cta.proposal}
-          </a>
+          <Link className="btn btn-sm" href={`/${locale}/build-with-us`}>{w.nav.build}</Link>
         </div>
-        {/* no-JS disclosure menu for small screens */}
         <details className="menu-mobile">
           <summary aria-label={navLabel}>{locale === 'ar' ? 'القائمة' : 'Menu'}</summary>
           <nav className="nav nav-mobile" aria-label={navLabel}>
             <NavLinks locale={locale} />
+            <Link href={`/${locale}/engineering-process`}>{locale === 'ar' ? 'العملية الهندسية' : 'Engineering process'}</Link>
+            <Link href={`/${locale}/contact`}>{locale === 'ar' ? 'تواصل' : 'Contact'}</Link>
+            <Link href={`/${locale}/support`}>{locale === 'ar' ? 'الدعم' : 'Support'}</Link>
           </nav>
         </details>
       </div>
@@ -52,42 +50,43 @@ export function SiteHeader({ locale }: { locale: Locale }) {
 
 export function SiteFooter({ locale, publicRelease = false }: { locale: Locale; publicRelease?: boolean }) {
   const d = t(locale);
+  const w = wave(locale);
   const L = (p: string) => `/${locale}${p}`;
   return (
     <footer className="footer">
       <div className="wrap footer-grid">
         <div>
-          <a className="brand footer-brand" href={L('')} aria-label={locale === 'ar' ? 'OTONOM — الصفحة الرئيسية' : 'OTONOM — home'}>
+          <Link className="brand footer-brand" href={L('')} aria-label={locale === 'ar' ? 'OTONOM — الصفحة الرئيسية' : 'OTONOM — home'}>
             <Image className="brand-logo" src="/brand/otonom-logo.png" alt="" width={776} height={719} />
             <span className="brand-name">{d.brand}</span>
-          </a>
-          <p className="muted">
-            <Bidi text={d.pages.about.body} locale={locale} />
-          </p>
+          </Link>
+          <p className="muted"><Bidi text={w.footerBody} locale={locale} /></p>
         </div>
-        <nav aria-label={locale === 'ar' ? 'روابط الشركات' : 'Business links'}>
-          <a href={L('/business/developers')}>{locale === 'ar' ? 'للمطورين' : 'Developers'}</a>
-          <a href={L('/business/contractors')}>{locale === 'ar' ? 'للمقاولين' : 'Contractors'}</a>
-          <a href={L('/business/partners')}>{locale === 'ar' ? 'الشركاء' : 'Partners'}</a>
-          <a href={L('/business/request-a-proposal')}>{d.cta.proposal}</a>
+        <nav aria-label={locale === 'ar' ? 'الخدمات' : 'Services'}>
+          <strong>{w.nav.services}</strong>
+          {w.services.map((item) => <Link href={L(item.href)} key={item.href}>{item.title}</Link>)}
         </nav>
-        <nav aria-label={locale === 'ar' ? 'روابط الاستكشاف' : 'Explore links'}>
-          <a href={L('/solutions')}>{d.nav.solutions}</a>
-          <a href={L('/products')}>{d.nav.controllers}</a>
-          <a href={L('/products/compare')}>{locale === 'ar' ? 'قارن الوحدات' : 'Compare controllers'}</a>
-          <a href={L('/technology/integrations')}>{d.nav.technology}</a>
-          <a href={L('/projects')}>{d.nav.projects}</a>
+        <nav aria-label={locale === 'ar' ? 'استكشف' : 'Explore'}>
+          <strong>{locale === 'ar' ? 'استكشف' : 'Explore'}</strong>
+          <Link href={L('/solutions')}>{w.nav.solutions}</Link>
+          <Link href={L('/projects')}>{w.nav.work}</Link>
+          <Link href={L('/products')}>{w.nav.products}</Link>
+          <Link href={L('/engineering-process')}>{locale === 'ar' ? 'العملية الهندسية' : 'Engineering process'}</Link>
+          <Link href={L('/build-with-us')}>{w.nav.build}</Link>
         </nav>
-        <nav aria-label={locale === 'ar' ? 'روابط عامة' : 'General links'}>
-          <a href={L('/about')}>{d.nav.about}</a>
-          <a href={L('/insights')}>{d.nav.insights}</a>
-          <a href={L('/contact')}>{d.nav.contact}</a>
-          <a href={L('/support')}>{d.nav.support}</a>
-          <a href={L('/legal/privacy')}>{d.footer.legal}</a>
-          {!publicRelease && <a href={L('/preview')}>{d.footer.preview}</a>}
+        <nav aria-label={locale === 'ar' ? 'الشركة والدعم' : 'Company and support'}>
+          <strong>{locale === 'ar' ? 'الشركة والدعم' : 'Company & support'}</strong>
+          <Link href={L('/about')}>{w.nav.company}</Link>
+          <Link href={L('/contact')}>{d.nav.contact}</Link>
+          <Link href={L('/support')}>{d.nav.support}</Link>
+          <Link href={L('/legal/privacy')}>{d.footer.legal}</Link>
+          {!publicRelease && <Link href={L('/preview')}>{d.footer.preview}</Link>}
         </nav>
       </div>
-      <div className="wrap footer-bottom"><span>© {d.footer.rights}</span><span>{publicRelease ? (locale === 'ar' ? 'موقع معلومات عام · البيع الإلكتروني غير متاح' : 'Public information site · online selling unavailable') : (locale === 'ar' ? 'معاينة داخلية · لا بيع عام' : 'Internal preview · no public selling')}</span></div>
+      <div className="wrap footer-bottom">
+        <span>© OTONOM</span>
+        <span>{publicRelease ? (locale === 'ar' ? 'موقع معلومات عام · التجارة والضمان الإلكتروني غير مفعّلين' : 'Public information site · commerce and online warranty are disabled') : (locale === 'ar' ? 'معاينة محمية · لا بيع عام' : 'Protected preview · no public selling')}</span>
+      </div>
     </footer>
   );
 }
@@ -99,14 +98,8 @@ export function Placeholder({ locale }: { locale: Locale }) {
 export function Section({ title, children, locale, intro, id }: { title: string; children: ReactNode; locale?: string; intro?: string; id?: string }) {
   return (
     <section className="section" id={id}>
-      <h2>
-        <Bidi text={title} locale={locale ?? 'en'} />
-      </h2>
-      {intro && (
-        <p className="lead">
-          <Bidi text={intro} locale={locale ?? 'en'} />
-        </p>
-      )}
+      <h2><Bidi text={title} locale={locale ?? 'en'} /></h2>
+      {intro && <p className="lead"><Bidi text={intro} locale={locale ?? 'en'} /></p>}
       {children}
     </section>
   );

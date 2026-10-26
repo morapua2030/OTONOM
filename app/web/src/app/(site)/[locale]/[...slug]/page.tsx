@@ -9,6 +9,8 @@ import { c } from '@/lib/content.ts';
 import { pageMetadata, summarise } from '@/lib/seo.ts';
 import { ProductGrid } from '@/components/products.tsx';
 import { publicMarketingOnly } from '@/lib/deployment.ts';
+import { CorporatePage } from '@/components/corporate.tsx';
+import { wavePage } from '@/lib/wave1.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,8 +41,12 @@ type P = { params: Promise<{ locale: string; slug: string[] }> };
 
 export async function generateMetadata({ params }: P): Promise<Metadata> {
   const { locale, slug } = await params;
-  const key = ROUTES[slug.join('/')];
-  if (!key || !isLocale(locale)) return {};
+  if (!isLocale(locale)) return {};
+  const path = slug.join('/');
+  const corporate = wavePage(locale, path);
+  if (corporate) return pageMetadata({ locale, path: `/${path}`, title: corporate.title, description: summarise(corporate.body) });
+  const key = ROUTES[path];
+  if (!key) return {};
   const cms = await publishedDoc('pages', slug.join('-'), locale);
   const pg = t(locale).pages[key];
   return pageMetadata({ locale, path: `/${slug.join('/')}`, title: cms?.seoTitle ?? cms?.title ?? pg.title, description: cms?.seoDescription ?? summarise(cms?.summary ?? pg.body) });
@@ -48,9 +54,23 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
 
 export default async function MarketingPage({ params }: P) {
   const { locale: l, slug } = await params;
+  if (!isLocale(l)) notFound();
   const path = slug.join('/');
+  const corporate = wavePage(l, path);
+  if (corporate) {
+    const locale = l as Locale;
+    return (
+      <>
+        <nav className="breadcrumbs" aria-label={locale === 'ar' ? 'مسار الصفحة' : 'Breadcrumb'}>
+          <a href={`/${locale}`}>{locale === 'ar' ? 'الرئيسية' : 'Home'}</a>
+          <span aria-current="page"><Bidi text={corporate.title} locale={locale} /></span>
+        </nav>
+        <CorporatePage locale={locale} page={corporate} />
+      </>
+    );
+  }
   const key = ROUTES[path];
-  if (!key || !isLocale(l)) notFound();
+  if (!key) notFound();
   const locale = l as Locale;
   const d = t(locale);
   const cms = await publishedDoc('pages', slug.join('-'), locale);

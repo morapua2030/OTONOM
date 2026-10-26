@@ -12,6 +12,7 @@
     "portal": "tsx src/portal.ts",
     "security": "tsx src/security.ts",
     "csp-edge": "tsx src/csp-edge.ts",
+    "wave1:browser": "tsx src/wave1-browser.ts",
     "e2e": "tsx src/e2e.ts",
     "release:verify": "tsx src/release-gate.ts",
     "release:promote": "tsx src/release-promote.ts",
