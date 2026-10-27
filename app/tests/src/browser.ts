@@ -133,6 +133,22 @@ export class Page {
   async offline(on: boolean) {
     await this.cdp.send('Network.emulateNetworkConditions', { offline: on, latency: 0, downloadThroughput: -1, uploadThroughput: -1 }, this.sid);
   }
+  /** Emulate the user's reduced-motion preference for accessibility verification. */
+  async reducedMotion(on = true) {
+    await this.cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: on ? 'reduce' : 'no-preference' }] }, this.sid);
+  }
+  /** Enable touch input emulation for mobile interaction checks. */
+  async touch(on = true) {
+    await this.cdp.send('Emulation.setTouchEmulationEnabled', { enabled: on, maxTouchPoints: on ? 5 : 1 }, this.sid);
+  }
+  /** Send a real keyboard key through CDP to the currently focused element. */
+  async press(key: 'Enter' | 'Space') {
+    const code = key === 'Enter' ? 'Enter' : 'Space';
+    const virtualKeyCode = key === 'Enter' ? 13 : 32;
+    await this.cdp.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: key === 'Space' ? ' ' : key, code, windowsVirtualKeyCode: virtualKeyCode, nativeVirtualKeyCode: virtualKeyCode }, this.sid);
+    if (key === 'Enter') await this.cdp.send('Input.dispatchKeyEvent', { type: 'char', text: '\r', unmodifiedText: '\r', key: 'Enter', code, windowsVirtualKeyCode: virtualKeyCode, nativeVirtualKeyCode: virtualKeyCode }, this.sid);
+    await this.cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: key === 'Space' ? ' ' : key, code, windowsVirtualKeyCode: virtualKeyCode, nativeVirtualKeyCode: virtualKeyCode }, this.sid);
+  }
   async close() {
     await this.cdp.send('Target.closeTarget', { targetId: this.targetId });
   }
