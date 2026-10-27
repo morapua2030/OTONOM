@@ -1,4 +1,4 @@
-import { publicMarketingOnly } from '@/lib/deployment.ts';
+import { publicProjects } from '@/lib/portfolio-public.ts';
 import { SITE_URL } from '@/lib/server.ts';
 
 export const dynamic = 'force-dynamic';
@@ -7,13 +7,7 @@ const STATIC = ['', '/about', '/services', '/services/iot-embedded', '/services/
 
 /** Built from PUBLISHED content only, with reciprocal hreflang alternates. */
 export async function GET() {
-  let casePaths: string[] = [];
-  if (!publicMarketingOnly()) {
-    const [{ getPayload }, { default: config }] = await Promise.all([import('payload'), import('@payload-config')]);
-    const payload = await getPayload({ config });
-    const cases = await payload.find({ collection: 'case-studies', overrideAccess: false, draft: false, depth: 0, limit: 1000 });
-    casePaths = cases.docs.map((c: any) => `/projects/${encodeURIComponent(c.slug)}`);
-  }
+  const casePaths = (await publicProjects('ar')).map((project) => `/projects/${project.slug}`);
   const paths = [...STATIC, ...casePaths];
   const url = (l: string, p: string) => `${SITE_URL}/${l}${p}`;
   const body = paths

@@ -1,8 +1,11 @@
 import { BusinessRuleError } from '../lib/errors.ts';
-import type { CollectionConfig } from 'payload';
+import type { CollectionConfig, Where } from 'payload';
 import { exposeDomainErrorCodes } from '../lib/errors.ts';
 import { anyPerm, nobody, perm, staffOnly, mfaOk } from '../lib/access.ts';
 import { auditWorkflow, editorialWorkflow, WORKFLOW_FIELDS } from '../lib/workflow.ts';
+import { publicCaseRecord } from '../lib/portfolio-record.ts';
+import { publicMarketingOnly } from '../lib/deployment.ts';
+import { portfolioReleases } from '../lib/portfolio-release.ts';
 
 /** Identified project case studies: publication ALWAYS requires a valid written consent record (DR-032, G-2). */
 export const CaseStudies: CollectionConfig = {
@@ -10,7 +13,18 @@ export const CaseStudies: CollectionConfig = {
   admin: { group: 'Content', useAsTitle: 'title', defaultColumns: ['title', 'slug', 'workflowStatus', '_status'] },
   versions: { drafts: true, maxPerDoc: 50 },
   access: {
-    read: ({ req }) => (req.user && mfaOk(req.user as any) && staffOnly({ req } as any) ? true : { _status: { equals: 'published' } }),
+    read: ({ req }) => (req.user && mfaOk(req.user as any) && staffOnly({ req } as any) ? true : publicMarketingOnly() && !portfolioReleases.length ? false : {
+      and: [
+        ...(publicMarketingOnly() ? [{ slug: { in: portfolioReleases.map((item) => item.slug) } }] : []),
+        { _status: { equals: 'published' } },
+        { workflowStatus: { equals: 'PUBLISHED' } },
+        { mediaScreened: { equals: true } },
+        { claimStatus: { in: ['NONE', 'CERTIFIED', 'INDEPENDENTLY_DEMONSTRATED'] } },
+        { 'consent.status': { equals: 'VALID' } },
+        { 'consent.scope': { contains: 'CASE_STUDY' } },
+        { 'consent.evidenceRef': { exists: true } },
+      ] as Where[],
+    }),
     readVersions: staffOnly,
     create: perm('content.edit'),
     update: anyPerm('content.edit', 'content.review', 'content.publish'),
@@ -34,6 +48,7 @@ export const CaseStudies: CollectionConfig = {
     ...(WORKFLOW_FIELDS as any),
   ],
   hooks: {
+    afterRead: [({ doc, req, overrideAccess }) => overrideAccess || staffOnly({ req }) ? doc : publicCaseRecord(doc)],
     afterError: [exposeDomainErrorCodes],
     afterChange: [auditWorkflow('case_study')],
     beforeChange: [
