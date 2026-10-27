@@ -126,6 +126,33 @@ async function main() {
   const c2 = (await su.query(`SELECT status FROM cms.consents WHERE id=$1`, [consId])).rows[0];
   rec.add('CMS-CONSENT-FINAL', 'CONSENT', 'a revoked consent cannot be re-validated (new signed consent needed)', c2.status === 'REVOKED', c2);
 
+  // D4: the public boundary re-evaluates written CASE_STUDY scope and never serializes editorial data.
+  // These records exist only in the disposable local regression database.
+  const caseSlug = `d4-test-${tag}`;
+  const consent = await owner.post('/api/consents', { subject: 'Synthetic D4 rights', status: 'VALID', scope: ['CASE_STUDY'], evidenceRef: 'SYNTHETIC-TEST-ONLY' });
+  const consentId = consent.json?.doc?.id;
+  const created = await editor.post('/api/case-studies?locale=ar&draft=true', { slug: caseSlug, title: 'دراسة اختبار فقط', body: 'حل تجريبي فقط', objectives: 'وصف عام للاختبار', projectType: 'APARTMENT', consent: consentId, mediaScreened: true });
+  const caseId = created.json?.doc?.id;
+  await editor.patch(`/api/case-studies/${caseId}?locale=en&draft=true`, { title: 'D4 synthetic test only', body: 'Synthetic solution only', objectives: 'Public test summary' });
+  const hidden = await anon.get(`/api/case-studies?where[slug][equals]=${caseSlug}&locale=all&depth=3`);
+  rec.add('D4-DRAFT-PRIVATE', 'PORTFOLIO', 'draft is absent before client serialization', hidden.status === 200 && !hidden.text.includes(caseSlug), null);
+  await editor.patch(`/api/case-studies/${caseId}`, { workflowStatus: 'IN_REVIEW' });
+  await eng.patch(`/api/case-studies/${caseId}`, { workflowStatus: 'APPROVED' });
+  const published = await admin.patch(`/api/case-studies/${caseId}`, { workflowStatus: 'PUBLISHED', _status: 'published' });
+  const publicCase = await anon.get(`/api/case-studies?where[slug][equals]=${caseSlug}&locale=all&depth=3`);
+  rec.add('D4-PUBLISHED-READ', 'PORTFOLIO', 'reviewed bilingual case with written scoped consent can be read', published.status === 200 && publicCase.json?.docs?.[0]?.slug === caseSlug, { publish: published.status, read: publicCase.status });
+  rec.add('D4-PRIVATE-FIELDS', 'PORTFOLIO', 'public API excludes consent, reviewer and operational metadata at depth 3', !!publicCase.json?.docs?.length && !/"(consent|reviewedBy|reviewNote|reviewNoteBy|lastEditedBy|locationGranularity|claimsUsed|claimStatus|mediaScreened)"/.test(JSON.stringify(publicCase.json.docs)), null);
+  const html = await anon.get(`/en/projects/${caseSlug}`);
+  rec.add('D4-DETAIL-SSR', 'PORTFOLIO', 'real CMS-approved narrative renders in the local server template', html.status === 200 && html.text.includes('D4 synthetic test only') && !html.text.includes('SYNTHETIC-TEST-ONLY'), { status: html.status });
+  await owner.patch(`/api/consents/${consentId}`, { scope: ['PHOTOS'] });
+  const wrongScope = await anon.get(`/api/case-studies?where[slug][equals]=${caseSlug}&locale=all`);
+  const hiddenHtml = await anon.get(`/en/projects/${caseSlug}`);
+  rec.add('D4-SCOPE-LIVE', 'PORTFOLIO', 'removing CASE_STUDY scope denies API and detail on the next request', !wrongScope.text.includes(caseSlug) && hiddenHtml.status === 404, { api: wrongScope.status, detail: hiddenHtml.status });
+  await owner.patch(`/api/consents/${consentId}`, { scope: ['CASE_STUDY'], status: 'REVOKED' });
+  const withdrawn = await anon.get(`/api/case-studies?where[slug][equals]=${caseSlug}&locale=all`);
+  const sitemap = await anon.get('/sitemap.xml');
+  rec.add('D4-WITHDRAWAL', 'PORTFOLIO', 'revocation removes public API and sitemap, without stale public cache', !withdrawn.text.includes(caseSlug) && !sitemap.text.includes(caseSlug), null);
+
   // ---------- 5. sessions: logout, password change, lockout ----------
   const kpiBefore = await admin.get('/api/reports/kpi');
   await admin.post('/api/users/logout', {});
