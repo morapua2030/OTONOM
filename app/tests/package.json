@@ -13,6 +13,7 @@
     "security": "tsx src/security.ts",
     "csp-edge": "tsx src/csp-edge.ts",
     "wave1:browser": "tsx src/wave1-browser.ts",
+    "d3:browser": "tsx src/d3-browser.ts",
     "e2e": "tsx src/e2e.ts",
     "release:verify": "tsx src/release-gate.ts",
     "release:promote": "tsx src/release-promote.ts",

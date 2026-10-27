@@ -11,6 +11,8 @@ import { ProductGrid } from '@/components/products.tsx';
 import { publicMarketingOnly } from '@/lib/deployment.ts';
 import { CorporatePage } from '@/components/corporate.tsx';
 import { wavePage } from '@/lib/wave1.ts';
+import { ServiceExperience } from '@/components/services.tsx';
+import { servicePage } from '@/lib/services.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,6 +45,8 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
   const { locale, slug } = await params;
   if (!isLocale(locale)) return {};
   const path = slug.join('/');
+  const service = servicePage(locale, path);
+  if (service) return pageMetadata({ locale, path: `/${path}`, title: service.title, description: summarise(service.summary) });
   const corporate = wavePage(locale, path);
   if (corporate) return pageMetadata({ locale, path: `/${path}`, title: corporate.title, description: summarise(corporate.body) });
   const key = ROUTES[path];
@@ -56,6 +60,22 @@ export default async function MarketingPage({ params }: P) {
   const { locale: l, slug } = await params;
   if (!isLocale(l)) notFound();
   const path = slug.join('/');
+  const service = servicePage(l, path);
+  if (service) {
+    const locale = l as Locale;
+    const home = locale === 'ar' ? 'الرئيسية' : 'Home';
+    const services = locale === 'ar' ? 'الخدمات' : 'Services';
+    return (
+      <>
+        <nav className="breadcrumbs" aria-label={locale === 'ar' ? 'مسار الصفحة' : 'Breadcrumb'}>
+          <a href={`/${locale}`}>{home}</a>
+          {path !== 'services' ? <a href={`/${locale}/services`}>{services}</a> : null}
+          <span aria-current="page"><Bidi text={service.eyebrow} locale={locale} /></span>
+        </nav>
+        <ServiceExperience locale={locale} page={service} />
+      </>
+    );
+  }
   const corporate = wavePage(l, path);
   if (corporate) {
     const locale = l as Locale;

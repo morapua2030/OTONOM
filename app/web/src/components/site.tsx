@@ -5,17 +5,17 @@ import { t, type Locale } from '@/lib/i18n.ts';
 import { wave } from '@/lib/wave1.ts';
 import { Bidi } from './bidi.tsx';
 import { LangSwitch } from './LangSwitch.tsx';
+import { ServiceNavMenu } from './ServiceNavMenu.tsx';
 
 function NavLinks({ locale }: { locale: Locale }) {
   const d = wave(locale);
   const links = [
-    ['/services', d.nav.services],
     ['/solutions', d.nav.solutions],
     ['/projects', d.nav.work],
     ['/products', d.nav.products],
     ['/about', d.nav.company],
   ] as const;
-  return <>{links.map(([href, label]) => <Link href={`/${locale}${href}`} key={href}>{label}</Link>)}</>;
+  return <><ServiceNavMenu locale={locale} label={d.nav.services} items={d.services} />{links.map(([href, label]) => <Link href={`/${locale}${href}`} key={href}>{label}</Link>)}</>;
 }
 
 export function SiteHeader({ locale }: { locale: Locale }) {
