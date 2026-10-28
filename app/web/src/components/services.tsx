@@ -32,7 +32,7 @@ export function ServiceHero({ locale, page }: { locale: Locale; page: ServicePag
         <p className="wave-lead"><Bidi text={page.summary} locale={locale} /></p>
         <div className="actions">
           <a className="btn" href="#capabilities">{locale === 'ar' ? 'استكشف الخدمة' : 'Explore the service'}</a>
-          <LocalLink className="btn secondary" locale={locale} href="/build-with-us">{page.ctaLabel}</LocalLink>
+          <LocalLink className="btn secondary" locale={locale} href={page.productProof ? '/start-project?service=smart-home' : '/start-project'}>{page.ctaLabel}</LocalLink>
         </div>
         <p className="service-caveat"><Bidi text={page.note} locale={locale} /></p>
       </div>
@@ -120,7 +120,10 @@ function ProductProof({ locale }: { locale: Locale }) {
         <p className="eyebrow">{locale === 'ar' ? 'منتجات قائمة' : 'Existing products'}</p>
         <h2>{locale === 'ar' ? 'عائلة وحدات OTONOM الفعلية' : 'The real OTONOM controller family'}</h2>
         <p>{locale === 'ar' ? 'تربط خدمة الأتمتة إلى صفحات 4R و6R و16R الحالية. تظل المواصفات الكهربائية والتوافقات مقيدة بالأدلة المنشورة والمراجعة الخاصة بالمشروع.' : 'The automation service connects to the current 4R, 6R and 16R pages. Electrical specifications and compatibility remain limited to published evidence and project-specific review.'}</p>
-        <LocalLink className="btn secondary" locale={locale} href="/products">{locale === 'ar' ? 'استكشف عائلة وحدات التحكم' : 'Explore the controller family'}</LocalLink>
+        <div className="actions">
+          <LocalLink className="btn secondary" locale={locale} href="/products">{locale === 'ar' ? 'استكشف عائلة وحدات التحكم' : 'Explore the controller family'}</LocalLink>
+          <LocalLink className="btn" locale={locale} href="/smart-home/packages">{locale === 'ar' ? 'قارن الباقات' : 'Compare packages'}</LocalLink>
+        </div>
       </div>
       <div className="service-product-image"><Image src="/products/otonom-16r.png" alt={locale === 'ar' ? 'وحدة تحكم OTONOM 16R — صورة منتج فعلية' : 'OTONOM 16R controller — genuine product image'} width={1254} height={1254} sizes="(max-width: 760px) 88vw, 440px" /></div>
     </section>
@@ -180,7 +183,7 @@ export function ServiceExperience({ locale, page }: { locale: Locale; page: Serv
 
       <section className="wave-final service-final">
         <div><h2>{page.ctaTitle}</h2><p>{page.ctaBody}</p></div>
-        <LocalLink className="btn btn-light" locale={locale} href="/build-with-us">{page.ctaLabel}</LocalLink>
+        <LocalLink className="btn btn-light" locale={locale} href={page.productProof ? '/start-project?service=smart-home' : '/start-project'}>{page.ctaLabel}</LocalLink>
       </section>
     </>
   );

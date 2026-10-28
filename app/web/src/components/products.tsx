@@ -6,7 +6,7 @@ import { Bidi } from './bidi.tsx';
 const tx = (locale: Locale, ar: string, en: string) => (locale === 'ar' ? ar : en);
 const productHref = (locale: Locale, product: PublicProduct) => `/${locale}/products/${product.model}`;
 const rfqHref = (locale: Locale, product: PublicProduct) =>
-  `/${locale}/business/request-a-proposal?model=${product.model}&utm_content=${encodeURIComponent(`controller-${product.model}`)}`;
+  `/${locale}/start-project?service=smart-home`;
 
 export function ProductImage({ product, locale, priority = false }: { product: PublicProduct; locale: Locale; priority?: boolean }) {
   return (

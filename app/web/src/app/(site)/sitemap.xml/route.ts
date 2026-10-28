@@ -3,7 +3,7 @@ import { SITE_URL } from '@/lib/server.ts';
 
 export const dynamic = 'force-dynamic';
 
-const STATIC = ['', '/about', '/services', '/services/iot-embedded', '/services/software-engineering', '/services/smart-home-automation', '/services/custom-engineering', '/solutions', '/solutions/multi-unit-developments', '/business/developers', '/business/contractors', '/business/partners', '/business/request-a-proposal', '/build-with-us', '/engineering-process', '/consultation', '/projects', '/products', '/products/4r', '/products/6r', '/products/16r', '/products/compare', '/technology', '/technology/integrations', '/contact', '/support'];
+const STATIC = ['', '/about', '/services', '/services/iot-embedded', '/services/software-engineering', '/services/smart-home-automation', '/services/custom-engineering', '/solutions', '/solutions/multi-unit-developments', '/business/developers', '/business/contractors', '/business/partners', '/business/request-a-proposal', '/build-with-us', '/start-project', '/smart-home/packages', '/engineering-process', '/consultation', '/projects', '/products', '/products/4r', '/products/6r', '/products/16r', '/products/compare', '/technology', '/technology/integrations', '/contact', '/support'];
 
 /** Built from PUBLISHED content only, with reciprocal hreflang alternates. */
 export async function GET() {
