@@ -33,7 +33,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
         <nav className="nav nav-desktop" aria-label={navLabel}><NavLinks locale={locale} /></nav>
         <div className="header-actions">
           <LangSwitch locale={locale} label={d.switchLang} />
-          <Link className="btn btn-sm" href={`/${locale}/build-with-us`}>{w.nav.build}</Link>
+          <Link className="btn btn-sm" href={`/${locale}/start-project`}>{w.nav.build}</Link>
         </div>
         <details className="menu-mobile">
           <summary aria-label={navLabel}>{locale === 'ar' ? 'القائمة' : 'Menu'}</summary>
@@ -74,6 +74,8 @@ export function SiteFooter({ locale, publicRelease = false }: { locale: Locale; 
           <Link href={L('/products')}>{w.nav.products}</Link>
           <Link href={L('/engineering-process')}>{locale === 'ar' ? 'العملية الهندسية' : 'Engineering process'}</Link>
           <Link href={L('/build-with-us')}>{w.nav.build}</Link>
+          <Link href={L('/start-project')}>{locale === 'ar' ? 'أداة بناء المشروع' : 'Project Builder'}</Link>
+          <Link href={L('/smart-home/packages')}>{locale === 'ar' ? 'باقات المنزل الذكي' : 'Smart-home packages'}</Link>
         </nav>
         <nav aria-label={locale === 'ar' ? 'الشركة والدعم' : 'Company and support'}>
           <strong>{locale === 'ar' ? 'الشركة والدعم' : 'Company & support'}</strong>

@@ -1,10 +1,12 @@
 // Pure server-side validation for the public RFQ / consultation intake (variant P-A: no file uploads).
-export const CUSTOMER_TYPES = ['DEVELOPER', 'CONTRACTOR', 'CONSULTANT', 'PARTNER', 'HOMEOWNER', 'OTHER'] as const;
-export const PROJECT_TYPES = ['COMPOUND', 'MULTI_UNIT_BUILDING', 'VILLA', 'APARTMENT', 'COMMERCIAL', 'OTHER'] as const;
-export const SYSTEMS = ['LIGHTING', 'CLIMATE', 'AV', 'AUDIO', 'DOORS_GARAGE', 'ALARM_INTEGRATION', 'SCENES', 'OTHER'] as const;
+import { isSmartHomePackageId, type SmartHomePackageId } from './smart-home-packages.ts';
+
+export const CUSTOMER_TYPES = ['DEVELOPER', 'CONTRACTOR', 'CONSULTANT', 'PARTNER', 'HOMEOWNER', 'INDIVIDUAL', 'BUSINESS', 'PREFER_NOT', 'OTHER'] as const;
+export const PROJECT_TYPES = ['COMPOUND', 'MULTI_UNIT_BUILDING', 'VILLA', 'APARTMENT', 'COMMERCIAL', 'SMART_HOME', 'INTEGRATED', 'CUSTOM_PROJECT', 'OTHER'] as const;
+export const SYSTEMS = ['LIGHTING', 'CLIMATE', 'AV', 'AUDIO', 'DOORS_GARAGE', 'ALARM_INTEGRATION', 'SCENES', 'SOFTWARE', 'IOT_EMBEDDED', 'CUSTOM_ENGINEERING', 'SMART_HOME', 'INTEGRATED', 'UNSURE', 'OTHER'] as const;
 export const ENGAGEMENT = ['SUPPLY_ONLY', 'SUPPLY_INSTALL_PROGRAM', 'DESIGN_BUILD', 'UNSURE'] as const;
 export const GOVERNORATES = [
-  'CAIRO', 'GIZA', 'ALEXANDRIA', 'QALYUBIA', 'SHARQIA', 'DAKAHLIA', 'GHARBIA', 'MONUFIA', 'BEHEIRA', 'KAFR_EL_SHEIKH', 'DAMIETTA', 'PORT_SAID',
+  'UNSURE', 'CAIRO', 'GIZA', 'ALEXANDRIA', 'QALYUBIA', 'SHARQIA', 'DAKAHLIA', 'GHARBIA', 'MONUFIA', 'BEHEIRA', 'KAFR_EL_SHEIKH', 'DAMIETTA', 'PORT_SAID',
   'ISMAILIA', 'SUEZ', 'NORTH_SINAI', 'SOUTH_SINAI', 'RED_SEA', 'MATROUH', 'FAYOUM', 'BENI_SUEF', 'MINYA', 'ASSIUT', 'SOHAG', 'QENA', 'LUXOR', 'ASWAN', 'NEW_VALLEY', 'OUTSIDE_EGYPT',
 ] as const;
 
@@ -33,7 +35,21 @@ export type RfqInput = {
   howHeard?: string;
   consentProcessing: boolean;
   consentMarketing: boolean;
-  attribution?: { landingPage?: string; referrer?: string; utm?: Record<string, string> };
+  attribution?: {
+    landingPage?: string;
+    referrer?: string;
+    utm?: Record<string, string>;
+    builder?: ProjectBuilderSnapshot;
+  };
+};
+
+export type ProjectBuilderSnapshot = {
+  source: 'PROJECT_BUILDER_V1';
+  clientKind: 'INDIVIDUAL' | 'BUSINESS' | 'PREFER_NOT';
+  projectStage: 'IDEA' | 'PROTOTYPE' | 'EXISTING' | 'UNSURE';
+  disciplines: Array<(typeof SYSTEMS)[number]>;
+  packageId?: SmartHomePackageId;
+  details: Record<string, string>;
 };
 
 export type FieldErrors = Record<string, string>;
@@ -77,13 +93,38 @@ export function validateRfq(body: Record<string, any>): { ok: true; value: RfqIn
   if (units !== undefined && !(Number.isInteger(units) && units >= 1 && units <= 100000)) e.units = 'invalid';
   const circuits = body.circuits === undefined || body.circuits === '' ? undefined : Number(body.circuits);
   if (circuits !== undefined && !(Number.isInteger(circuits) && circuits >= 1 && circuits <= 100000)) e.circuits = 'invalid';
-  if (kind === 'RFQ' && units === undefined && circuits === undefined) e.size = 'units_or_circuits_required';
+  const builderSource = body.source === 'PROJECT_BUILDER_V1';
+  if (kind === 'RFQ' && !builderSource && units === undefined && circuits === undefined) e.size = 'units_or_circuits_required';
   const systems = Array.isArray(body.systems) ? body.systems.filter((s: unknown) => (SYSTEMS as readonly unknown[]).includes(s)).slice(0, SYSTEMS.length) : [];
   const engagementModel = oneOf(body.engagementModel ?? 'UNSURE', ENGAGEMENT);
   if (!engagementModel) e.engagementModel = 'invalid';
   const description = str(body.description, 2000);
   if (description.length < 20) e.description = 'min_20_chars';
   if (body.consentProcessing !== true) e.consentProcessing = 'required';
+  let builder: ProjectBuilderSnapshot | undefined;
+  if (builderSource) {
+    const clientKind = oneOf(body.clientKind, ['INDIVIDUAL', 'BUSINESS', 'PREFER_NOT'] as const);
+    const projectStage = oneOf(body.projectStage, ['IDEA', 'PROTOTYPE', 'EXISTING', 'UNSURE'] as const);
+    const disciplines = Array.isArray(body.disciplines)
+      ? [...new Set(body.disciplines.filter((value: unknown) => (SYSTEMS as readonly unknown[]).includes(value)))].slice(0, 6) as Array<(typeof SYSTEMS)[number]>
+      : [];
+    if (!clientKind) e.clientKind = 'required';
+    if (!projectStage) e.projectStage = 'required';
+    if (!disciplines.length) e.disciplines = 'required';
+    if ('price' in body || 'priceMinor' in body || 'amount' in body) e.package = 'server_canonical_only';
+    const packageId = body.package === undefined || body.package === '' ? undefined : isSmartHomePackageId(body.package) ? body.package.toLowerCase() as SmartHomePackageId : null;
+    if (packageId === null) e.package = 'invalid';
+    const detailsIn = body.details && typeof body.details === 'object' && !Array.isArray(body.details) ? body.details : {};
+    const details: Record<string, string> = {};
+    for (const key of ['projectName', 'organisation', 'outcome', 'constraints', 'timeline', 'governorate', 'propertyType', 'rooms', 'softwareUsers', 'hardwareState', 'existingSystem']) {
+      const value = str(detailsIn[key], key === 'outcome' ? 1600 : key === 'constraints' || key === 'existingSystem' ? 800 : 300);
+      if (value) details[key] = value;
+    }
+    if ((details.outcome ?? '').length < 20) e.description = 'min_20_chars';
+    if (clientKind && projectStage && disciplines.length && packageId !== null) builder = { source: 'PROJECT_BUILDER_V1', clientKind, projectStage, disciplines, packageId, details };
+  } else if (body.source !== undefined) {
+    e.source = 'invalid';
+  }
   const utmIn = body.attribution?.utm && typeof body.attribution.utm === 'object' ? body.attribution.utm : {};
   const utm: Record<string, string> = {};
   for (const k of ['source', 'medium', 'campaign', 'term', 'content']) if (typeof utmIn[k] === 'string') utm[k] = utmIn[k].slice(0, 120);
@@ -115,7 +156,7 @@ export function validateRfq(body: Record<string, any>): { ok: true; value: RfqIn
       howHeard: str(body.howHeard, 80) || undefined,
       consentProcessing: true,
       consentMarketing: body.consentMarketing === true,
-      attribution: { landingPage: str(body.attribution?.landingPage, 300) || undefined, referrer: str(body.attribution?.referrer, 300) || undefined, utm },
+      attribution: { landingPage: str(body.attribution?.landingPage, 300) || undefined, referrer: str(body.attribution?.referrer, 300) || undefined, utm, builder },
     },
   };
 }

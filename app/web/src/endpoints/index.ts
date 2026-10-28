@@ -657,6 +657,8 @@ export const endpoints: Endpoint[] = [
     method: 'post',
     handler: async (req) => {
       if (!publicRfqEnabled()) return jsonRes(404, { code: 'PUBLIC_INTAKE_DISABLED' });
+      const csrf = mutationOriginGuard(req);
+      if (csrf) return csrf;
       const rl = await rateLimit(`rfq:${clientIp(req.headers)}`, 5, 10 * 60_000);
       if (!rl.allowed) return Response.json({ code: 'RATE_LIMITED', retryAfterSec: rl.retryAfterSec }, { status: 429, headers: { 'retry-after': String(rl.retryAfterSec) } });
       const b = await body(req);

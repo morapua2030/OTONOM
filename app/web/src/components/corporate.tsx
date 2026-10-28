@@ -34,7 +34,7 @@ export function CorporateHome({ locale }: { locale: Locale }) {
           <h1><Bidi text={d.hero.title} locale={locale} /></h1>
           <p className="wave-lead"><Bidi text={d.hero.body} locale={locale} /></p>
           <div className="actions">
-            <LocalLink className="btn" locale={locale} href="/build-with-us">{d.hero.primary}</LocalLink>
+            <LocalLink className="btn" locale={locale} href="/start-project">{d.hero.primary}</LocalLink>
             <LocalLink className="btn secondary" locale={locale} href="/services">{d.hero.secondary}</LocalLink>
           </div>
           <p className="hero-note"><Bidi text={d.hero.note} locale={locale} /></p>
@@ -81,7 +81,7 @@ export function CorporateHome({ locale }: { locale: Locale }) {
 
       <section className="wave-final">
         <div><p className="eyebrow">{locale === 'ar' ? 'ابنِ معنا' : 'Build with us'}</p><h2>{d.finalTitle}</h2><p>{d.finalBody}</p></div>
-        <LocalLink className="btn btn-light" locale={locale} href="/build-with-us">{d.hero.primary}</LocalLink>
+        <LocalLink className="btn btn-light" locale={locale} href="/start-project">{d.hero.primary}</LocalLink>
       </section>
     </>
   );
@@ -107,7 +107,7 @@ export function CorporatePage({ locale, page }: { locale: Locale; page: WavePage
       ))}
       <section className="wave-final">
         <div><h2>{page.ctaTitle}</h2><p>{page.ctaBody}</p></div>
-        <LocalLink className="btn btn-light" locale={locale} href={page.eyebrow.toLowerCase().includes('support') || page.eyebrow.includes('الدعم') ? '/build-with-us' : page.eyebrow.toLowerCase().includes('process') || page.eyebrow.includes('العملية') ? '/build-with-us' : page.eyebrow.toLowerCase().includes('build') || page.eyebrow.includes('ابدأ') || page.eyebrow.toLowerCase().includes('contact') || page.eyebrow.includes('تواصل') ? '/engineering-process' : '/build-with-us'}>{locale === 'ar' ? 'الخطوة التالية' : 'Next step'}</LocalLink>
+        <LocalLink className="btn btn-light" locale={locale} href={page.eyebrow.toLowerCase().includes('support') || page.eyebrow.includes('الدعم') ? '/build-with-us' : '/start-project'}>{locale === 'ar' ? 'الخطوة التالية' : 'Next step'}</LocalLink>
       </section>
     </>
   );
