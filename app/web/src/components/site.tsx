@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { t, type Locale } from '@/lib/i18n.ts';
 import { wave } from '@/lib/wave1.ts';
@@ -7,6 +6,7 @@ import { Bidi } from './bidi.tsx';
 import { LangSwitch } from './LangSwitch.tsx';
 import { ServiceNavMenu } from './ServiceNavMenu.tsx';
 import { SiteNavLink } from './SiteNavLink.tsx';
+import { BrandLogo } from './BrandLogo.tsx';
 
 function NavLinks({ locale }: { locale: Locale }) {
   const d = wave(locale);
@@ -27,8 +27,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
     <header className="header">
       <div className="wrap header-row">
         <Link className="brand" href={`/${locale}`} aria-label={locale === 'ar' ? 'OTONOM — الصفحة الرئيسية' : 'OTONOM — home'}>
-          <Image className="brand-logo" src="/brand/otonom-logo.png" alt="" width={776} height={719} priority />
-          <span className="brand-name">{d.brand}</span>
+          <BrandLogo className="brand-logo brand-logo-header" variant="primary-light" decorative priority />
         </Link>
         <nav className="nav nav-desktop" aria-label={navLabel}><NavLinks locale={locale} /></nav>
         <div className="header-actions">
@@ -58,8 +57,7 @@ export function SiteFooter({ locale, publicRelease = false }: { locale: Locale; 
       <div className="wrap footer-grid">
         <div>
           <Link className="brand footer-brand" href={L('')} aria-label={locale === 'ar' ? 'OTONOM — الصفحة الرئيسية' : 'OTONOM — home'}>
-            <Image className="brand-logo" src="/brand/otonom-logo.png" alt="" width={776} height={719} />
-            <span className="brand-name">{d.brand}</span>
+            <BrandLogo className="brand-logo brand-logo-footer" variant="primary-dark" decorative />
           </Link>
           <p className="muted"><Bidi text={w.footerBody} locale={locale} /></p>
         </div>

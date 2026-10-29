@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { Locale } from '@/lib/i18n.ts';
 import { wave, type WaveItem, type WavePage } from '@/lib/wave1.ts';
 import { Bidi } from './bidi.tsx';
+import { BrandLogo } from './BrandLogo.tsx';
 
 function LocalLink({ locale, href, className, children }: { locale: Locale; href: string; className?: string; children: ReactNode }) {
   return <Link className={className} href={`/${locale}${href}`}>{children}</Link>;
@@ -39,9 +40,15 @@ export function CorporateHome({ locale }: { locale: Locale }) {
           </div>
           <p className="hero-note"><Bidi text={d.hero.note} locale={locale} /></p>
         </div>
-        <div className="capability-orbit" aria-label={locale === 'ar' ? 'قدرات OTONOM الأربع' : 'Four OTONOM capabilities'}>
-          <div className="orbit-core"><Image src="/brand/otonom-logo.png" alt="" width={776} height={719} priority /><span>OTONOM</span></div>
-          {d.services.map((service, index) => <span className={`orbit-node orbit-node-${index + 1}`} key={service.title}>{service.title}</span>)}
+        <div className="engineering-stage" aria-label={locale === 'ar' ? 'قدرات OTONOM الهندسية الأربع' : 'Four OTONOM engineering capabilities'}>
+          <div className="engineering-stage-head">
+            <BrandLogo className="engineering-stage-mark" variant="toggle-dark" decorative priority />
+            <span>{locale === 'ar' ? <>منظومة هندسية / <bdi dir="ltr">01–04</bdi></> : 'ENGINEERING SYSTEM / 01–04'}</span>
+          </div>
+          <ol>
+            {d.services.map((service, index) => <li key={service.title}><span>0{index + 1}</span><strong>{service.title}</strong></li>)}
+          </ol>
+          <p>{locale === 'ar' ? 'من الكود إلى العتاد إلى بيئة تشغيل قابلة للمراجعة.' : 'From code to hardware to a reviewable operating environment.'}</p>
         </div>
       </section>
 

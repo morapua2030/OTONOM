@@ -5,6 +5,7 @@ import { pageMetadata } from '@/lib/seo.ts';
 import { ProductComparison, ProductGrid } from '@/components/products.tsx';
 import { PRODUCT_REVIEW_NOTICE, localProductText } from '@/lib/products.ts';
 import { Bidi } from '@/components/bidi.tsx';
+import { SmartProductSelector } from '@/components/SmartProductSelector.tsx';
 
 export const dynamic = 'force-dynamic';
 type P = { params: Promise<{ locale: string }> };
@@ -35,6 +36,10 @@ export default async function ProductsPage({ params }: P) {
       <section className="section product-list-section" aria-labelledby="product-list-title">
         <h2 id="product-list-title"><Bidi text={locale === 'ar' ? '4R و6R و16R' : '4R, 6R and 16R'} locale={locale} /></h2>
         <ProductGrid locale={locale} />
+      </section>
+      <section className="section" aria-labelledby="product-selector-title">
+        <span className="sr-only" id="product-selector-title"><Bidi text={locale === 'ar' ? 'منتقي منتج OTONOM' : 'OTONOM product selector'} locale={locale} /></span>
+        <SmartProductSelector locale={locale} />
       </section>
       <section className="section" aria-labelledby="quick-compare-title">
         <h2 id="quick-compare-title">{locale === 'ar' ? 'مقارنة واضحة بلا مواصفات مفترضة' : 'A clear comparison without assumed specifications'}</h2>

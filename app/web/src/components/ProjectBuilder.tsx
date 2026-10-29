@@ -113,7 +113,7 @@ export function ProjectBuilder({ locale, intakeEnabled }: { locale: Locale; inta
   const go = (next: number) => {
     setStep(Math.max(1, Math.min(6, next)));
     setCopyState('');
-    requestAnimationFrame(() => topRef.current?.focus());
+    requestAnimationFrame(() => topRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
   };
   const toggleDiscipline = (value: Discipline) => {
     setDisciplines((current) => {
@@ -158,7 +158,7 @@ export function ProjectBuilder({ locale, intakeEnabled }: { locale: Locale; inta
   }
 
   return (
-    <div className="project-builder" ref={topRef} tabIndex={-1} data-testid="project-builder">
+    <div className="project-builder" ref={topRef} data-testid="project-builder">
       <div className="builder-intro">
         <p>{L('لا تُحفظ إجاباتك أثناء بناء الموجز. يمكنك النسخ أو الطباعة قبل اختيار التواصل.', 'Your answers are not stored while you build the brief. You can copy or print it before choosing to contact us.')}</p>
       </div>

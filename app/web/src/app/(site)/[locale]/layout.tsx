@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
 import '../site.css';
+import '../hybrid03.css';
 import { dirOf, isLocale, t } from '@/lib/i18n.ts';
 import { SiteHeader, SiteFooter } from '@/components/site.tsx';
 import { Bidi, ltrIsolate } from '@/components/bidi.tsx';
@@ -13,7 +14,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   return {
     title: { default: 'OTONOM', template: locale === 'ar' ? `%s — ${ltrIsolate('OTONOM')}` : '%s — OTONOM' },
     robots: { index: publicRelease, follow: publicRelease },
-    icons: { icon: '/brand/otonom-logo.png', apple: '/brand/otonom-logo.png' },
+    icons: { icon: '/brand/otonom/assets/icons/favicon.ico', apple: '/brand/otonom/assets/icons/app-icon-concept-navy-1024.png' },
     other: { 'content-language': locale },
   };
 }

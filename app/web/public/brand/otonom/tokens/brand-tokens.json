@@ -1,0 +1,72 @@
+{
+  "meta": {
+    "name": "OTONOM",
+    "version": "Hybrid 03 / Selected Direction",
+    "status": "Selected concept; production approvals and trademark screening outstanding",
+    "source": "OTONOM_Hybrid_03_Logo_Brand_Kit.zip"
+  },
+  "colors": {
+    "navy": "#0F2238",
+    "navyDark": "#0C2F49",
+    "toggleFillStart": "#F0F8FD",
+    "toggleFillMiddle": "#D2EAF9",
+    "toggleFillEnd": "#91CEF0",
+    "toggleKnobStart": "#FFFFFF",
+    "toggleKnobEnd": "#ECF4FA",
+    "toggleKnobOutline": "#C9DDE9",
+    "toggleDarkStart": "#0C2F49",
+    "toggleDarkMiddle": "#155D8D",
+    "toggleDarkEnd": "#42A7DA",
+    "accentCyan": "#18A3E0",
+    "accentBlue": "#148CE1",
+    "white": "#FFFFFF"
+  },
+  "logo": {
+    "wordmark": "OTONOM",
+    "descriptor": "IOT SOLUTIONS",
+    "switchPlacement": "Third character O, horizontal pill toggle",
+    "knobPosition": "Left (static in all logo versions)",
+    "variants": {
+      "primaryLight": "assets/svg/primary_light.svg",
+      "primaryDark": "assets/svg/primary_dark.svg",
+      "compactBlack": "assets/svg/compact_black.svg",
+      "compactWhite": "assets/svg/compact_white.svg",
+      "wordmarkOnlyLight": "assets/svg/wordmark_only_light.svg",
+      "wordmarkOnlyDark": "assets/svg/wordmark_only_dark.svg",
+      "monoBlack": "assets/svg/mono_black.svg",
+      "monoWhite": "assets/svg/mono_white.svg",
+      "toggleIcon": "assets/svg/toggle_icon.svg",
+      "toggleIconDark": "assets/svg/toggle_icon_dark.svg",
+      "toggleIconMono": "assets/svg/toggle_icon_mono.svg"
+    },
+    "viewBox": {
+      "primary": [
+        0,
+        0,
+        820,
+        217
+      ],
+      "compact": [
+        0,
+        0,
+        820,
+        162
+      ],
+      "toggle": [
+        0,
+        0,
+        200,
+        160
+      ]
+    },
+    "svgHasOutlinedLetterGeometry": true,
+    "svgUsesFontFiles": false
+  },
+  "usageRecommendations": {
+    "horizontalLogoMinWidthScreenPx": "240 suggested, not a validated absolute minimum",
+    "icon": "Use standalone toggle mark for small digital surfaces only; a derived asset",
+    "safeArea": "At least half the O cap height surrounding the graphic (approx. 51 units on SVG design coordinates), outside the art bounds",
+    "print": "Measure actual manufacturing surface, conduct physical contrast and stroke tests; use monochrome for engraving",
+    "animation": "Never represent dynamic ON/OFF state by changing the company logo; implement separate UI control"
+  }
+}
