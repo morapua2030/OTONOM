@@ -1,0 +1,18 @@
+/* OTONOM Hybrid 03 — derived from the selected logo SVG and prior brand notes. */
+:root {
+  --otonom-navy: #0F2238;
+  --otonom-cyan: #18A3E0;
+  --otonom-blue: #148CE1;
+  --otonom-toggle-start: #F0F8FD;
+  --otonom-toggle-middle: #D2EAF9;
+  --otonom-toggle-end: #91CEF0;
+  --otonom-surface: #FFFFFF;
+  --otonom-soft-surface: #E8F6FD;
+}
+.otonom-logo { display: block; height: auto; max-width: 100%; object-fit: contain; }
+.otonom-logo--header { width: 240px; }
+.otonom-logo--compact { width: 180px; }
+.otonom-logo--icon { width: 48px; aspect-ratio: 5/4; }
+/* Keep layout padding outside the SVG; do not crop the viewBox. */
+.otonom-brand-lockup { display: inline-flex; padding: 12px; align-items: center; }
+@media (max-width: 600px) { .otonom-logo--header { width: min(240px, 62vw); } }
