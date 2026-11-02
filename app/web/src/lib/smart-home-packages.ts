@@ -1,4 +1,5 @@
 import type { Locale } from './i18n.ts';
+import type { ProductModel } from './products.ts';
 
 export const SMART_HOME_PACKAGE_IDS = ['premium', 'plus', 'essential'] as const;
 export type SmartHomePackageId = (typeof SMART_HOME_PACKAGE_IDS)[number];
@@ -9,10 +10,13 @@ export type SmartHomePackage = {
   name: LocalText;
   priceEgp: number;
   badge?: LocalText;
-  items: Array<{ name: LocalText; quantity: number }>;
+  items: Array<SmartHomePackageItem>;
 };
+/** `model` links an item to its public OTONOM product page; owner-confirmed R16 = OTONOM 16R. */
+export type SmartHomePackageItem = { name: LocalText; quantity: number; model?: ProductModel };
 
-const item = (en: string, ar: string, quantity = 1) => ({ name: { en, ar }, quantity });
+const item = (en: string, ar: string, quantity = 1, model?: ProductModel): SmartHomePackageItem =>
+  model ? { name: { en, ar }, quantity, model } : { name: { en, ar }, quantity };
 
 /**
  * Owner-approved D5 package source of truth, transcribed from packages PDF.pdf.
@@ -29,7 +33,7 @@ export const SMART_HOME_PACKAGES: readonly SmartHomePackage[] = [
       item('Smart Lock', 'قفل ذكي'),
       item('IR Remote', 'وحدة تحكم IR'),
       item('Gas Sensor', 'حساس غاز'),
-      item('R16 Smart Controller', 'وحدة تحكم ذكية R16', 2),
+      item('R16 Smart Controller', 'وحدة تحكم ذكية R16', 2, '16r'),
       item('Electrical Panel & Wires', 'لوحة كهربائية وأسلاك'),
     ],
   },
@@ -41,7 +45,7 @@ export const SMART_HOME_PACKAGES: readonly SmartHomePackage[] = [
       item('Amazon Alexa', 'Amazon Alexa'),
       item('IR Remote', 'وحدة تحكم IR'),
       item('Gas Sensor', 'حساس غاز'),
-      item('R16 Smart Controller', 'وحدة تحكم ذكية R16', 2),
+      item('R16 Smart Controller', 'وحدة تحكم ذكية R16', 2, '16r'),
       item('Electrical Panel & Wires', 'لوحة كهربائية وأسلاك'),
     ],
   },
@@ -53,7 +57,7 @@ export const SMART_HOME_PACKAGES: readonly SmartHomePackage[] = [
       item('Amazon Alexa', 'Amazon Alexa'),
       item('IR Remote', 'وحدة تحكم IR'),
       item('Gas Sensor', 'حساس غاز'),
-      item('R16 Smart Controller', 'وحدة تحكم ذكية R16'),
+      item('R16 Smart Controller', 'وحدة تحكم ذكية R16', 1, '16r'),
       item('Electrical Panel & Wires', 'لوحة كهربائية وأسلاك'),
     ],
   },

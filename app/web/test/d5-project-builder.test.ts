@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { validateRfq } from '../src/lib/rfq-validate.ts';
 import { SMART_HOME_PACKAGES, smartHomePackage } from '../src/lib/smart-home-packages.ts';
+import { PRODUCT_MODELS } from '../src/lib/products.ts';
 
 test('D5 package registry preserves the approved order, prices and controller quantities', () => {
   assert.deepEqual(SMART_HOME_PACKAGES.map((entry) => entry.id), ['premium', 'plus', 'essential']);
@@ -10,6 +11,23 @@ test('D5 package registry preserves the approved order, prices and controller qu
   assert.deepEqual(SMART_HOME_PACKAGES.map((entry) => entry.items.find((item) => item.name.en === 'R16 Smart Controller')?.quantity), [2, 2, 1]);
   assert.ok(smartHomePackage('premium'));
   assert.equal(smartHomePackage('unexpected'), null);
+});
+
+test('D6 package R16 controller links to the registered OTONOM 16R product page', () => {
+  for (const entry of SMART_HOME_PACKAGES) {
+    const r16 = entry.items.find((item) => item.name.en === 'R16 Smart Controller');
+    assert.equal(r16?.model, '16r', `${entry.id} R16 item must reference model 16r`);
+    assert.ok((PRODUCT_MODELS as readonly string[]).includes(r16?.model ?? ''),`${entry.id} model must exist in the product registry`);
+    for (const other of entry.items.filter((item) => item !== r16)) {
+      assert.equal(other.model, undefined, `${entry.id} ${other.name.en} must not claim a product model`);
+    }
+  }
+  const component = readFileSync(new URL('../src/components/SmartHomePackages.tsx', import.meta.url), 'utf8');
+  assert.match(component, /href=\{`\/\$\{locale\}\/products\/\$\{packageItem\.model\}`\}/);
+  assert.match(component, /href=\{`\/\$\{locale\}\/products\/16r`\}/);
+  assert.match(component, /R16 is the <a [^>]*>OTONOM 16R<\/a> controller/);
+  const productsPage = readFileSync(new URL('../src/app/(site)/[locale]/products/page.tsx', import.meta.url), 'utf8');
+  assert.match(productsPage, /href=\{`\/\$\{locale\}\/smart-home\/packages`\}/);
 });
 
 test('D5 package copy does not claim checkout, warranty or ambiguous inclusions', () => {

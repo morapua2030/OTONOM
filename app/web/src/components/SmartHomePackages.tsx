@@ -29,11 +29,32 @@ export function SmartHomePackages({ locale, compact = false }: { locale: Locale;
               {entry.items.map((packageItem) => (
                 <li key={packageItem.name.en}>
                   <span aria-hidden="true" className="package-item-icon">✓</span>
-                  <span><Bidi text={packageText(packageItem.name, locale)} locale={locale} /></span>
+                  <span>
+                    {packageItem.model ? (
+                      <a href={`/${locale}/products/${packageItem.model}`} data-product-model={packageItem.model}>
+                        <Bidi text={packageText(packageItem.name, locale)} locale={locale} />
+                      </a>
+                    ) : (
+                      <Bidi text={packageText(packageItem.name, locale)} locale={locale} />
+                    )}
+                  </span>
                   {packageItem.quantity > 1 ? <strong><bdi dir="ltr">×{packageItem.quantity}</bdi></strong> : null}
                 </li>
               ))}
             </ul>
+            {entry.items.some((packageItem) => packageItem.model === '16r') ? (
+              <p className="package-model-note">
+                {locale === 'ar' ? (
+                  <>
+                    <bdi dir="ltr">R16</bdi> هي وحدة <a href={`/${locale}/products/16r`}><bdi dir="ltr">OTONOM 16R</bdi></a> — راجع صفحة المنتج.
+                  </>
+                ) : (
+                  <>
+                    R16 is the <a href={`/${locale}/products/16r`}>OTONOM 16R</a> controller — see the product page.
+                  </>
+                )}
+              </p>
+            ) : null}
             <a className="btn" href={`/${locale}/start-project?package=${entry.id}&service=smart-home`}>
               {tx(locale, 'ابنِ موجز مشروعك', 'Build your project brief')}
             </a>

@@ -44,7 +44,7 @@ export default async function ProductsPage({ params }: P) {
       <section className="section" aria-labelledby="quick-compare-title">
         <h2 id="quick-compare-title">{locale === 'ar' ? 'مقارنة واضحة بلا مواصفات مفترضة' : 'A clear comparison without assumed specifications'}</h2>
         <ProductComparison locale={locale} />
-        <p className="actions"><a className="btn secondary" href={`/${locale}/products/compare`}>{locale === 'ar' ? 'افتح المقارنة الكاملة' : 'Open full comparison'}</a></p>
+        <p className="actions"><a className="btn secondary" href={`/${locale}/products/compare`}>{locale === 'ar' ? 'افتح المقارنة الكاملة' : 'Open full comparison'}</a> <a className="btn secondary" href={`/${locale}/smart-home/packages`}>{locale === 'ar' ? 'شوف باقات المنزل الذكي' : 'See smart-home packages'}</a></p>
       </section>
     </>
   );
