@@ -14,6 +14,7 @@ import {
   packageControllers,
   packagesCovering,
   recommendController,
+  roomControlNames,
   roomTypeLabel,
   sanitizeCircuits,
   totalCircuits,
@@ -94,6 +95,7 @@ export function SmartProductSelector({ locale }: { locale: Locale }) {
   }, [focusRoomId]);
 
   const roomTotal = totalCircuits(rooms);
+  const roomNames = roomControlNames(rooms, locale);
   const total = mode === 'channels' ? channels : roomTotal;
   const product = recommendController(total);
   const atRoomLimit = rooms.length >= MAX_ROOMS;
@@ -123,7 +125,11 @@ export function SmartProductSelector({ locale }: { locale: Locale }) {
         </div>
         <p className="eyebrow"><Bidi text={tx(locale, 'منتقي منتج OTONOM', 'OTONOM PRODUCT SELECTOR')} locale={locale} /></p>
         <h2>{tx(locale, 'ابدأ بعدد دوائر التحكم', 'Start with the control-circuit count')}</h2>
-        <p>{tx(locale, 'اختر عدد القنوات المستقلة المتوقع. النتيجة إرشاد مبدئي فقط ولا تستبدل مراجعة التصميم والتركيب.', 'Choose the expected number of independent channels. The result is preliminary guidance and does not replace design and installation review.')}</p>
+        <p>
+          {mode === 'channels'
+            ? tx(locale, 'اختر عدد القنوات المستقلة المتوقع. النتيجة إرشاد مبدئي فقط ولا تستبدل مراجعة التصميم والتركيب.', 'Choose the expected number of independent channels. The result is preliminary guidance and does not replace design and installation review.')
+            : tx(locale, 'أضف غرف المكان وعدد الدوائر التي تريد التحكم فيها في كل غرفة. النتيجة إرشاد مبدئي فقط ولا تستبدل مراجعة التصميم والتركيب.', 'Add the rooms in your space and how many circuits you want to control in each. The result is preliminary guidance and does not replace design and installation review.')}
+        </p>
         {mode === 'channels' ? (
           <>
             <label htmlFor="selector-channels">{tx(locale, 'عدد القنوات المتوقع', 'Expected channel count')}</label>
@@ -147,14 +153,15 @@ export function SmartProductSelector({ locale }: { locale: Locale }) {
           <div className="selector-rooms">
             <p className="selector-rooms-help">{tx(locale, 'الدائرة = إضاءة أو حمل تتحكم فيه بشكل مستقل (مثلًا مجموعة مصابيح على مفتاح واحد).', 'A circuit is one independently controlled light or load (e.g. a group of lights on one switch).')}</p>
             <ol className="selector-room-list">
-              {rooms.map((room) => {
-                const label = roomTypeLabel(room.type, locale);
+              {rooms.map((room, index) => {
+                const name = roomNames[index];
                 return (
                   <li className="selector-room-row" key={room.id}>
                     <div className="selector-room-field">
                       <label htmlFor={`selector-room-type-${room.id}`}>{tx(locale, 'نوع الغرفة', 'Room type')}</label>
                       <select
                         id={`selector-room-type-${room.id}`}
+                        aria-label={tx(locale, `نوع الغرفة: ${name}`, `Room type: ${name}`)}
                         value={room.type}
                         onChange={(event) => { if (isRoomType(event.target.value)) updateRoom(room.id, { type: event.target.value }); }}
                       >
@@ -167,12 +174,13 @@ export function SmartProductSelector({ locale }: { locale: Locale }) {
                         <div className="selector-stepper">
                           <button
                             type="button"
-                            aria-label={tx(locale, `قلّل الدوائر: ${label}`, `Decrease circuits: ${label}`)}
+                            aria-label={tx(locale, `قلّل الدوائر: ${name}`, `Fewer circuits: ${name}`)}
                             disabled={room.circuits <= 1}
                             onClick={() => updateRoom(room.id, { circuits: sanitizeCircuits(room.circuits - 1) })}
                           >−</button>
                           <input
                             id={`selector-room-circuits-${room.id}`}
+                            aria-label={tx(locale, `عدد الدوائر: ${name}`, `Circuits: ${name}`)}
                             type="number"
                             inputMode="numeric"
                             dir="ltr"
@@ -184,7 +192,7 @@ export function SmartProductSelector({ locale }: { locale: Locale }) {
                           />
                           <button
                             type="button"
-                            aria-label={tx(locale, `زِد الدوائر: ${label}`, `Increase circuits: ${label}`)}
+                            aria-label={tx(locale, `زِد الدوائر: ${name}`, `More circuits: ${name}`)}
                             disabled={room.circuits >= MAX_CIRCUITS_PER_ROOM}
                             onClick={() => updateRoom(room.id, { circuits: sanitizeCircuits(room.circuits + 1) })}
                           >+</button>
@@ -192,7 +200,7 @@ export function SmartProductSelector({ locale }: { locale: Locale }) {
                         <button
                           type="button"
                           className="selector-room-remove"
-                          aria-label={tx(locale, `احذف: ${label}`, `Remove: ${label}`)}
+                          aria-label={tx(locale, `احذف: ${name}`, `Remove: ${name}`)}
                           disabled={rooms.length <= 1}
                           onClick={() => removeRoom(room.id)}
                         >{tx(locale, 'احذف', 'Remove')}</button>

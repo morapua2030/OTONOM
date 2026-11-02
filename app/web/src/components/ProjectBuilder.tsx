@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import type { Locale } from '@/lib/i18n.ts';
-import { isSmartHomePackageId, packageText, smartHomePackage, type SmartHomePackageId } from '@/lib/smart-home-packages.ts';
+import { isSmartHomePackageId, packageText, SMART_HOME_PACKAGES, smartHomePackage, type SmartHomePackageId } from '@/lib/smart-home-packages.ts';
 
 type ClientKind = 'INDIVIDUAL' | 'BUSINESS' | 'PREFER_NOT';
 type ProjectStage = 'IDEA' | 'PROTOTYPE' | 'EXISTING' | 'UNSURE';
@@ -122,6 +122,8 @@ export function ProjectBuilder({ locale, intakeEnabled }: { locale: Locale; inta
       return clean.includes(value) ? clean.filter((item) => item !== value) : [...clean, value];
     });
   };
+  // Shown before the details step only while the package is still part of the brief (Smart home selected).
+  const noticePackage = step < 4 && includes('SMART_HOME') ? smartHomePackage(selectedPackage) : null;
   const valid = step === 1 ? !!clientKind : step === 2 ? !!stage : step === 3 ? disciplines.length > 0 : step === 4 ? details.outcome.trim().length >= 20 : true;
 
   async function copyBrief() {
@@ -168,6 +170,12 @@ export function ProjectBuilder({ locale, intakeEnabled }: { locale: Locale; inta
         ))}
       </ol>
 
+      {noticePackage && (
+        <p className="builder-package-notice" role="status" data-testid="builder-package-notice">
+          {L('الباقة المختارة: ', 'Selected package: ')}<bdi dir="ltr">{packageText(noticePackage.name, locale)}</bdi>{L(' — يمكنك تغييرها في خطوة التفاصيل.', ' — you can change it in the details step.')}
+        </p>
+      )}
+
       <section className="builder-panel" aria-live="polite">
         {step === 1 && <ChoiceStep title={L('من يبني هذا المشروع؟', 'Who is building this project?')} choices={CLIENTS} locale={locale} selected={[clientKind]} onChoose={(value) => setClientKind(value as ClientKind)} />}
         {step === 2 && <ChoiceStep title={L('أين وصل المشروع الآن؟', 'Where is the project today?')} choices={STAGES} locale={locale} selected={[stage]} onChoose={(value) => setStage(value as ProjectStage)} />}
@@ -181,7 +189,7 @@ export function ProjectBuilder({ locale, intakeEnabled }: { locale: Locale; inta
               <label className="wide">{L('ما النتيجة التي تريد الوصول إليها؟', 'What outcome do you want?')}<textarea required minLength={20} maxLength={1600} rows={5} value={details.outcome} onChange={(event) => setDetails({ ...details, outcome: event.target.value })} /><small>{L('اكتب 20 حرفًا على الأقل، ولا تضع كلمات مرور أو بيانات حساسة.', 'Write at least 20 characters and do not include passwords or sensitive data.')}</small></label>
               <label>{L('الموقع التقريبي', 'Approximate location')}<select value={details.governorate} onChange={(event) => setDetails({ ...details, governorate: event.target.value })}>{GOVERNORATES.map((item) => <option value={item[0]} key={item[0]}>{item[ar ? 1 : 2]}</option>)}</select></label>
               <label>{L('التوقيت المبدئي', 'Initial timeline')}<select value={details.timeline} onChange={(event) => setDetails({ ...details, timeline: event.target.value })}><option value="UNSURE">{L('غير محدد بعد', 'Not decided yet')}</option><option value="0_3_MONTHS">{L('خلال 3 أشهر', 'Within 3 months')}</option><option value="3_6_MONTHS">{L('من 3 إلى 6 أشهر', '3 to 6 months')}</option><option value="6_PLUS_MONTHS">{L('أكثر من 6 أشهر', 'More than 6 months')}</option></select></label>
-              {includes('SMART_HOME') && <><label>{L('نوع المساحة', 'Property type')}<select value={details.propertyType} onChange={(event) => setDetails({ ...details, propertyType: event.target.value })}><option value="">{L('اختر', 'Choose')}</option><option value="APARTMENT">{L('شقة', 'Apartment')}</option><option value="VILLA">{L('فيلا', 'Villa')}</option><option value="COMMERCIAL">{L('تجاري', 'Commercial')}</option><option value="OTHER">{L('أخرى', 'Other')}</option></select></label><label>{L('عدد الغرف التقريبي', 'Approximate rooms')}<input inputMode="numeric" value={details.rooms} maxLength={4} onChange={(event) => setDetails({ ...details, rooms: event.target.value.replace(/\D/g, '') })} /></label><label className="wide">{L('الباقة محل الاهتمام (اختياري)', 'Package of interest (optional)')}<select value={selectedPackage} onChange={(event) => setSelectedPackage(event.target.value as SmartHomePackageId | '')}><option value="">{L('أحتاج مساعدة في الاختيار', 'I need help choosing')}</option><option value="premium">Premium</option><option value="plus">Plus</option><option value="essential">Essential</option></select></label></>}
+              {includes('SMART_HOME') && <><label>{L('نوع المساحة', 'Property type')}<select value={details.propertyType} onChange={(event) => setDetails({ ...details, propertyType: event.target.value })}><option value="">{L('اختر', 'Choose')}</option><option value="APARTMENT">{L('شقة', 'Apartment')}</option><option value="VILLA">{L('فيلا', 'Villa')}</option><option value="COMMERCIAL">{L('تجاري', 'Commercial')}</option><option value="OTHER">{L('أخرى', 'Other')}</option></select></label><label>{L('عدد الغرف التقريبي', 'Approximate rooms')}<input inputMode="numeric" value={details.rooms} maxLength={4} onChange={(event) => setDetails({ ...details, rooms: event.target.value.replace(/\D/g, '') })} /></label><label className="wide">{L('الباقة محل الاهتمام (اختياري)', 'Package of interest (optional)')}<select value={selectedPackage} onChange={(event) => setSelectedPackage(event.target.value as SmartHomePackageId | '')}><option value="">{L('أحتاج مساعدة في الاختيار', 'I need help choosing')}</option>{SMART_HOME_PACKAGES.map((entry) => <option value={entry.id} key={entry.id}>{packageText(entry.name, locale)}</option>)}</select></label></>}
               {includes('SOFTWARE') && <label className="wide">{L('من سيستخدم النظام وما حجمه المتوقع؟', 'Who will use the system and at what scale?')}<input value={details.softwareUsers} maxLength={300} onChange={(event) => setDetails({ ...details, softwareUsers: event.target.value })} /></label>}
               {includes('IOT_EMBEDDED') && <label className="wide">{L('ما حالة العتاد أو النموذج الحالي؟', 'What is the current hardware or prototype state?')}<input value={details.hardwareState} maxLength={300} onChange={(event) => setDetails({ ...details, hardwareState: event.target.value })} /></label>}
               {stage === 'EXISTING' && <label className="wide">{L('صف النظام الحالي وحدود تغييره', 'Describe the current system and change boundaries')}<textarea rows={3} value={details.existingSystem} maxLength={800} onChange={(event) => setDetails({ ...details, existingSystem: event.target.value })} /></label>}

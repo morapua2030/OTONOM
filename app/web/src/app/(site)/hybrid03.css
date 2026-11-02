@@ -409,6 +409,8 @@ form.rfq input, form.rfq select, form.rfq textarea, .staff-language { border-rad
 .selector-package-links a { display: inline-flex; align-items: center; min-height: 44px; color: var(--brand-blue-accessible); font-weight: 700; }
 .product-selector-result p.selector-caveat { margin: 14px 0 0; color: var(--c-muted); font-size: 14px; }
 .package-card { scroll-margin-top: 110px; }
+.builder-package-notice { margin: 0 0 16px; padding: 12px 16px; border: 1px solid var(--brand-sky); border-radius: 12px; background: var(--brand-ice); color: var(--brand-navy); font-weight: 600; }
+@media print { .builder-package-notice { display: none; } }
 
 @media (max-width: 760px) {
   .selector-mode { display: grid; width: 100%; }

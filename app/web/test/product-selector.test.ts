@@ -8,6 +8,8 @@ import {
   packageChannelCapacity,
   packagesCovering,
   recommendController,
+  roomControlName,
+  roomControlNames,
   roomTypeLabel,
   sanitizeCircuits,
   totalCircuits,
@@ -73,4 +75,14 @@ test('room model totals circuits and stays within the documented limits', () => 
   assert.equal(roomTypeLabel('living', 'ar'), 'صالة');
   assert.equal(roomTypeLabel('entrance', 'en'), 'Entrance & corridors');
   for (const type of ROOM_TYPES) assert.ok(roomTypeLabel(type, 'ar') && roomTypeLabel(type, 'en'), type);
+});
+
+test('roomControlName gives every room a unique accessible name', () => {
+  assert.equal(roomControlName('صالة', 1, 1), 'صالة');
+  assert.equal(roomControlName('أخرى', 1, 2), 'أخرى (1)');
+  assert.equal(roomControlName('أخرى', 2, 2), 'أخرى (2)');
+  assert.deepEqual(roomControlNames([{ type: 'living' }, { type: 'other' }, { type: 'kitchen' }, { type: 'other' }], 'ar'), ['صالة', 'أخرى (1)', 'مطبخ', 'أخرى (2)']);
+  assert.deepEqual(roomControlNames([{ type: 'other' }, { type: 'other' }], 'en'), ['Other (1)', 'Other (2)']);
+  const names = roomControlNames([{ type: 'bedroom' }, { type: 'bedroom' }, { type: 'bedroom' }, { type: 'office' }], 'en');
+  assert.equal(new Set(names).size, names.length);
 });

@@ -43,6 +43,19 @@ test('D6 selector room mode and package guidance derive every figure from the re
   assert.match(packages, /id=\{`package-\$\{entry\.id\}`\}/);
 });
 
+test('D6 selector intro follows the mode and room controls carry unique names', () => {
+  const selector = component('SmartProductSelector.tsx');
+  assert.match(selector, /preliminary guidance/);
+  assert.ok(selector.includes('Add the rooms in your space and how many circuits you want to control in each. The result is preliminary guidance and does not replace design and installation review.'));
+  assert.match(selector, /mode === 'channels'\s*\?\s*tx\(locale, 'اختر عدد القنوات المستقلة المتوقع/);
+  assert.match(selector, /roomControlNames\(rooms, locale\)/);
+  for (const [ar, en] of [['نوع الغرفة', 'Room type'], ['عدد الدوائر', 'Circuits'], ['قلّل الدوائر', 'Fewer circuits'], ['زِد الدوائر', 'More circuits'], ['احذف', 'Remove']]) {
+    assert.ok(selector.includes(`aria-label={tx(locale, \`${ar}: \${name}\`, \`${en}: \${name}\`)}`), `per-room accessible name for ${en}`);
+  }
+  assert.doesNotMatch(selector, /aria-label="(عدد الدوائر|نوع الغرفة|Circuits|Room type)"/);
+  assert.doesNotMatch(selector, /aria-label=\{tx\(locale, '(عدد الدوائر|نوع الغرفة)'/);
+});
+
 test('Hybrid 03 public CSS keeps exact brand UI colors and reduced-motion handling', () => {
   const css = readFileSync(new URL('../src/app/(site)/hybrid03.css', import.meta.url), 'utf8').toLowerCase();
   for (const color of ['#0f2238', '#18a3e0', '#148ce1', '#0b70b7', '#b8ddf3']) assert.match(css, new RegExp(color));

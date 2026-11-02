@@ -188,7 +188,34 @@ async function main() {
     add('d6-room-mode-ar-mobile', arFacts.dir === 'rtl' && !arFacts.overflow && singleRow.removeDisabled === true && singleRow.removeLabel === 'احذف: صالة' && arFacts.smallestTarget >= 44 && arFacts.selectWidth > arFacts.rowWidth * 0.8 && JSON.stringify(arFacts.packages) === '["essential"]', { ...arFacts, ...singleRow });
     add('d6-room-mode-ar-browser-errors', cleanIssues(roomsAr.issues).length === 0, cleanIssues(roomsAr.issues));
     await roomsAr.screenshot('hybrid03-products-ar-390-rooms.png');
+    await roomsAr.click('.selector-room-add');
+    await roomsAr.waitFor(`document.querySelectorAll('.selector-room-row').length === 3`);
+    const roomNames = await roomsAr.eval<any>(`({
+      intro: document.querySelector('.product-selector-control > h2 + p')?.textContent?.trim(),
+      remove: [...document.querySelectorAll('.selector-room-remove')].map((node) => node.getAttribute('aria-label')),
+      circuits: [...document.querySelectorAll('.selector-stepper input')].map((node) => node.getAttribute('aria-label')),
+    })`);
+    const uniqueNames = (names: string[]) => new Set(names).size === names.length;
+    add('d6-room-names-unique-ar', JSON.stringify(roomNames.remove) === JSON.stringify(['احذف: صالة', 'احذف: أخرى (1)', 'احذف: أخرى (2)']) && uniqueNames(roomNames.circuits) && roomNames.circuits[2] === 'عدد الدوائر: أخرى (2)' && /^أضف غرف المكان/.test(roomNames.intro ?? ''), roomNames);
     await roomsAr.close();
+
+    const builderNotice = await browser.newPage(390, 844);
+    await builderNotice.goto('/ar/start-project?package=plus&service=smart-home');
+    await builderNotice.waitHydrated('[data-testid="project-builder"]');
+    await builderNotice.waitFor(`document.querySelector('[data-testid="builder-package-notice"]')`);
+    const noticeFacts = await builderNotice.eval<any>(`({
+      step: document.querySelector('.builder-progress [aria-current="step"] span')?.textContent,
+      role: document.querySelector('[data-testid="builder-package-notice"]')?.getAttribute('role'),
+      text: document.querySelector('[data-testid="builder-package-notice"]')?.textContent,
+      overflow: document.documentElement.scrollWidth > innerWidth,
+    })`);
+    add('d6-builder-package-notice-step1', noticeFacts.step === '1' && noticeFacts.role === 'status' && /Plus/.test(noticeFacts.text ?? '') && /الباقة المختارة/.test(noticeFacts.text ?? '') && !noticeFacts.overflow, noticeFacts);
+    await builderNotice.screenshot('hybrid03-builder-ar-390-package-notice.png');
+    await builderNotice.goto('/ar/start-project');
+    await builderNotice.waitHydrated('[data-testid="project-builder"]');
+    const noNotice = await builderNotice.eval<boolean>(`!document.querySelector('[data-testid="builder-package-notice"]')`);
+    add('d6-builder-no-notice-without-package', noNotice, { noNotice });
+    await builderNotice.close();
   } finally {
     browser.close();
   }

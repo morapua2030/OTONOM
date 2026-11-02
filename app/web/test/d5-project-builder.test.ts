@@ -87,6 +87,18 @@ test('Project Builder remains ephemeral and query input is allowlisted', () => {
   assert.match(source, /project-intake-disabled/);
 });
 
+test('Project Builder package options and notice come from the package registry', () => {
+  const source = readFileSync(new URL('../src/components/ProjectBuilder.tsx', import.meta.url), 'utf8');
+  assert.match(source, /import \{[^}]*\bSMART_HOME_PACKAGES\b[^}]*\} from '@\/lib\/smart-home-packages\.ts'/);
+  assert.match(source, /SMART_HOME_PACKAGES\.map\(\(entry\) => <option value=\{entry\.id\}/);
+  assert.doesNotMatch(source, /<option value="(premium|plus|essential)"/);
+  assert.match(source, /Selected package: /);
+  assert.match(source, /you can change it in the details step\./);
+  assert.match(source, /className="builder-package-notice" role="status"/);
+  assert.match(source, /step < 4 && includes\('SMART_HOME'\) \? smartHomePackage\(selectedPackage\)/);
+  assert.doesNotMatch(source, /localStorage|sessionStorage|document\.cookie/);
+});
+
 test('D5 public routes are localized and indexed in the sitemap', () => {
   const sitemap = readFileSync(new URL('../src/app/(site)/sitemap.xml/route.ts', import.meta.url), 'utf8');
   assert.match(sitemap, /\/start-project/);

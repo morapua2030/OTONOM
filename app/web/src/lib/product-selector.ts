@@ -56,6 +56,25 @@ const ROOM_LABELS: Record<RoomType, { ar: string; en: string }> = {
 
 export const roomTypeLabel = (type: RoomType, locale: Locale): string => ROOM_LABELS[type][locale];
 
+/**
+ * Accessible room name: the label alone when its type is unique, otherwise "<label> (<n>)" where n is the
+ * 1-based position of this room among rooms of the same type.
+ */
+export function roomControlName(roomLabel: string, positionInType: number, sameTypeCount: number): string {
+  return sameTypeCount > 1 ? `${roomLabel} (${positionInType})` : roomLabel;
+}
+
+/** Unique accessible names for every room, in list order. */
+export function roomControlNames(rooms: readonly Pick<SelectorRoom, 'type'>[], locale: Locale): string[] {
+  const seen = new Map<RoomType, number>();
+  return rooms.map((room) => {
+    const position = (seen.get(room.type) ?? 0) + 1;
+    seen.set(room.type, position);
+    const sameTypeCount = rooms.filter((other) => other.type === room.type).length;
+    return roomControlName(roomTypeLabel(room.type, locale), position, sameTypeCount);
+  });
+}
+
 export function isRoomType(value: unknown): value is RoomType {
   return typeof value === 'string' && (ROOM_TYPES as readonly string[]).includes(value);
 }
