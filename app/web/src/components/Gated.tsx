@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { isLocale, t, type Locale } from '@/lib/i18n.ts';
 import { pageMetadata } from '@/lib/seo.ts';
 import { Bidi } from './bidi.tsx';
-import { c } from '@/lib/content.ts';
+import { PRODUCTS, localProductText } from '@/lib/products.ts';
 
 /** Commerce/portal placeholder during the preview (G-1/G-2): informational only, no forms, noindex. */
 export async function GatedPage({ locale, feature }: { locale: Locale; feature: string }) {
@@ -20,11 +20,11 @@ export async function GatedPage({ locale, feature }: { locale: Locale; feature: 
         <div className="gated-demo">
           <p><Bidi text={d.home.controllersBody} locale={locale} /></p>
           <ul className="cards cols-3">
-            {c(locale).controllers.models.map((model) => (
-              <li className="card" key={model.title}>
+            {PRODUCTS.map((product) => (
+              <li className="card" key={product.model}>
                 <span className="tag">{locale === 'ar' ? 'معلومات فقط' : 'INFORMATION ONLY'}</span>
-                <h2><Bidi text={model.title} locale={locale} /></h2>
-                <p><Bidi text={model.body} locale={locale} /></p>
+                <h2><Bidi text={product.name} locale={locale} /></h2>
+                <p><Bidi text={localProductText(product.summary, locale)} locale={locale} /></p>
                 <strong className="not-configured">{locale === 'ar' ? 'السعر غير مُعدّ' : 'PRICE NOT CONFIGURED'}</strong>
               </li>
             ))}

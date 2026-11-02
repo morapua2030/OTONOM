@@ -3,6 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { Locale } from '@/lib/i18n.ts';
 import { wave, type WaveItem, type WavePage } from '@/lib/wave1.ts';
+import { requireProductByModel } from '@/lib/products.ts';
 import { Bidi } from './bidi.tsx';
 import { BrandLogo } from './BrandLogo.tsx';
 
@@ -74,7 +75,7 @@ export function CorporateHome({ locale }: { locale: Locale }) {
 
       <section className="wave-section product-proof">
         <div className="product-proof-copy"><p className="eyebrow">{locale === 'ar' ? 'دليل قائم' : 'Existing proof'}</p><h2>{d.proofTitle}</h2><p><Bidi text={d.proofBody} locale={locale} /></p><LocalLink className="text-arrow" locale={locale} href="/products">{locale === 'ar' ? 'استكشف عائلة وحدات التحكم' : 'Explore the controller family'} <span aria-hidden="true">→</span></LocalLink></div>
-        <div className="product-proof-image"><Image src="/products/otonom-16r.png" alt={locale === 'ar' ? 'وحدة تحكم OTONOM 16R — صورة المنتج الفعلية' : 'OTONOM 16R controller — genuine product image'} width={1254} height={1254} sizes="(max-width: 760px) 90vw, 480px" loading="eager" /></div>
+        <div className="product-proof-image"><Image src={requireProductByModel('16r').image} alt={locale === 'ar' ? 'وحدة تحكم OTONOM 16R — صورة المنتج الفعلية' : 'OTONOM 16R controller — genuine product image'} width={1254} height={1254} sizes="(max-width: 760px) 90vw, 480px" loading="eager" /></div>
       </section>
 
       <section className="wave-section work-note">

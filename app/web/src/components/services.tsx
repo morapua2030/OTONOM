@@ -3,6 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { Locale } from '@/lib/i18n.ts';
 import type { ServiceItem, ServicePageContent } from '@/lib/services.ts';
+import { requireProductByModel } from '@/lib/products.ts';
 import { Bidi } from './bidi.tsx';
 import { EngineeringLayerExplorer, StartingPointFinder } from './ServiceExplorer.tsx';
 
@@ -125,7 +126,7 @@ function ProductProof({ locale }: { locale: Locale }) {
           <LocalLink className="btn" locale={locale} href="/smart-home/packages">{locale === 'ar' ? 'قارن الباقات' : 'Compare packages'}</LocalLink>
         </div>
       </div>
-      <div className="service-product-image"><Image src="/products/otonom-16r.png" alt={locale === 'ar' ? 'وحدة تحكم OTONOM 16R — صورة منتج فعلية' : 'OTONOM 16R controller — genuine product image'} width={1254} height={1254} sizes="(max-width: 760px) 88vw, 440px" /></div>
+      <div className="service-product-image"><Image src={requireProductByModel('16r').image} alt={locale === 'ar' ? 'وحدة تحكم OTONOM 16R — صورة منتج فعلية' : 'OTONOM 16R controller — genuine product image'} width={1254} height={1254} sizes="(max-width: 760px) 88vw, 440px" /></div>
     </section>
   );
 }
