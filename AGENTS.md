@@ -1,6 +1,6 @@
 # OTONOM persistent guidance
 
-OTONOM is an existing implemented project, not a blank scaffold. Start with `execution/handoff/claude-to-codex-20261016/00-READ-FIRST-ar.md` and `07-codex-next-actions.md`.
+OTONOM is an existing implemented project, not a blank scaffold. Start with `docs/ai/README.md` and `docs/ai/CURRENT_STATUS.md`, then `docs/04-decision-register.md`. The 2026-10-16 handoff in `execution/handoff/claude-to-codex-20261016/` is historical background only. Later private decisions (DR-064..DR-091) exist only in the owner's local root checkout register; read it when it is available locally and never publish it.
 
 - The former blanket Git/GitHub and cloud-deployment prohibitions are **SUPERSEDED FOR THIS LIMITED SCOPE** by explicit owner authorization. The owner explicitly decided on 2026-10-20 that `morapua2030/OTONOM` must remain **PUBLIC** and accepted that visibility. Git/GitHub may be used only to maintain that approved repository, preserving history and avoiding force-push, history rewrites, destructive cleanup, branch deletion, or deletion of already-public content without separate approval. Before every new push, audit the exact staged files and reachable history for credentials, personal information, sensitive operational material, and internal documents; stop and report material exposure that needs a separate owner decision.
 - The owner directive dated 2026-10-22 authorizes publishing the completed, approved **non-commercial marketing and product website** to the existing intended Vercel Production project, and establishing controlled delivery from GitHub `main`, only after database, identity, authentication, migration, backup, rollback, test, secret-scan, and release gates pass. Public marketing/product pages may be anonymous; staff/admin remains protected by application MFA/RBAC. This does not authorize public commerce, payments, checkout, device control, warranty activation, customer-data migration, or unapproved legal/commercial claims.
@@ -11,3 +11,9 @@ OTONOM is an existing implemented project, not a blank scaffold. Start with `exe
 - Identify the database and preserve verified backups before migrations or destructive test setup.
 - Report test evidence truthfully; distinguish automated, human, independent, target-platform, skipped, and blocked work.
 - User-facing progress updates must be exactly three short Arabic lines: `تم:`, `جاري:`, `النتيجة:`.
+
+<!-- OTONOM BRAND GUARDIAN: BEGIN -->
+## OTONOM — Visual Identity Protection
+
+For any OTONOM public-facing design, UI, website, app, packaging, brand image, marketing deliverable, or refactor, **load and follow** `.agents/skills/otonom-brand-guardian/SKILL.md` and its asset selection/QA references **before making changes**. Use the exact supplied Hybrid 03 SVG logo and brand tokens. The logo is `OTONOM` with a fixed knob-left horizontal toggle replacing the third O; do not redraw, animate, recolor, mirror or substitute it. Run `python .agents/skills/otonom-brand-guardian/scripts/validate_brand.py` as a visual-brand asset gate. If the user requests changing the master mark, stop for explicit scope/approval; do not silently replace. Respect this repository's other safety and approval rules. If the Brand Guardian skill folder is not present in your checkout, use the locked assets in `app/web/public/brand/otonom/` and `docs/WEB_DESIGN_SYSTEM.md`, and do not create or alter logo artwork.
+<!-- OTONOM BRAND GUARDIAN: END -->

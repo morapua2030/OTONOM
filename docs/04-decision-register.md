@@ -89,10 +89,23 @@ Owner abbreviations:
 | DR-062 | Antigravity cloud workspace availability | Not verifiable from the Claude Code session (no Antigravity tool). Public sources describe Antigravity as local-first. Remote use via SSH to a cloud VM is unverified | BLOCKED | BO | Owner picks A1/A2/A3 and runs doc 31 §4 Step B |
 | DR-063 | Production OWNER authentication exception | The exact immutable Production `team@otonomiot.com` OWNER record may authenticate with owner-chosen password only. Owner explicitly accepted credential-stuffing, phishing, reuse, takeover and privileged-modification risk. Exact environment/ID/email/role matching, throttling, lockout, audit, secure cookies, CSRF controls and session revocation are mandatory; MFA remains mandatory everywhere else | APPROVED (owner, 2026-10-24) | BO | Implement, test and verify hosted Production without weakening other identities |
 
+**Gap note — DR-064–DR-091:** recorded in the owner's private local register (security, hosting and release-operation decisions). They are intentionally not published (see DR-071/DR-074). This is a numbering note, not a decision.
+
+## 3a. Owner decisions recorded 2026-11-03
+| ID | Topic | Decision / position | Status | Owner | Evidence required | Impact | Next action | Approved at |
+|---|---|---|---|---|---|---|---|---|
+| DR-092 | AI continuity | Planning with Claude in chat and execution by Claude Code/Codex in Antigravity on `D:\otonom` continue without resetting scope, architecture, brand or release rules. Supersedes DR-061 for this scope | APPROVED (owner) | BO | — | Agent workflow | Keep `docs/ai/` current | Owner chat, recorded 2026-11-03; original date unverified |
+| DR-093 | Release freeze | Hybrid 03 is the official identity for existing and new UI. D6–D8 continue on the Hybrid lineage. The team lead reviews a protected Preview first. Production changes only on an explicit owner release command with fresh G01–G16 evidence for the exact candidate | APPROVED (owner) | BO | Fresh G01–G16 verdict | Release, UI | Team-lead Preview review | Owner chat, recorded 2026-11-03; original date unverified |
+| DR-094 | R16 = 16R | The "R16 Smart Controller" in the package brochure is the OTONOM 16R controller (owner-confirmed 2026-11-02). Package items may link to the 16R product page; package names, prices and quantities stay unchanged | APPROVED (owner) | BO | — | Package copy and links | None | Owner chat 2026-11-02, recorded 2026-11-03 |
+| DR-095 | Team-lead access | Use a Vercel Shareable Link on the review Preview. Keep project-wide Vercel Authentication enabled. Retire the temporary reviewer access after the link works (procedure handled privately) | APPROVED (owner) | BO | Link works on the exact Preview | Review access | Create the link in S4 | Owner chat, recorded 2026-11-03; original date unverified |
+| DR-096 | PR strategy | D6 commits are added to PR #16 (one combined review PR) by fast-forward only, after the pre-push audit and full QA. No rebase or force | APPROVED (owner) | BO | Pre-push audit + full QA | Git / PR | S3 then S4 | Owner chat, recorded 2026-11-03; original date unverified |
+| DR-097 | Product truthfulness | Public product copy uses confirmed facts only (names, channel counts, genuine images, package composition). Technical specs stay "awaiting approval" until the owner or engineering supply verified data | APPROVED (owner) | BO | Datasheets / engineering data | Product copy | Owner supplies verified specs (S5) | Owner chat, recorded 2026-11-03; original date unverified |
+| DR-098 | D4 case-study content | Deferred. The portfolio framework stays live with zero entries until materials and written client permissions exist | APPROVED (owner) | BO | Materials + written client permission | Portfolio | None until materials exist | Owner chat, recorded 2026-11-03; original date unverified |
+
 ## 4. Status summary
 | Status | Count | Decisions |
 |---|---|---|
-| APPROVED (incl. "in principle") | 27 | DR-001–006, 008–012, 015, 017, 021, 023, 025, 027–029, 035, 038, 039, 040, 055, 060, 061, 063 |
+| APPROVED (incl. "in principle") | 34 | DR-001–006, 008–012, 015, 017, 021, 023, 025, 027–029, 035, 038, 039, 040, 055, 060, 061, 063, 092–098 |
 | CONFIRMED_BY_USER | 9 | DR-013, 014, 018, 019, 020, 026, 030, 031, 033 |
 | PROPOSED | 13 | DR-007, 037, 041 (owner-preferred), 045, 046, 047, 048, 049, 050, 051, 052, 053, 058 |
 | OPEN | 5 | DR-016, 036, 042, 044, 057 |
@@ -100,9 +113,11 @@ Owner abbreviations:
 | DEFERRED | 2 | DR-022, 034 |
 | VERIFIED_BY_AGENT | 1 | DR-056 |
 
-Total: 63 decisions (updated with owner Production authentication decision on 2026-10-24).
+Total: 70 published decisions (DR-001–063 and DR-092–098; updated 2026-11-03). DR-064–091 are private and not counted here.
 
 ## Change log
+2.2-draft, 2026-11-03: DR-092–DR-098 added from owner chat (recorded 2026-11-03). Gap note added for the private DR-064–DR-091. Earlier entries are unchanged.
+
 2.1-draft, 2026-10-24: DR-063 added from explicit owner approval; no named technical approver is recorded or invented.
 
 2.0-draft, 2026-10-13: register rebuilt from master prompt v2. DR-046…058 added. The v1 register (D-001…D-032) is archived and superseded.

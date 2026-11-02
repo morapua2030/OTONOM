@@ -1,3 +1,4 @@
+> Historical document. Current verified status: docs/ai/CURRENT_STATUS.md.
 # OTONOM Website — Planning Packet (v2.0-draft, 2026-10-13)
 
 **Status:** planning only · **Approval:** none of these documents is approved by its existence · **App code:** none · **Git/GitHub:** not used · **Railway:** not deployed.
