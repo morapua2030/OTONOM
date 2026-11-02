@@ -42,7 +42,7 @@ export default async function SmartHomePackagesPage({ params }: P) {
       </section>
       <section className="section" aria-labelledby="package-list-title">
         <h2 id="package-list-title">{locale === 'ar' ? 'Premium وPlus وEssential' : 'Premium, Plus and Essential'}</h2>
-        <SmartHomePackages locale={locale} />
+        <SmartHomePackages locale={locale} comparison />
       </section>
     </>
   );

@@ -36,7 +36,14 @@ export default async function ComparePage({ params }: P) {
         <h1>{locale === 'ar' ? 'قارن عدد القنوات، ثم راجع التصميم' : 'Compare channel counts, then validate the design'}</h1>
         <p className="lead"><Bidi text={localProductText(PRODUCT_REVIEW_NOTICE, locale)} locale={locale} /></p>
       </section>
-      <section className="section"><ProductComparison locale={locale} /></section>
+      <section className="section">
+        <ProductComparison locale={locale} />
+        <nav className="actions compare-next-steps" aria-label={locale === 'ar' ? 'الخطوات التالية' : 'Next steps'}>
+          <a className="btn" href={`/${locale}/smart-home/packages`}>{locale === 'ar' ? 'اطّلع على باقات المنزل الذكي' : 'See smart-home packages'}</a>
+          <a className="btn secondary" href={`/${locale}/services/smart-home-automation`}>{locale === 'ar' ? 'خدمة أتمتة المنزل الذكي' : 'Smart-home automation service'}</a>
+          <a className="btn secondary" href={`/${locale}/start-project?service=smart-home`}>{locale === 'ar' ? 'ابدأ موجز المشروع' : 'Start a project brief'}</a>
+        </nav>
+      </section>
     </>
   );
 }

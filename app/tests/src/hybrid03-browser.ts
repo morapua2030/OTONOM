@@ -216,6 +216,81 @@ async function main() {
     const noNotice = await builderNotice.eval<boolean>(`!document.querySelector('[data-testid="builder-package-notice"]')`);
     add('d6-builder-no-notice-without-package', noNotice, { noNotice });
     await builderNotice.close();
+
+    const compareAr = await browser.newPage(390, 844);
+    await compareAr.touch();
+    await compareAr.goto('/ar/products/compare');
+    const compareFacts = await compareAr.eval<any>(`(() => {
+      const visible = (node) => !!node && getComputedStyle(node).display !== 'none' && node.getBoundingClientRect().height > 0;
+      return {
+        dir: document.documentElement.dir,
+        overflow: document.documentElement.scrollWidth > innerWidth,
+        stackVisible: visible(document.querySelector('[data-testid="product-compare-stack"]')),
+        tableVisible: visible(document.querySelector('.product-compare-wrap')),
+        cards: document.querySelectorAll('.product-compare-card').length,
+        bidiChannels: [...document.querySelectorAll('.product-compare-card dd strong bdi[dir="ltr"]')].map((node) => node.textContent),
+        smallestTarget: Math.min(...[...document.querySelectorAll('.product-compare-card dd a, .compare-next-steps a')].map((node) => Math.min(node.getBoundingClientRect().width, node.getBoundingClientRect().height))),
+      };
+    })()`);
+    add('d6-compare-ar-390-stacked', compareFacts.dir === 'rtl' && !compareFacts.overflow && compareFacts.stackVisible && !compareFacts.tableVisible && compareFacts.cards === 3 && compareFacts.bidiChannels.length === 3 && compareFacts.smallestTarget >= 44, compareFacts);
+    await compareAr.screenshot('hybrid03-compare-ar-390.png');
+    await compareAr.close();
+
+    const compareEn = await browser.newPage(1440, 1000);
+    await compareEn.goto('/en/products/compare');
+    const compareDesktop = await compareEn.eval<any>(`({
+      overflow: document.documentElement.scrollWidth > innerWidth,
+      stackHidden: getComputedStyle(document.querySelector('[data-testid="product-compare-stack"]')).display === 'none',
+      tableRows: document.querySelectorAll('.product-compare tbody tr').length,
+    })`);
+    add('d6-compare-en-1440-table', !compareDesktop.overflow && compareDesktop.stackHidden && compareDesktop.tableRows === 5, compareDesktop);
+    await compareEn.close();
+
+    const packagesAr = await browser.newPage(390, 844);
+    await packagesAr.touch();
+    await packagesAr.goto('/ar/smart-home/packages');
+    const packageTable = await packagesAr.eval<any>(`(() => {
+      const region = document.querySelector('[data-testid="package-comparison"]');
+      const lockRow = [...document.querySelectorAll('.package-compare tbody tr')].find((row) => row.querySelector('th')?.textContent?.includes('قفل ذكي'));
+      return {
+        overflow: document.documentElement.scrollWidth > innerWidth,
+        regionRole: region?.getAttribute('role'),
+        regionFocusable: region?.getAttribute('tabindex') === '0',
+        regionScrolls: region ? region.scrollWidth > region.clientWidth : false,
+        lockPlus: lockRow?.querySelector('[data-package="plus"]')?.textContent?.trim(),
+        lockPremium: lockRow?.querySelector('[data-package="premium"]')?.textContent?.trim(),
+        stickyHeader: getComputedStyle(document.querySelector('.package-compare th[scope="row"]')).position,
+        caveatAfter: region?.nextElementSibling?.classList.contains('package-caveat'),
+      };
+    })()`);
+    add('d6-package-table-ar-not-listed', packageTable.lockPlus === 'غير مذكور في البروشور' && /مدرج/.test(packageTable.lockPremium ?? '') && packageTable.regionRole === 'region' && packageTable.regionFocusable && !packageTable.overflow && packageTable.stickyHeader === 'sticky' && packageTable.caveatAfter, packageTable);
+    await packagesAr.screenshot('hybrid03-packages-ar-390-table.png');
+    await packagesAr.close();
+
+    const switchPage = await browser.newPage(390, 844);
+    await switchPage.goto('/ar/start-project?package=plus&service=smart-home');
+    await switchPage.waitHydrated('[data-testid="project-builder"]');
+    await switchPage.waitFor(`document.querySelector('a[hreflang="en"]')?.getAttribute('href') === '/en/start-project?package=plus&service=smart-home'`);
+    await switchPage.click('a[hreflang="en"]');
+    await switchPage.waitFor(`location.pathname === '/en/start-project'`);
+    await switchPage.waitHydrated('[data-testid="project-builder"]');
+    await switchPage.waitFor(`document.querySelector('[data-testid="builder-package-notice"]')`);
+    const switched = await switchPage.eval<any>(`({
+      lang: document.documentElement.lang,
+      search: location.search,
+      notice: document.querySelector('[data-testid="builder-package-notice"]')?.textContent,
+    })`);
+    add('d6-lang-switch-keeps-package', switched.lang === 'en' && switched.search === '?package=plus&service=smart-home' && /Selected package: Plus/.test(switched.notice ?? ''), switched);
+    await switchPage.close();
+
+    const selectorBusiness = await browser.newPage(1440, 1000);
+    await selectorBusiness.goto('/en/products');
+    await selectorBusiness.waitHydrated('[data-testid="smart-product-selector"]');
+    await selectorBusiness.click('.product-selector-presets button:nth-child(4)');
+    await selectorBusiness.waitFor(`document.querySelector('.product-selector-complex')`);
+    const businessLinks = await selectorBusiness.eval<string[]>(`[...document.querySelectorAll('.product-selector-complex a')].map((node) => node.getAttribute('href'))`);
+    add('d6-selector-business-links', businessLinks.includes('/en/business/developers') && businessLinks.includes('/en/business/contractors'), { businessLinks });
+    await selectorBusiness.close();
   } finally {
     browser.close();
   }

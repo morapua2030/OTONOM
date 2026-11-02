@@ -2,6 +2,7 @@ import type { Locale } from '@/lib/i18n.ts';
 import {
   formatPackagePrice,
   PACKAGE_COMMERCIAL_CAVEAT,
+  packageComparisonRows,
   packageText,
   SMART_HOME_PACKAGES,
 } from '@/lib/smart-home-packages.ts';
@@ -9,7 +10,49 @@ import { Bidi } from './bidi.tsx';
 
 const tx = (locale: Locale, ar: string, en: string) => (locale === 'ar' ? ar : en);
 
-export function SmartHomePackages({ locale, compact = false }: { locale: Locale; compact?: boolean }) {
+function comparisonCell(quantity: number | null, locale: Locale) {
+  if (quantity === null) return tx(locale, 'غير مذكور في البروشور', 'Not listed in the brochure');
+  if (quantity > 1) return <strong><bdi dir="ltr">×{quantity}</bdi></strong>;
+  return <><span aria-hidden="true">✓</span> {tx(locale, 'مدرج', 'Listed')}</>;
+}
+
+/** Item-by-package table built only from the registry; an unlisted item is only "not listed in the brochure" (DR-097). */
+export function PackageComparison({ locale }: { locale: Locale }) {
+  const caption = tx(locale, 'مقارنة محتويات الباقات كما وردت في البروشور', 'Package contents as listed in the brochure');
+  return (
+    <div className="package-compare-scroll" role="region" aria-label={caption} tabIndex={0} data-testid="package-comparison">
+      <table className="data package-compare">
+        <caption>{caption}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{tx(locale, 'المكوّن', 'Item')}</th>
+            {SMART_HOME_PACKAGES.map((entry) => <th scope="col" key={entry.id}>{packageText(entry.name, locale)}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          <tr className="package-compare-price">
+            <th scope="row">{tx(locale, 'سعر الباقة المعلن', 'Published package price')}</th>
+            {SMART_HOME_PACKAGES.map((entry) => <td key={entry.id}><bdi dir="ltr">{formatPackagePrice(entry.priceEgp, locale)}</bdi></td>)}
+          </tr>
+          {packageComparisonRows().map((row) => (
+            <tr key={row.key}>
+              <th scope="row">
+                {row.model ? (
+                  <a href={`/${locale}/products/${row.model}`} data-product-model={row.model}><Bidi text={packageText(row.name, locale)} locale={locale} /></a>
+                ) : (
+                  <Bidi text={packageText(row.name, locale)} locale={locale} />
+                )}
+              </th>
+              {SMART_HOME_PACKAGES.map((entry) => <td key={entry.id} data-package={entry.id}>{comparisonCell(row.cells[entry.id], locale)}</td>)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+export function SmartHomePackages({ locale, compact = false, comparison = false }: { locale: Locale; compact?: boolean; comparison?: boolean }) {
   const packages = compact ? SMART_HOME_PACKAGES.slice(0, 3) : SMART_HOME_PACKAGES;
   return (
     <>
@@ -61,6 +104,7 @@ export function SmartHomePackages({ locale, compact = false }: { locale: Locale;
           </article>
         ))}
       </div>
+      {comparison ? <PackageComparison locale={locale} /> : null}
       <aside className="package-caveat" aria-label={tx(locale, 'تنبيه تجاري', 'Commercial notice')}>
         <strong>{tx(locale, 'قبل الاتفاق النهائي', 'Before any final agreement')}</strong>
         <p><Bidi text={packageText(PACKAGE_COMMERCIAL_CAVEAT, locale)} locale={locale} /></p>

@@ -56,6 +56,32 @@ test('D6 selector intro follows the mode and room controls carry unique names', 
   assert.doesNotMatch(selector, /aria-label=\{tx\(locale, '(عدد الدوائر|نوع الغرفة)'/);
 });
 
+test('D6 product comparison renders the table and the stacked cards from one row array', () => {
+  const products = component('products.tsx');
+  const block = products.slice(products.indexOf('const COMPARISON_ROWS'));
+  assert.equal((block.match(/COMPARISON_ROWS\.map\(/g) ?? []).length, 2, 'both views map the same rows');
+  for (const copy of ["'بانتظار الاعتماد', 'Awaiting approval'", "'غير منشور', 'Not published'", "'مقارنة تعتمد على الحقائق المؤكدة فقط', 'Comparison using confirmed facts only'"]) assert.ok(block.includes(copy), copy);
+  assert.match(block, /<th scope="col">/);
+  assert.match(block, /<th scope="row">\{row\.label\(locale\)\}<\/th>/);
+  assert.match(block, /className="product-compare-stack"/);
+  assert.match(block, /<dt>\{row\.label\(locale\)\}<\/dt>/);
+  const css = readFileSync(new URL('../src/app/(site)/hybrid03.css', import.meta.url), 'utf8');
+  assert.match(css, /\.product-compare-stack \{ display: none; \}/);
+  assert.match(css, /@media \(max-width: 760px\) \{\s*\.product-compare-wrap \{ display: none; \}\s*\.product-compare-stack \{ display: block; \}/);
+  const page = readFileSync(new URL('../src/app/(site)/[locale]/products/compare/page.tsx', import.meta.url), 'utf8');
+  for (const href of ['/smart-home/packages', '/services/smart-home-automation', '/start-project?service=smart-home']) assert.ok(page.includes('href={`/${locale}' + href + '`}'), href);
+});
+
+test('D6 selector multi-controller card links to the developer and contractor paths', () => {
+  const selector = component('SmartProductSelector.tsx');
+  const card = selector.slice(selector.indexOf('className="product-selector-complex"'), selector.indexOf('<PackageGuidance locale={locale} total={total} />'));
+  assert.match(card, /does not assume controller quantity/);
+  assert.ok(card.includes("'للمشروعات متعددة الوحدات أو مع المطوّرين والمقاولين:', 'For multi-unit projects, developers and contractors:'"));
+  assert.match(card, /href=\{`\/\$\{locale\}\/business\/developers`\}/);
+  assert.match(card, /href=\{`\/\$\{locale\}\/business\/contractors`\}/);
+  assert.doesNotMatch(card, /priceEgp|EGP|partner price/i);
+});
+
 test('Hybrid 03 public CSS keeps exact brand UI colors and reduced-motion handling', () => {
   const css = readFileSync(new URL('../src/app/(site)/hybrid03.css', import.meta.url), 'utf8').toLowerCase();
   for (const color of ['#0f2238', '#18a3e0', '#148ce1', '#0b70b7', '#b8ddf3']) assert.match(css, new RegExp(color));

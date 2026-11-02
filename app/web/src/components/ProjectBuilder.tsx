@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { isBuilderServiceKey, SERVICE_DISCIPLINE, type BuilderDiscipline } from '@/lib/builder-query.ts';
 import type { Locale } from '@/lib/i18n.ts';
 import { isSmartHomePackageId, packageText, SMART_HOME_PACKAGES, smartHomePackage, type SmartHomePackageId } from '@/lib/smart-home-packages.ts';
 
 type ClientKind = 'INDIVIDUAL' | 'BUSINESS' | 'PREFER_NOT';
 type ProjectStage = 'IDEA' | 'PROTOTYPE' | 'EXISTING' | 'UNSURE';
-type Discipline = 'SOFTWARE' | 'IOT_EMBEDDED' | 'CUSTOM_ENGINEERING' | 'SMART_HOME' | 'INTEGRATED' | 'UNSURE';
+type Discipline = BuilderDiscipline;
 type Choice<T extends string> = { value: T; ar: string; en: string; bodyAr?: string; bodyEn?: string };
 
 const CLIENTS: Choice<ClientKind>[] = [
@@ -28,17 +29,6 @@ const DISCIPLINES: Choice<Discipline>[] = [
   { value: 'INTEGRATED', ar: 'مشروع متكامل متعدد التخصصات', en: 'Integrated multi-discipline project' },
   { value: 'UNSURE', ar: 'أحتاج مساعدة في الاختيار', en: 'I need help choosing' },
 ];
-
-const SERVICE_DISCIPLINE: Record<string, Discipline> = {
-  software: 'SOFTWARE',
-  'software-engineering': 'SOFTWARE',
-  iot: 'IOT_EMBEDDED',
-  'iot-embedded': 'IOT_EMBEDDED',
-  custom: 'CUSTOM_ENGINEERING',
-  'custom-engineering': 'CUSTOM_ENGINEERING',
-  'smart-home': 'SMART_HOME',
-  integrated: 'INTEGRATED',
-};
 
 const GOVERNORATES = [
   ['UNSURE', 'غير محدد بعد', 'Not decided yet'], ['CAIRO', 'القاهرة', 'Cairo'], ['GIZA', 'الجيزة', 'Giza'],
@@ -81,7 +71,7 @@ export function ProjectBuilder({ locale, intakeEnabled }: { locale: Locale; inta
       setSelectedPackage(packageValue);
       setDisciplines((current) => current.includes('SMART_HOME') ? current : [...current.filter((item) => item !== 'UNSURE'), 'SMART_HOME']);
     }
-    const inferred = serviceValue ? SERVICE_DISCIPLINE[serviceValue] : undefined;
+    const inferred = isBuilderServiceKey(serviceValue) ? SERVICE_DISCIPLINE[serviceValue] : undefined;
     if (inferred) setDisciplines((current) => current.includes(inferred) ? current : [...current.filter((item) => item !== 'UNSURE'), inferred]);
   }, []);
 

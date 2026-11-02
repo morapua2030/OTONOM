@@ -52,5 +52,5 @@ export const gatedMetadataFor =
     const { locale } = await params;
     if (!isLocale(locale)) return { robots: { index: false, follow: false } };
     const d = t(locale);
-    return pageMetadata({ locale, path, title: d.gated.title, description: d.gated.body });
+    return pageMetadata({ locale, path, title: d.gated.title, description: d.gated.body, noindex: true });
   };

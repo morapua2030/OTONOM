@@ -77,6 +77,34 @@ export function smartHomePackage(value: unknown): SmartHomePackage | null {
   return SMART_HOME_PACKAGES.find((entry) => entry.id === value.toLowerCase()) ?? null;
 }
 
+export type PackageComparisonRow = {
+  key: string;
+  name: LocalText;
+  model?: ProductModel;
+  /** Listed quantity per package, or `null` when the brochure does not list the item for that package. */
+  cells: Record<SmartHomePackageId, number | null>;
+};
+
+/**
+ * Item-by-package matrix derived from the registry: rows follow first appearance in data order,
+ * keyed by the stable English item name. Nothing is hard-coded here.
+ */
+export function packageComparisonRows(packages: readonly SmartHomePackage[] = SMART_HOME_PACKAGES): PackageComparisonRow[] {
+  const rows = new Map<string, PackageComparisonRow>();
+  for (const entry of packages) {
+    for (const packageItem of entry.items) {
+      let row = rows.get(packageItem.name.en);
+      if (!row) {
+        const cells = Object.fromEntries(packages.map((other) => [other.id, null])) as Record<SmartHomePackageId, number | null>;
+        row = { key: packageItem.name.en, name: { ...packageItem.name }, ...(packageItem.model ? { model: packageItem.model } : {}), cells };
+        rows.set(row.key, row);
+      }
+      row.cells[entry.id] = packageItem.quantity;
+    }
+  }
+  return [...rows.values()];
+}
+
 export function packageText(value: LocalText, locale: Locale): string {
   return value[locale];
 }

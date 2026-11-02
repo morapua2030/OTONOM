@@ -421,3 +421,32 @@ form.rfq input, form.rfq select, form.rfq textarea, .staff-language { border-rad
   .selector-mode button, .selector-stepper button, .selector-room-remove, .selector-room-add { transition: none; }
 }
 /* ===== D6 product selector: room mode + package guidance (END) ===== */
+
+/* ===== D6 S2: product comparison views, package contents table, next steps (BEGIN) ===== */
+.product-compare-stack { display: none; }
+.product-compare-stack-caption { margin: 0 0 12px; color: var(--c-muted); font-weight: 600; }
+.product-compare-card { padding: 16px; border: 1px solid var(--c-line); border-radius: 12px; background: #fff; }
+.product-compare-card + .product-compare-card { margin-block-start: 16px; }
+.product-compare-card-head { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 16px; align-items: center; }
+.product-compare-card-head img { width: 96px; height: 96px; object-fit: contain; }
+.product-compare-card h2 { margin: 4px 0 0; font-size: 20px; }
+.product-compare-card dl { display: grid; gap: 1px; margin: 16px 0 0; background: var(--c-line); border: 1px solid var(--c-line); }
+.product-compare-card dl > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; padding: 12px; background: #fff; }
+.product-compare-card dt { color: var(--c-muted); }
+.product-compare-card dd { margin: 0; color: var(--brand-navy); }
+.product-compare-card dd a, .package-compare a { display: inline-flex; align-items: center; min-height: 44px; }
+.compare-next-steps { margin-block-start: 32px; }
+.product-selector-business { margin-block: 24px 0; color: var(--brand-navy); font-weight: 600; }
+.package-compare-scroll { max-width: 100%; margin-block: 32px 24px; overflow-x: auto; border: 1px solid var(--c-line); border-radius: 8px; background: #fff; }
+.package-compare { min-width: 560px; }
+.package-compare caption { padding: 12px; color: var(--brand-navy); font-weight: 700; text-align: start; }
+.package-compare thead th { background: var(--brand-ice); color: var(--brand-navy); }
+.package-compare th[scope='row'] { position: sticky; inset-inline-start: 0; z-index: 1; background: #fff; }
+.package-compare thead th:first-child { position: sticky; inset-inline-start: 0; z-index: 1; }
+.package-compare-price td { color: var(--brand-navy); font-weight: 700; white-space: nowrap; }
+@media (max-width: 760px) {
+  .product-compare-wrap { display: none; }
+  .product-compare-stack { display: block; }
+  .compare-next-steps .btn { width: 100%; }
+}
+/* ===== D6 S2: product comparison views, package contents table, next steps (END) ===== */

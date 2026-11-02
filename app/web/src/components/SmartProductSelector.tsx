@@ -246,6 +246,11 @@ export function SmartProductSelector({ locale }: { locale: Locale }) {
             <h3>{tx(locale, 'راجع المعمارية قبل اختيار الموديلات', 'Review the architecture before choosing models')}</h3>
             <p>{tx(locale, `الاحتياج يتجاوز ${MAX_SINGLE_CONTROLLER_CHANNELS} قناة. لا يفترض المنتقي عدد الوحدات أو توزيعها؛ يبدأ الفريق بمراجعة الدوائر وحدود النظام.`, `The requirement exceeds ${MAX_SINGLE_CONTROLLER_CHANNELS} channels. The selector does not assume controller quantity or allocation; the team first reviews circuits and system boundaries.`)}</p>
             <a className="btn" href={`/${locale}/start-project?service=smart-home`}>{tx(locale, 'ابدأ موجز المشروع', 'Start a project brief')}</a>
+            <p className="product-selector-business">{tx(locale, 'للمشروعات متعددة الوحدات أو مع المطوّرين والمقاولين:', 'For multi-unit projects, developers and contractors:')}</p>
+            <div className="actions">
+              <a className="btn secondary" href={`/${locale}/business/developers`}>{tx(locale, 'للمطوّرين', 'Developers')}</a>
+              <a className="btn secondary" href={`/${locale}/business/contractors`}>{tx(locale, 'للمقاولين', 'Contractors')}</a>
+            </div>
           </div>
         )}
         <PackageGuidance locale={locale} total={total} />
