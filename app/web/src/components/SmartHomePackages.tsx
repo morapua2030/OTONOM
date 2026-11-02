@@ -15,7 +15,7 @@ export function SmartHomePackages({ locale, compact = false }: { locale: Locale;
     <>
       <div className="package-grid" data-testid="smart-home-packages">
         {packages.map((entry) => (
-          <article className={`package-card package-${entry.id}`} key={entry.id}>
+          <article className={`package-card package-${entry.id}`} id={`package-${entry.id}`} key={entry.id}>
             <div className="package-card-head">
               <div>
                 <p className="eyebrow">OTONOM SMART HOME</p>

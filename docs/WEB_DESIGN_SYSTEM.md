@@ -38,6 +38,7 @@ The source blue remains `#148CE1` for large/decorative brand roles. Small text l
 - Portfolio: editorial empty state and URL-synchronised filters; no fabricated case studies.
 - Builder/packages: six visible stages, low-friction choices, explicit privacy gate and approved package facts only.
 - Products/D6: genuine 4R/6R/16R imagery, published facts, preliminary selection guidance and no transactions.
+- Products/D6 selector: channel-count and room modes share one result panel; package guidance and channel capacity are derived from the product and package registries; no data collection, storage, prices or transactions.
 
 ## Accessibility and QA
 

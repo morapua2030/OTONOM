@@ -124,6 +124,71 @@ async function main() {
     add('products-browser-errors', cleanIssues(products.issues).length === 0, cleanIssues(products.issues));
     await products.screenshot('hybrid03-products-en-768-selector.png');
     await products.close();
+
+    // D6 room mode: totals drive the same result panel, package guidance is derived from the registries.
+    const rooms = await browser.newPage(1440, 1000);
+    await rooms.reducedMotion();
+    await rooms.goto('/en/products');
+    await rooms.waitHydrated('[data-testid="smart-product-selector"]');
+    await rooms.click('.selector-mode button:nth-child(2)');
+    await rooms.waitFor(`document.querySelectorAll('.selector-room-row').length === 1`);
+    await rooms.click('.selector-room-add');
+    await rooms.waitFor(`document.querySelectorAll('.selector-room-row').length === 2`);
+    await rooms.click('.selector-room-add');
+    await rooms.waitFor(`document.querySelectorAll('.selector-room-row').length === 3`);
+    const focusMoved = await rooms.eval<boolean>(`document.activeElement?.id === document.querySelector('.selector-room-row:nth-child(3) select')?.id`);
+    const setCircuits = async (values: number[]) => {
+      for (const [index, value] of values.entries()) await rooms.fill(`.selector-room-row:nth-child(${index + 1}) .selector-stepper input`, String(value));
+    };
+    const roomFacts = () => rooms.eval<any>(`(() => {
+      const selector = document.querySelector('[data-testid="smart-product-selector"]');
+      return {
+        mode: selector?.getAttribute('data-mode'),
+        total: document.querySelector('.selector-room-total bdi')?.textContent,
+        controller: document.querySelector('.product-selector-result > img + div h3')?.textContent ?? null,
+        multi: !!document.querySelector('.product-selector-complex'),
+        packages: [...document.querySelectorAll('.selector-packages [data-package]')].map((node) => node.getAttribute('data-package')),
+        packageLinks: [...document.querySelectorAll('.selector-package-links a')].map((node) => node.getAttribute('href')),
+        caveat: !!document.querySelector('.selector-packages .selector-caveat'),
+        price: /EGP|ج\\.م/.test(selector?.textContent ?? ''),
+        forms: selector?.querySelectorAll('form').length ?? -1,
+        removeDisabled: [...document.querySelectorAll('.selector-room-remove')].map((node) => node.disabled),
+        overflow: document.documentElement.scrollWidth > innerWidth,
+      };
+    })()`);
+    await setCircuits([8, 6, 6]);
+    await rooms.waitFor(`document.querySelector('.selector-room-total bdi')?.textContent === '20'`);
+    const twenty = await roomFacts();
+    add('d6-room-mode-20-multi-plus-premium', twenty.mode === 'rooms' && twenty.multi && twenty.controller === null && JSON.stringify(twenty.packages) === '["plus","premium"]' && twenty.caveat && !twenty.price && twenty.forms === 0 && focusMoved && twenty.packageLinks.includes('/en/smart-home/packages#package-plus') && twenty.packageLinks.includes('/en/start-project?package=premium&service=smart-home') && !twenty.overflow, { ...twenty, focusMoved });
+    await rooms.screenshot('hybrid03-products-en-1440-rooms-20.png');
+    await setCircuits([4, 3, 3]);
+    await rooms.waitFor(`document.querySelector('.selector-room-total bdi')?.textContent === '10'`);
+    const ten = await roomFacts();
+    add('d6-room-mode-10-16r-essential', /16R/.test(ten.controller ?? '') && !ten.multi && JSON.stringify(ten.packages) === '["essential"]' && ten.caveat && !ten.price && !ten.overflow, ten);
+    add('d6-room-mode-browser-errors', cleanIssues(rooms.issues).length === 0, cleanIssues(rooms.issues));
+    await rooms.close();
+
+    const roomsAr = await browser.newPage(390, 844);
+    await roomsAr.touch();
+    await roomsAr.goto('/ar/products');
+    await roomsAr.waitHydrated('[data-testid="smart-product-selector"]');
+    await roomsAr.click('.selector-mode button:nth-child(2)');
+    await roomsAr.waitFor(`document.querySelectorAll('.selector-room-row').length === 1`);
+    const singleRow = await roomsAr.eval<any>(`({ removeDisabled: document.querySelector('.selector-room-remove')?.disabled, removeLabel: document.querySelector('.selector-room-remove')?.getAttribute('aria-label') })`);
+    await roomsAr.click('.selector-room-add');
+    await roomsAr.waitFor(`document.querySelectorAll('.selector-room-row').length === 2`);
+    const arFacts = await roomsAr.eval<any>(`({
+      dir: document.documentElement.dir,
+      overflow: document.documentElement.scrollWidth > innerWidth,
+      rowWidth: document.querySelector('.selector-room-row')?.getBoundingClientRect().width,
+      selectWidth: document.querySelector('.selector-room-row select')?.getBoundingClientRect().width,
+      smallestTarget: Math.min(...[...document.querySelectorAll('.selector-mode button, .selector-stepper button, .selector-room-remove, .selector-room-add')].map((node) => Math.min(node.getBoundingClientRect().width, node.getBoundingClientRect().height))),
+      packages: [...document.querySelectorAll('.selector-packages [data-package]')].map((node) => node.getAttribute('data-package')),
+    })`);
+    add('d6-room-mode-ar-mobile', arFacts.dir === 'rtl' && !arFacts.overflow && singleRow.removeDisabled === true && singleRow.removeLabel === 'احذف: صالة' && arFacts.smallestTarget >= 44 && arFacts.selectWidth > arFacts.rowWidth * 0.8 && JSON.stringify(arFacts.packages) === '["essential"]', { ...arFacts, ...singleRow });
+    add('d6-room-mode-ar-browser-errors', cleanIssues(roomsAr.issues).length === 0, cleanIssues(roomsAr.issues));
+    await roomsAr.screenshot('hybrid03-products-ar-390-rooms.png');
+    await roomsAr.close();
   } finally {
     browser.close();
   }
