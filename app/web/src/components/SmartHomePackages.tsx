@@ -10,9 +10,9 @@ import { Bidi } from './bidi.tsx';
 
 const tx = (locale: Locale, ar: string, en: string) => (locale === 'ar' ? ar : en);
 
-function comparisonCell(quantity: number | null, locale: Locale) {
+function comparisonCell(quantity: number | null, showQuantities: boolean, locale: Locale) {
   if (quantity === null) return tx(locale, 'غير مذكور في البروشور', 'Not listed in the brochure');
-  if (quantity > 1) return <strong><bdi dir="ltr">×{quantity}</bdi></strong>;
+  if (showQuantities) return <strong><bdi dir="ltr">×{quantity}</bdi></strong>;
   return <><span aria-hidden="true">✓</span> {tx(locale, 'مدرج', 'Listed')}</>;
 }
 
@@ -20,35 +20,39 @@ function comparisonCell(quantity: number | null, locale: Locale) {
 export function PackageComparison({ locale }: { locale: Locale }) {
   const caption = tx(locale, 'مقارنة محتويات الباقات كما وردت في البروشور', 'Package contents as listed in the brochure');
   return (
-    <div className="package-compare-scroll" role="region" aria-label={caption} tabIndex={0} data-testid="package-comparison">
-      <table className="data package-compare">
-        <caption>{caption}</caption>
-        <thead>
-          <tr>
-            <th scope="col">{tx(locale, 'المكوّن', 'Item')}</th>
-            {SMART_HOME_PACKAGES.map((entry) => <th scope="col" key={entry.id}>{packageText(entry.name, locale)}</th>)}
-          </tr>
-        </thead>
-        <tbody>
-          <tr className="package-compare-price">
-            <th scope="row">{tx(locale, 'سعر الباقة المعلن', 'Published package price')}</th>
-            {SMART_HOME_PACKAGES.map((entry) => <td key={entry.id}><bdi dir="ltr">{formatPackagePrice(entry.priceEgp, locale)}</bdi></td>)}
-          </tr>
-          {packageComparisonRows().map((row) => (
-            <tr key={row.key}>
-              <th scope="row">
-                {row.model ? (
-                  <a href={`/${locale}/products/${row.model}`} data-product-model={row.model}><Bidi text={packageText(row.name, locale)} locale={locale} /></a>
-                ) : (
-                  <Bidi text={packageText(row.name, locale)} locale={locale} />
-                )}
-              </th>
-              {SMART_HOME_PACKAGES.map((entry) => <td key={entry.id} data-package={entry.id}>{comparisonCell(row.cells[entry.id], locale)}</td>)}
+    <>
+      <h3 className="package-compare-title">{caption}</h3>
+      <p className="package-compare-hint" aria-hidden="true">{tx(locale, 'اسحب الجدول لعرض باقي الباقات', 'Swipe the table to see all packages')}</p>
+      <div className="package-compare-scroll" role="region" aria-label={caption} tabIndex={0} data-testid="package-comparison">
+        <table className="data package-compare">
+          <caption className="sr-only">{caption}</caption>
+          <thead>
+            <tr>
+              <th scope="col">{tx(locale, 'المكوّن', 'Item')}</th>
+              {SMART_HOME_PACKAGES.map((entry) => <th scope="col" key={entry.id}>{packageText(entry.name, locale)}</th>)}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            <tr className="package-compare-price">
+              <th scope="row">{tx(locale, 'سعر الباقة المعلن', 'Published package price')}</th>
+              {SMART_HOME_PACKAGES.map((entry) => <td key={entry.id}><bdi dir="ltr">{formatPackagePrice(entry.priceEgp, locale)}</bdi></td>)}
+            </tr>
+            {packageComparisonRows().map((row) => (
+              <tr key={row.key}>
+                <th scope="row">
+                  {row.model ? (
+                    <a href={`/${locale}/products/${row.model}`} data-product-model={row.model}><Bidi text={packageText(row.name, locale)} locale={locale} /></a>
+                  ) : (
+                    <Bidi text={packageText(row.name, locale)} locale={locale} />
+                  )}
+                </th>
+                {SMART_HOME_PACKAGES.map((entry) => <td key={entry.id} data-package={entry.id}>{comparisonCell(row.cells[entry.id], row.showQuantities, locale)}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 

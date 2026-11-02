@@ -437,7 +437,9 @@ form.rfq input, form.rfq select, form.rfq textarea, .staff-language { border-rad
 .product-compare-card dd a, .package-compare a { display: inline-flex; align-items: center; min-height: 44px; }
 .compare-next-steps { margin-block-start: 32px; }
 .product-selector-business { margin-block: 24px 0; color: var(--brand-navy); font-weight: 600; }
-.package-compare-scroll { max-width: 100%; margin-block: 32px 24px; overflow-x: auto; border: 1px solid var(--c-line); border-radius: 8px; background: #fff; }
+.package-compare-title { margin: 40px 0 8px; font-size: 20px; }
+.package-compare-hint { display: none; margin: 0 0 8px; color: var(--c-muted); font-size: 14px; }
+.package-compare-scroll { max-width: 100%; margin-block: 8px 24px; overflow-x: auto; border: 1px solid var(--c-line); border-radius: 8px; background: #fff; }
 .package-compare { min-width: 560px; }
 .package-compare caption { padding: 12px; color: var(--brand-navy); font-weight: 700; text-align: start; }
 .package-compare thead th { background: var(--brand-ice); color: var(--brand-navy); }
@@ -448,5 +450,9 @@ form.rfq input, form.rfq select, form.rfq textarea, .staff-language { border-rad
   .product-compare-wrap { display: none; }
   .product-compare-stack { display: block; }
   .compare-next-steps .btn { width: 100%; }
+}
+/* The 560px table overflows its region below ~600px viewports; only then is the swipe hint shown. */
+@media (max-width: 600px) {
+  .package-compare-hint { display: block; }
 }
 /* ===== D6 S2: product comparison views, package contents table, next steps (END) ===== */

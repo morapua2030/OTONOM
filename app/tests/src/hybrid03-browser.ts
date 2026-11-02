@@ -291,6 +291,86 @@ async function main() {
     const businessLinks = await selectorBusiness.eval<string[]>(`[...document.querySelectorAll('.product-selector-complex a')].map((node) => node.getAttribute('href'))`);
     add('d6-selector-business-links', businessLinks.includes('/en/business/developers') && businessLinks.includes('/en/business/contractors'), { businessLinks });
     await selectorBusiness.close();
+
+    const packageQuantities = await browser.newPage(390, 844);
+    await packageQuantities.touch();
+    await packageQuantities.goto('/ar/smart-home/packages');
+    const quantityFacts = await packageQuantities.eval<any>(`(() => {
+      const rowText = (name) => {
+        const row = [...document.querySelectorAll('.package-compare tbody tr')].find((tr) => tr.querySelector('th')?.textContent?.includes(name));
+        return ['premium', 'plus', 'essential'].map((id) => row?.querySelector('[data-package="' + id + '"]')?.textContent?.trim());
+      };
+      const title = document.querySelector('.package-compare-title');
+      const hint = document.querySelector('.package-compare-hint');
+      const region = document.querySelector('[data-testid="package-comparison"]');
+      return {
+        r16: rowText('R16'),
+        alexa: rowText('Amazon Alexa'),
+        titleOutsideRegion: !!title && !region?.contains(title) && title.getBoundingClientRect().right <= innerWidth,
+        hintVisible: !!hint && getComputedStyle(hint).display !== 'none',
+        hintHidden: hint?.getAttribute('aria-hidden'),
+        regionScrolls: region ? region.scrollWidth > region.clientWidth : false,
+        captionSrOnly: document.querySelector('.package-compare caption')?.classList.contains('sr-only'),
+        overflow: document.documentElement.scrollWidth > innerWidth,
+      };
+    })()`);
+    add('d6-package-table-quantities-and-hint-ar-390', JSON.stringify(quantityFacts.r16) === JSON.stringify(['×2', '×2', '×1']) && quantityFacts.alexa.every((cell: string) => /مدرج/.test(cell ?? '')) && quantityFacts.titleOutsideRegion && quantityFacts.hintVisible && quantityFacts.hintHidden === 'true' && quantityFacts.regionScrolls && quantityFacts.captionSrOnly && !quantityFacts.overflow, quantityFacts);
+    await packageQuantities.screenshot('hybrid03-packages-ar-390-table-heading.png');
+    await packageQuantities.close();
+
+    const packageDesktop = await browser.newPage(1440, 1000);
+    await packageDesktop.goto('/en/smart-home/packages');
+    const hintDesktop = await packageDesktop.eval<boolean>(`getComputedStyle(document.querySelector('.package-compare-hint')).display === 'none'`);
+    add('d6-package-hint-hidden-1440', hintDesktop, { hintDesktop });
+    await packageDesktop.close();
+
+    const builderUrl = await browser.newPage(390, 844);
+    await builderUrl.goto('/ar/start-project?package=plus&service=smart-home');
+    await builderUrl.waitHydrated('[data-testid="project-builder"]');
+    await builderUrl.click('.builder-choice:nth-child(1)');
+    await builderUrl.click('.builder-nav .btn:not(.secondary)');
+    await builderUrl.waitFor(`document.querySelector('.builder-progress [aria-current="step"] span')?.textContent === '2'`);
+    await builderUrl.click('.builder-choice:nth-child(1)');
+    await builderUrl.click('.builder-nav .btn:not(.secondary)');
+    await builderUrl.waitFor(`document.querySelector('.builder-progress [aria-current="step"] span')?.textContent === '3'`);
+    await builderUrl.click('.builder-nav .btn:not(.secondary)');
+    await builderUrl.waitFor(`document.querySelector('.builder-progress [aria-current="step"] span')?.textContent === '4'`);
+    await builderUrl.fill('.builder-fields select:has(option[value="premium"])', 'premium');
+    await builderUrl.waitFor(`location.search === '?package=premium&service=smart-home'`);
+    const premiumHref = await builderUrl.waitFor(`document.querySelector('a[hreflang="en"]')?.getAttribute('href') === '/en/start-project?package=premium&service=smart-home' && document.querySelector('a[hreflang="en"]').getAttribute('href')`);
+    await builderUrl.fill('.builder-fields select:has(option[value="premium"])', '');
+    await builderUrl.waitFor(`location.search === '?service=smart-home'`);
+    const clearedHref = await builderUrl.waitFor(`document.querySelector('a[hreflang="en"]')?.getAttribute('href') === '/en/start-project?service=smart-home' && document.querySelector('a[hreflang="en"]').getAttribute('href')`);
+    const builderUrlFacts = await builderUrl.eval<any>(`({ path: location.pathname, step: document.querySelector('.builder-progress [aria-current="step"] span')?.textContent, historyLength: history.length })`);
+    add('d6-builder-url-follows-package', premiumHref === '/en/start-project?package=premium&service=smart-home' && clearedHref === '/en/start-project?service=smart-home' && builderUrlFacts.path === '/ar/start-project' && builderUrlFacts.step === '4', { premiumHref, clearedHref, ...builderUrlFacts });
+    await builderUrl.close();
+
+    // Anchor check (headless Edge: the shared driver always launches --headless=new).
+    const anchor = await browser.newPage(390, 844);
+    await anchor.touch();
+    await anchor.goto('/ar/products');
+    await anchor.waitHydrated('[data-testid="smart-product-selector"]');
+    await anchor.click('.selector-mode button:nth-child(2)');
+    await anchor.waitFor(`document.querySelectorAll('.selector-room-row').length === 1`);
+    await anchor.click('.selector-room-add');
+    await anchor.waitFor(`document.querySelectorAll('.selector-room-row').length === 2`);
+    await anchor.fill('.selector-room-row:nth-child(1) .selector-stepper input', '10');
+    await anchor.fill('.selector-room-row:nth-child(2) .selector-stepper input', '10');
+    await anchor.waitFor(`document.querySelector('.selector-room-total bdi')?.textContent === '20'`);
+    const viewLink = await anchor.eval<any>(`(() => { const a = document.querySelector('.selector-package-links a[href="/ar/smart-home/packages#package-plus"]'); return { text: a?.textContent?.trim(), href: a?.getAttribute('href') }; })()`);
+    await anchor.click('.selector-package-links a[href="/ar/smart-home/packages#package-plus"]');
+    await anchor.waitFor(`location.pathname === '/ar/smart-home/packages' && location.hash === '#package-plus' && document.readyState === 'complete'`);
+    const anchorFacts = await anchor.waitFor(`(() => {
+      const card = document.querySelector('#package-plus');
+      const header = document.querySelector('header.header');
+      if (!card || !header || scrollY === 0) return null;
+      const top = card.getBoundingClientRect().top;
+      const headerBottom = header.getBoundingClientRect().bottom;
+      return { top: Math.round(top), headerBottom: Math.round(headerBottom), scrollY: Math.round(scrollY), innerHeight };
+    })()`);
+    add('d6-anchor-package-plus-below-header', viewLink.text === 'اعرض الباقة' && anchorFacts.top >= anchorFacts.headerBottom && anchorFacts.top < anchorFacts.innerHeight, { ...viewLink, ...anchorFacts, mode: 'headless' });
+    await anchor.screenshot('hybrid03-anchor-ar-390-package-plus.png');
+    await anchor.close();
   } finally {
     browser.close();
   }

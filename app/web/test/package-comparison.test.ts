@@ -45,3 +45,34 @@ test('PackageComparison says "Not listed in the brochure" and never claims exclu
   const page = readFileSync(new URL('../src/app/(site)/[locale]/smart-home/packages/page.tsx', import.meta.url), 'utf8');
   assert.match(page, /<SmartHomePackages locale=\{locale\} comparison \/>/);
 });
+
+test('rows with any multi-unit package show every listed quantity; all-single rows show Listed', () => {
+  const rows = new Map(packageComparisonRows().map((row) => [row.key, row]));
+  const r16 = rows.get('R16 Smart Controller');
+  assert.equal(r16?.showQuantities, true);
+  assert.deepEqual(SMART_HOME_PACKAGES.map((entry) => r16?.cells[entry.id]), [2, 2, 1]);
+  for (const row of rows.values()) {
+    const listed = Object.values(row.cells).filter((quantity): quantity is number => quantity !== null);
+    assert.equal(row.showQuantities, listed.some((quantity) => quantity > 1), `${row.key} quantity display is derived`);
+  }
+  const cloned = structuredClone(SMART_HOME_PACKAGES) as SmartHomePackage[];
+  cloned[0].items = cloned[0].items.map((item) => (item.name.en === 'Gas Sensor' ? { ...item, quantity: 2 } : item));
+  assert.equal(packageComparisonRows(cloned).find((row) => row.key === 'Gas Sensor')?.showQuantities, true);
+  const source = readFileSync(new URL('../src/components/SmartHomePackages.tsx', import.meta.url), 'utf8');
+  assert.match(source, /if \(showQuantities\) return <strong><bdi dir="ltr">×\{quantity\}<\/bdi><\/strong>;/);
+  assert.match(source, /comparisonCell\(row\.cells\[entry\.id\], row\.showQuantities, locale\)/);
+});
+
+test('the package table title sits outside the scroll region and the swipe hint is hidden from assistive tech', () => {
+  const source = readFileSync(new URL('../src/components/SmartHomePackages.tsx', import.meta.url), 'utf8');
+  const block = source.slice(source.indexOf('export function PackageComparison'), source.indexOf('export function SmartHomePackages'));
+  const title = block.indexOf('<h3 className="package-compare-title">{caption}</h3>');
+  const hint = block.indexOf('<p className="package-compare-hint" aria-hidden="true">');
+  const region = block.indexOf('role="region" aria-label={caption} tabIndex={0}');
+  assert.ok(title > -1 && hint > title && region > hint, 'title, then hint, then the scroll region');
+  assert.ok(block.includes("'اسحب الجدول لعرض باقي الباقات', 'Swipe the table to see all packages'"));
+  assert.match(block, /<caption className="sr-only">\{caption\}<\/caption>/);
+  const css = readFileSync(new URL('../src/app/(site)/hybrid03.css', import.meta.url), 'utf8');
+  assert.match(css, /\.package-compare-hint \{ display: none;/);
+  assert.match(css, /@media \(max-width: 600px\) \{\s*\.package-compare-hint \{ display: block; \}/);
+});

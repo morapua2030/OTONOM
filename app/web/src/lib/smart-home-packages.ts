@@ -83,6 +83,8 @@ export type PackageComparisonRow = {
   model?: ProductModel;
   /** Listed quantity per package, or `null` when the brochure does not list the item for that package. */
   cells: Record<SmartHomePackageId, number | null>;
+  /** True when any package lists more than one unit, so every listed cell in the row shows its quantity. */
+  showQuantities: boolean;
 };
 
 /**
@@ -96,10 +98,11 @@ export function packageComparisonRows(packages: readonly SmartHomePackage[] = SM
       let row = rows.get(packageItem.name.en);
       if (!row) {
         const cells = Object.fromEntries(packages.map((other) => [other.id, null])) as Record<SmartHomePackageId, number | null>;
-        row = { key: packageItem.name.en, name: { ...packageItem.name }, ...(packageItem.model ? { model: packageItem.model } : {}), cells };
+        row = { key: packageItem.name.en, name: { ...packageItem.name }, ...(packageItem.model ? { model: packageItem.model } : {}), cells, showQuantities: false };
         rows.set(row.key, row);
       }
       row.cells[entry.id] = packageItem.quantity;
+      if (packageItem.quantity > 1) row.showQuantities = true;
     }
   }
   return [...rows.values()];

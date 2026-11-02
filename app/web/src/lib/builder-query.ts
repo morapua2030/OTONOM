@@ -16,3 +16,6 @@ export const SERVICE_DISCIPLINE: Readonly<Record<string, BuilderDiscipline>> = {
 export function isBuilderServiceKey(value: unknown): value is string {
   return typeof value === 'string' && Object.hasOwn(SERVICE_DISCIPLINE, value);
 }
+
+/** Fired after the Builder rewrites its validated `?package` / `?service` query, so the locale switch can follow. */
+export const BUILDER_QUERY_EVENT = 'otonom:builder-query';

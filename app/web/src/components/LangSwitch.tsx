@@ -1,6 +1,7 @@
 'use client';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { BUILDER_QUERY_EVENT } from '../lib/builder-query.ts';
 import { localeSwitchHref } from '../lib/locale-switch.ts';
 
 /** Switches to the same page in the other locale, keeping only allow-listed state (see `localeSwitchHref`). */
@@ -14,10 +15,12 @@ export function LangSwitch({ locale, label }: { locale: 'ar' | 'en'; label: stri
     window.addEventListener('popstate', sync);
     window.addEventListener('hashchange', sync);
     window.addEventListener('otonom:portfolio-query', sync);
+    window.addEventListener(BUILDER_QUERY_EVENT, sync);
     return () => {
       window.removeEventListener('popstate', sync);
       window.removeEventListener('hashchange', sync);
       window.removeEventListener('otonom:portfolio-query', sync);
+      window.removeEventListener(BUILDER_QUERY_EVENT, sync);
     };
   }, [pathname, other]);
   return (

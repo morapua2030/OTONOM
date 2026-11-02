@@ -116,3 +116,17 @@ test('public RFQ endpoint has origin, rate-limit and idempotency protections', (
   assert.match(intake, /idempotencyKey/);
   assert.match(intake, /PUBLIC_INTAKE_DISABLED/);
 });
+
+test('Project Builder keeps ?package in step with the select without storage or navigation', () => {
+  const source = readFileSync(new URL('../src/components/ProjectBuilder.tsx', import.meta.url), 'utf8');
+  const handler = source.slice(source.indexOf('const choosePackage'), source.indexOf('const includes ='));
+  assert.match(handler, /isSmartHomePackageId\(value\)/);
+  assert.match(handler, /isBuilderServiceKey\(service\)/);
+  assert.match(handler, /window\.history\.replaceState\(null, '', `\$\{window\.location\.pathname\}/);
+  assert.match(handler, /window\.dispatchEvent\(new Event\(BUILDER_QUERY_EVENT\)\)/);
+  assert.doesNotMatch(handler, /pushState|location\.assign|location\.href =|router\./);
+  assert.match(source, /onChange=\{\(event\) => choosePackage\(event\.target\.value\)\}/);
+  assert.doesNotMatch(source, /localStorage|sessionStorage|document\.cookie/);
+  const lang = readFileSync(new URL('../src/components/LangSwitch.tsx', import.meta.url), 'utf8');
+  assert.match(lang, /addEventListener\(BUILDER_QUERY_EVENT, sync\)/);
+});
