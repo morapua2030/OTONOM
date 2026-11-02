@@ -19,8 +19,8 @@ export function pageMetadata(o: { locale: Locale; path: string; title: string; d
       canonical: `/${o.locale}${p}`,
       languages: { ar: `/ar${p}`, en: `/en${p}`, 'x-default': `/ar${p}` },
     },
-    openGraph: { title, description, locale: o.locale === 'ar' ? 'ar_EG' : 'en_US', alternateLocale: o.locale === 'ar' ? 'en_US' : 'ar_EG', type: 'website', images: ['/brand/otonom/assets/png/primary_light.png'] },
-    twitter: { card: 'summary', title, description, images: ['/brand/otonom/assets/png/primary_light.png'] },
+    openGraph: { title, description, locale: o.locale === 'ar' ? 'ar_EG' : 'en_US', alternateLocale: o.locale === 'ar' ? 'en_US' : 'ar_EG', type: 'website', images: [{ url: '/brand/otonom/assets/og/og-card-1200x630.png', width: 1200, height: 630, alt: 'OTONOM — IoT Solutions' }] },
+    twitter: { card: 'summary_large_image', title, description, images: ['/brand/otonom/assets/og/og-card-1200x630.png'] },
     robots: { index: !noindex, follow: !noindex },
   };
 }
