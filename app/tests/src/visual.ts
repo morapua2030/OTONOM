@@ -58,6 +58,24 @@ class Cdp {
 }
 
 // In-page probe (runs in the browser). Returns layout, bidi, form and SEO facts.
+/**
+ * A data table fits when it is no wider than its parent, or when it sits in an intentional horizontal scroll
+ * region that keyboard and screen-reader users can operate: the table-scroll marker, role="region",
+ * tabindex="0", an accessible name (aria-label, or aria-labelledby pointing to an existing element) and real
+ * horizontal scrolling. Page-level overflow is checked separately and is never exempted.
+ */
+const TABLE_FITS = `(t) => {
+  const region = t.closest('.table-scroll[role="region"][tabindex="0"]');
+  if (region && region.contains(t)) {
+    const label = (region.getAttribute('aria-label') || '').trim();
+    const labelledBy = region.getAttribute('aria-labelledby');
+    const named = !!label || (!!labelledBy && !!document.getElementById(labelledBy) && !!document.getElementById(labelledBy).textContent.trim());
+    const scrolls = ['auto', 'scroll'].includes(getComputedStyle(region).overflowX);
+    if (named && scrolls) return true;
+  }
+  return t.scrollWidth <= (t.parentElement?.clientWidth ?? t.clientWidth) + 1;
+}`;
+
 const PROBE = `(() => {
   const html = document.documentElement, vw = window.innerWidth;
   const AR = /[\\u0600-\\u06FF]/, LAT = /[A-Za-z0-9]/;
@@ -155,7 +173,8 @@ const PROBE = `(() => {
   const landmarks = ['header', 'nav', 'main', 'footer'].filter((s) => !document.querySelector(s));
   const smallTargets = [...document.querySelectorAll('.btn, summary, nav a, input:not([type=hidden]), select, textarea')].filter((e) => { if (!e.offsetParent || e.closest('.hp')) return false; const r = e.getBoundingClientRect(); return r.width < 24 || r.height < 24; }).map((e) => e.tagName.toLowerCase() + ':' + (e.textContent || e.name || '').trim().slice(0, 20));
   const ids = [...document.querySelectorAll('[id]')].map((e) => e.id); const dupIds = ids.filter((x, i) => ids.indexOf(x) !== i);
-  const tablesClipped =[...document.querySelectorAll('table.data')].filter((t) => t.scrollWidth > (t.parentElement?.clientWidth ?? t.clientWidth) + 1).length;
+  const tableFits = ${TABLE_FITS};
+  const tablesClipped = [...document.querySelectorAll('table.data')].filter((t) => !tableFits(t)).length;
   return JSON.stringify({
     orderBad, wrapped, tablesClipped, lowContrast: lowContrast.slice(0, 6), lowContrastCount: lowContrast.length, headingSkips, nameless, landmarks, smallTargets: smallTargets.slice(0, 6), dupIds: [...new Set(dupIds)],
     lang: html.lang, dir: html.dir, vw, scrollW: html.scrollWidth, contentH: Math.ceil(document.documentElement.scrollHeight),
@@ -212,6 +231,38 @@ async function main() {
   };
   const titles: Record<string, Record<string, string>> = {};
   try {
+    {
+      // TABLES self-test (owner GATE-T): only a fully qualified scroll region exempts a wide table.
+      const { sid, targetId } = await open(`${BASE}/en`, 360);
+      const verdicts = await evalJson(sid, `(() => {
+        const fits = ${TABLE_FITS};
+        const host = document.createElement('div');
+        host.style.width = '320px';
+        document.body.appendChild(host);
+        const make = (attrs, scroll) => {
+          const wrap = document.createElement('div');
+          for (const [k, v] of Object.entries(attrs)) wrap.setAttribute(k, v);
+          wrap.style.overflowX = scroll ? 'auto' : 'visible'; // .table-scroll defaults to auto in site.css
+          wrap.innerHTML = '<table class="data" style="min-width:900px"><tr><td>wide</td></tr></table>';
+          host.appendChild(wrap);
+          return fits(wrap.querySelector('table'));
+        };
+        const result = {
+          plain: make({}, false),
+          scrollOnly: make({}, true),
+          noName: make({ class: 'table-scroll', role: 'region', tabindex: '0' }, true),
+          noTabindex: make({ class: 'table-scroll', role: 'region', 'aria-label': 'x' }, true),
+          noScroll: make({ class: 'table-scroll', role: 'region', tabindex: '0', 'aria-label': 'x' }, false),
+          qualified: make({ class: 'table-scroll', role: 'region', tabindex: '0', 'aria-label': 'Package comparison' }, true),
+        };
+        host.remove();
+        return JSON.stringify(result);
+      })()`);
+      await cdp.send('Target.closeTarget', { targetId });
+      const negatives = ['plain', 'scrollOnly', 'noName', 'noTabindex', 'noScroll'];
+      rec.add('VIS-TABLES-SELFTEST-NEGATIVE', 'VISUAL', 'a wide table outside a labelled, focusable table-scroll region still fails TABLES', negatives.every((k) => verdicts?.[k] === false), verdicts);
+      rec.add('VIS-TABLES-SELFTEST-QUALIFIED', 'VISUAL', 'a wide table inside a labelled, focusable table-scroll region counts as fitting', verdicts?.qualified === true, verdicts);
+    }
     for (const locale of ['ar', 'en'] as const) {
       for (const page of PAGES) {
         for (const width of WIDTHS) {
