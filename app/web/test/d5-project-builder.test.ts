@@ -8,15 +8,15 @@ import { PRODUCT_MODELS } from '../src/lib/products.ts';
 test('D5 package registry preserves the approved order, prices and controller quantities', () => {
   assert.deepEqual(SMART_HOME_PACKAGES.map((entry) => entry.id), ['premium', 'plus', 'essential']);
   assert.deepEqual(SMART_HOME_PACKAGES.map((entry) => entry.priceEgp), [44_000, 32_000, 24_000]);
-  assert.deepEqual(SMART_HOME_PACKAGES.map((entry) => entry.items.find((item) => item.name.en === 'R16 Smart Controller')?.quantity), [2, 2, 1]);
+  assert.deepEqual(SMART_HOME_PACKAGES.map((entry) => entry.items.find((item) => item.name.en === '16R Smart Controller')?.quantity), [2, 2, 1]);
   assert.ok(smartHomePackage('premium'));
   assert.equal(smartHomePackage('unexpected'), null);
 });
 
-test('D6 package R16 controller links to the registered OTONOM 16R product page', () => {
+test('D6 package 16R controller links to the registered OTONOM 16R product page', () => {
   for (const entry of SMART_HOME_PACKAGES) {
-    const r16 = entry.items.find((item) => item.name.en === 'R16 Smart Controller');
-    assert.equal(r16?.model, '16r', `${entry.id} R16 item must reference model 16r`);
+    const r16 = entry.items.find((item) => item.name.en === '16R Smart Controller');
+    assert.equal(r16?.model, '16r', `${entry.id} 16R item must reference model 16r`);
     assert.ok((PRODUCT_MODELS as readonly string[]).includes(r16?.model ?? ''),`${entry.id} model must exist in the product registry`);
     for (const other of entry.items.filter((item) => item !== r16)) {
       assert.equal(other.model, undefined, `${entry.id} ${other.name.en} must not claim a product model`);
@@ -24,8 +24,7 @@ test('D6 package R16 controller links to the registered OTONOM 16R product page'
   }
   const component = readFileSync(new URL('../src/components/SmartHomePackages.tsx', import.meta.url), 'utf8');
   assert.match(component, /href=\{`\/\$\{locale\}\/products\/\$\{packageItem\.model\}`\}/);
-  assert.match(component, /href=\{`\/\$\{locale\}\/products\/16r`\}/);
-  assert.match(component, /R16 is the <a [^>]*>OTONOM 16R<\/a> controller/);
+  assert.doesNotMatch(component, /R16/, 'the package item is displayed as 16R everywhere (DR-103)');
   const productsPage = readFileSync(new URL('../src/app/(site)/[locale]/products/page.tsx', import.meta.url), 'utf8');
   assert.match(productsPage, /href=\{`\/\$\{locale\}\/smart-home\/packages`\}/);
 });

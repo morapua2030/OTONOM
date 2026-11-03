@@ -33,7 +33,7 @@ async function main() {
       };
     })()`);
     add('home-en-desktop', homeFacts.lang === 'en' && homeFacts.dir === 'ltr' && homeFacts.h1 === 1 && !homeFacts.overflow, homeFacts);
-    add('logo-en-source-and-direction', homeFacts.logo?.endsWith('/primary_light.svg') && homeFacts.transform === 'none', homeFacts);
+    add('logo-en-source-and-direction', homeFacts.logo?.endsWith('/wordmark_only_light.svg') && homeFacts.transform === 'none', homeFacts);
     add('reduced-motion', homeFacts.transition <= 0.001, homeFacts);
     const documentResponse = home.responses.find((response) => response.type === 'Document' && response.url === `${BASE}/en`);
     const csp = documentResponse?.headers['content-security-policy'] ?? '';
@@ -263,7 +263,7 @@ async function main() {
         caveatAfter: region?.nextElementSibling?.classList.contains('package-caveat'),
       };
     })()`);
-    add('d6-package-table-ar-not-listed', packageTable.lockPlus === 'غير مذكور في البروشور' && /مدرج/.test(packageTable.lockPremium ?? '') && packageTable.regionRole === 'region' && packageTable.regionFocusable && !packageTable.overflow && packageTable.stickyHeader === 'sticky' && packageTable.caveatAfter, packageTable);
+    add('d6-package-table-ar-not-listed', packageTable.lockPlus === '—غير مدرج في الباقة' && /مدرج/.test(packageTable.lockPremium ?? '') && packageTable.regionRole === 'region' && packageTable.regionFocusable && !packageTable.overflow && packageTable.stickyHeader === 'sticky' && packageTable.caveatAfter, packageTable);
     await packagesAr.screenshot('hybrid03-packages-ar-390-table.png');
     await packagesAr.close();
 
@@ -304,7 +304,7 @@ async function main() {
       const hint = document.querySelector('.package-compare-hint');
       const region = document.querySelector('[data-testid="package-comparison"]');
       return {
-        r16: rowText('R16'),
+        r16: rowText('16R'),
         alexa: rowText('Amazon Alexa'),
         titleOutsideRegion: !!title && !region?.contains(title) && title.getBoundingClientRect().right <= innerWidth,
         hintVisible: !!hint && getComputedStyle(hint).display !== 'none',
@@ -360,6 +360,8 @@ async function main() {
     const viewLink = await anchor.eval<any>(`(() => { const a = document.querySelector('.selector-package-links a[href="/ar/smart-home/packages#package-plus"]'); return { text: a?.textContent?.trim(), href: a?.getAttribute('href') }; })()`);
     await anchor.click('.selector-package-links a[href="/ar/smart-home/packages#package-plus"]');
     await anchor.waitFor(`location.pathname === '/ar/smart-home/packages' && location.hash === '#package-plus' && document.readyState === 'complete'`);
+    // Measure only after the anchor scroll has settled (same scrollY across 3 animation frames, max 3 s).
+    await anchor.eval(`new Promise((resolve) => { const t0 = performance.now(); let last = -1, same = 0; const tick = () => { if (scrollY === last && scrollY > 0) same += 1; else same = 0; last = scrollY; if (same >= 3 || performance.now() - t0 > 3000) resolve(true); else requestAnimationFrame(tick); }; requestAnimationFrame(tick); })`);
     const anchorFacts = await anchor.waitFor(`(() => {
       const card = document.querySelector('#package-plus');
       const header = document.querySelector('header.header');

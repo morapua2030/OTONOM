@@ -10,6 +10,8 @@ import { APP_ROOT, SECRETS_DIR } from '@otonom/domain';
 import { Client, Recorder, sleep } from './http-client.ts';
 
 const BASE = process.env.OTONOM_BASE ?? 'http://127.0.0.1:3301';
+/** Configured site origin: canonical URLs are absolute on it (metadataBase from SITE_URL). */
+const SITE = (process.env.OTONOM_SITE_URL ?? 'http://127.0.0.1:3301').replace(/\/$/, '');
 const EDGE = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
 const PROFILE = path.join(APP_ROOT, 'tests', '.edge-profile');
 const SHOTS = path.resolve(APP_ROOT, '..', 'execution', 'evidence', 'screenshots', 's11-20261021');
@@ -218,7 +220,7 @@ async function main() {
             rec.add(`${id}-ROBOTS`, 'SEO', `${locale}${page} noindex while not launched`, /noindex/.test(p?.robots ?? ''), p?.robots);
             if (!isTest) {
               rec.add(`${id}-META`, 'SEO', `${locale}${page} localized title + description`, !!p?.title && p.title !== 'OTONOM' && (p?.description ?? '').length > 20, { title: p?.title, description: p?.description });
-              rec.add(`${id}-HREFLANG`, 'SEO', `${locale}${page} canonical + reciprocal hreflang for the same path`, p?.canonical === `/${locale}${page}` && JSON.stringify(p?.hreflang) === JSON.stringify(expectHreflang), { canonical: p?.canonical, hreflang: p?.hreflang });
+              rec.add(`${id}-HREFLANG`, 'SEO', `${locale}${page} canonical + reciprocal hreflang for the same path`, p?.canonical === `${SITE}/${locale}${page}` && JSON.stringify(p?.hreflang) === JSON.stringify(expectHreflang), { canonical: p?.canonical, hreflang: p?.hreflang });
               rec.add(`${id}-LANGSWITCH`, 'I18N', `${locale}${page} language switch keeps the page`, (p?.langSwitch ?? []).includes(`/${other}${page}`), p?.langSwitch);
               (titles[page] ??= {})[locale] = p?.title;
             }

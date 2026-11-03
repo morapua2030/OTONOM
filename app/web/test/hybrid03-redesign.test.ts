@@ -10,7 +10,7 @@ test('Hybrid 03 shell uses locked SVG source variants rather than the retired PN
   assert.match(brand, /primary_light\.svg/);
   assert.match(brand, /primary_dark\.svg/);
   assert.doesNotMatch(shell, /otonom-logo\.png/);
-  assert.match(shell, /variant="primary-light"/);
+  assert.match(shell, /variant="wordmark-light"/);
   assert.match(shell, /variant="primary-dark"/);
 });
 

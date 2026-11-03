@@ -13,10 +13,10 @@ test('packageComparisonRows follows first appearance in registry order', () => {
 test('packageComparisonRows marks unlisted items as null and keeps listed quantities', () => {
   const rows = new Map(packageComparisonRows().map((row) => [row.key, row]));
   assert.deepEqual(rows.get('Smart Lock')?.cells, { premium: 1, plus: null, essential: null });
-  const r16 = rows.get('R16 Smart Controller');
+  const r16 = rows.get('16R Smart Controller');
   assert.deepEqual(r16?.cells, { premium: 2, plus: 2, essential: 1 });
   assert.equal(r16?.model, '16r');
-  for (const row of rows.values()) if (row.key !== 'R16 Smart Controller') assert.equal(row.model, undefined, `${row.key} must not claim a model`);
+  for (const row of rows.values()) if (row.key !== '16R Smart Controller') assert.equal(row.model, undefined, `${row.key} must not claim a model`);
 });
 
 test('packageComparisonRows is derived from the data it is given', () => {
@@ -29,17 +29,17 @@ test('packageComparisonRows is derived from the data it is given', () => {
   assert.equal(packageComparisonRows().some((row) => row.key === 'Synthetic Test Item'), false, 'the registry is not mutated');
 });
 
-test('PackageComparison says "Not listed in the brochure" and never claims exclusions', () => {
+test('PackageComparison says "Not in this package" with an accessible name and never claims exclusions', () => {
   const source = readFileSync(new URL('../src/components/SmartHomePackages.tsx', import.meta.url), 'utf8');
   const block = source.slice(source.indexOf('function comparisonCell'), source.indexOf('export function SmartHomePackages'));
-  assert.ok(block.includes("'غير مذكور في البروشور', 'Not listed in the brochure'"));
-  assert.ok(block.includes("'مقارنة محتويات الباقات كما وردت في البروشور', 'Package contents as listed in the brochure'"));
+  assert.ok(block.includes("<span aria-hidden=\"true\">—</span><span className=\"sr-only\">{tx(locale, 'غير مدرج في الباقة', 'Not in this package')}</span>"));
+  assert.ok(block.includes("'قارن المكونات', 'Compare what’s included'"));
   assert.doesNotMatch(block, /not included|excluded|غير مشمول|غير متضمن|مستبعد/i);
   assert.match(block, /packageComparisonRows\(\)/);
-  assert.match(block, /formatPackagePrice\(entry\.priceEgp, locale\)/);
+  assert.match(block, /formatPackageAmount\(entry\.priceEgp\)\}<\/bdi> \{packageCurrency\(locale\)\}/);
   assert.match(block, /role="region" aria-label=\{caption\} tabIndex=\{0\}/);
   assert.match(block, /href=\{`\/\$\{locale\}\/products\/\$\{row\.model\}`\}/);
-  assert.doesNotMatch(block, /'(Amazon Alexa|Smart Lock|IR Remote|Gas Sensor|R16 Smart Controller)'/, 'item names come from the registry');
+  assert.doesNotMatch(block, /'(Amazon Alexa|Smart Lock|IR Remote|Gas Sensor|16R Smart Controller)'/, 'item names come from the registry');
   const comparisonAt = source.indexOf('<PackageComparison locale={locale} />');
   assert.ok(comparisonAt > source.indexOf('data-testid="smart-home-packages"') && comparisonAt < source.indexOf('className="package-caveat"'), 'the caveat stays right under the table');
   const page = readFileSync(new URL('../src/app/(site)/[locale]/smart-home/packages/page.tsx', import.meta.url), 'utf8');
@@ -48,7 +48,7 @@ test('PackageComparison says "Not listed in the brochure" and never claims exclu
 
 test('rows with any multi-unit package show every listed quantity; all-single rows show Listed', () => {
   const rows = new Map(packageComparisonRows().map((row) => [row.key, row]));
-  const r16 = rows.get('R16 Smart Controller');
+  const r16 = rows.get('16R Smart Controller');
   assert.equal(r16?.showQuantities, true);
   assert.deepEqual(SMART_HOME_PACKAGES.map((entry) => r16?.cells[entry.id]), [2, 2, 1]);
   for (const row of rows.values()) {
