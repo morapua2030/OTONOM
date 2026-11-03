@@ -206,8 +206,7 @@ export function Simulator({ locale, demo }: { locale: Locale; demo: SimDemo | nu
             <ul className="sim-tiles">
               {TILE_ITEMS.filter(([, k]) => k !== 'lock' || PK[rc.pkg].lock).map(([item, k]) => (
                 <li className="sim-tile" key={k} title={S.items[k]}>
-                  <ItemVisual item={item} locale={locale} decorative sizes="38px" />
-                  <span className="sr-only">{B(S.items[k])}</span>
+                  <ItemVisual item={item} locale={locale} sizes="38px" />
                   {k === 'ctrl' && PK[rc.pkg].n16 > 1 ? <span className="sim-qty" dir="ltr">{'×' + PK[rc.pkg].n16}</span> : null}
                 </li>
               ))}
