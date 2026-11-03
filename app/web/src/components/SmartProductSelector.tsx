@@ -18,7 +18,7 @@ import {
   totalCircuits,
   type RoomType,
 } from '@/lib/product-selector.ts';
-import { formatPackageAmount, packageCurrency, packageText, SMART_HOME_PACKAGES } from '@/lib/smart-home-packages.ts';
+import { packageText, SMART_HOME_PACKAGES } from '@/lib/smart-home-packages.ts';
 import { EXTERNAL_LINK, whatsappHref } from '@/lib/contact.ts';
 import { Bidi } from './bidi.tsx';
 
@@ -50,6 +50,30 @@ export function selectorModel(locale: Locale, total: number): string {
   const pkg = packagesCovering(total)[0];
   if (pkg) return packageControllers(pkg).map((entry) => `${entry.quantity} × ${entry.product.model.toUpperCase()}`).join(' + ');
   return tx(locale, 'مراجعة مهندس', 'an engineer review');
+}
+
+/** Covering packages: names, controller quantities and capacities all come from the registries (no prices here). */
+function PackageGuidance({ locale, total }: { locale: Locale; total: number }) {
+  const packages = packagesCovering(total);
+  if (packages.length === 0) return null;
+  return (
+    <section className="selector-packages" aria-labelledby="selector-packages-title" data-testid="selector-packages">
+      <h4 id="selector-packages-title" className="v2-entry-label">{tx(locale, 'الباقة اللي تغطيها', 'The package that covers it')}</h4>
+      <ul>
+        {packages.map((pkg) => (
+          <li key={pkg.id} data-package={pkg.id}>
+            <span className="selector-package-name"><Bidi text={packageText(pkg.name, locale)} locale={locale} /></span>
+            <span className="selector-package-meta">
+              {packageControllers(pkg).map((entry) => <bdi dir="ltr" key={entry.product.model}>{`${entry.quantity} × ${entry.product.model.toUpperCase()}`}</bdi>)}
+              {' · '}
+              {tx(locale, 'حتى ', 'up to ')}<bdi dir="ltr">{packageChannelCapacity(pkg)}</bdi>{tx(locale, ' قناة', ' channels')}
+            </span>
+            <span className="selector-package-links"><a href={`/${locale}/smart-home/packages#package-${pkg.id}`}>{tx(locale, 'شوف الباقة', 'See the package')}</a></span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
 }
 
 /** Design v3 restyle of the D6 Smart Product Selector (DR-112): chips, white cards with navy borders, pills. Logic unchanged. */
@@ -155,7 +179,7 @@ export function SmartProductSelector({ locale }: { locale: Locale }) {
           <div className="selector-result-product">
             <span className="selector-result-photo"><Image src={product.image} alt={localProductText(product.alt, locale)} width={1254} height={1254} sizes="120px" /></span>
             <div>
-              <h3><bdi dir="ltr">{product.model.toUpperCase()}</bdi></h3>
+              <h3><a href={`/${locale}/products/${product.model}`}><bdi dir="ltr">{product.model.toUpperCase()}</bdi></a></h3>
               <span className="v2-pill"><Bidi text={tx(locale, `${product.channels} قنوات تحكم`, `${product.channels} control channels`)} locale={locale} /></span>
             </div>
           </div>
@@ -177,27 +201,7 @@ export function SmartProductSelector({ locale }: { locale: Locale }) {
             </div>
           </div>
         )}
-        {packages.length ? (
-          <section className="selector-packages" aria-labelledby="selector-packages-title" data-testid="selector-packages">
-            <h4 id="selector-packages-title" className="v2-entry-label">{tx(locale, 'الباقة اللي تغطيها', 'The package that covers it')}</h4>
-            <ul>
-              {packages.map((pkg) => {
-                const controllers = packageControllers(pkg);
-                return (
-                  <li key={pkg.id} data-package={pkg.id}>
-                    <span className="selector-package-name"><Bidi text={packageText(pkg.name, locale)} locale={locale} /></span>
-                    <span className="selector-package-meta">
-                      {controllers.map((entry) => <bdi dir="ltr" key={entry.product.model}>{`${entry.quantity} × ${entry.product.model.toUpperCase()}`}</bdi>)}
-                      {' · '}
-                      <bdi dir="ltr">{formatPackageAmount(pkg.priceEgp)}</bdi> {packageCurrency(locale)}
-                    </span>
-                    <span className="selector-package-links"><a href={`/${locale}/smart-home/packages#package-${pkg.id}`}>{tx(locale, 'شوف الباقة', 'See the package')}</a></span>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        ) : null}
+        <PackageGuidance locale={locale} total={total} />
         <a className="btn selector-whatsapp" href={whatsappHref(message)} {...EXTERNAL_LINK} data-testid="selector-whatsapp">{tx(locale, 'ابعت على واتساب', 'Send on WhatsApp')}</a>
         <p className="selector-caveat">{tx(locale, 'ده تقدير مبدئي، والمهندس بيأكد في الزيارة.', 'This is an initial estimate; the engineer confirms it at the visit.')}</p>
         <a className="selector-sim-link" href={`/${locale}/try`} data-testid="selector-sim-link">{tx(locale, 'جرّب بيتك الذكي ←', 'Try your smart home →')}</a>

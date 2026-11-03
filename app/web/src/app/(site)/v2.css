@@ -670,3 +670,5 @@ html[lang='en'] .v3-selector .selector-room-name { font-family: var(--font-engli
 .sim-entry-banner p { margin: 0; font-size: 18px; font-weight: 600; line-height: 1.5; color: var(--v2-navy); }
 .sim-entry-banner { margin-block-start: clamp(40px, 6vw, 64px); }
 .sim-entry-btn { align-self: flex-start; }
+.v3-selector .product-selector-result h3 a { color: var(--v2-navy); text-decoration: none; }
+.v3-selector .product-selector-result h3 a:hover { color: var(--v2-blue); }
