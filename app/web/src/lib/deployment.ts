@@ -47,3 +47,7 @@ export function protectedAdminOrigin(env: NodeJS.ProcessEnv = process.env): stri
     return undefined;
   }
 }
+
+/** First path segment shaped like a language code (e.g. /xx, /fr-fr/...) that is not one of the site locales. */
+const UNKNOWN_LOCALE = /^\/(?!(?:ar|en)(?:\/|$))[a-z]{2}(?:-[a-z]{2})?(?:\/|$)/i;
+export const isUnknownLocalePath = (pathname: string) => UNKNOWN_LOCALE.test(pathname);
