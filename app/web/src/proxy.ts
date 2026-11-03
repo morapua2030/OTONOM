@@ -2,6 +2,9 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { contentSecurityPolicy } from './lib/csp.ts';
 import { adminPathRequiresSessionCookie, isAdministrativePath, isPrivatePublicRoute, protectedAdminOrigin, publicMarketingOnly } from './lib/deployment.ts';
 
+/** First path segment shaped like a language code but not one of the site locales. */
+const UNKNOWN_LOCALE = /^\/(?!(?:ar|en)(?:\/|$))[a-z]{2}(?:-[a-z]{2})?(?:\/|$)/i;
+
 function secured(response: NextResponse, policy: string) {
   response.headers.set('Content-Security-Policy', policy);
   return response;
@@ -49,6 +52,14 @@ export function proxy(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('content-security-policy', policy);
   requestHeaders.set('x-nonce', nonce);
+
+  // An unknown two-letter locale (e.g. /xx, /fr/about) renders the branded Arabic 404 inside the site shell
+  // instead of the framework's unbranded page. The status stays 404 (the catch-all route calls notFound()).
+  if (UNKNOWN_LOCALE.test(request.nextUrl.pathname)) {
+    const destination = request.nextUrl.clone();
+    destination.pathname = `/ar${request.nextUrl.pathname}`;
+    return secured(NextResponse.rewrite(destination, { request: { headers: requestHeaders } }), policy);
+  }
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   return secured(response, policy);
