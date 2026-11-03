@@ -6,6 +6,7 @@ import { ControllerRows } from '@/components/products.tsx';
 import { SwashText } from '@/components/v2.tsx';
 import { PRODUCT_REVIEW_NOTICE, localProductText } from '@/lib/products.ts';
 import { Bidi, isolateText } from '@/components/bidi.tsx';
+import { SmartProductSelector } from '@/components/SmartProductSelector.tsx';
 
 export const dynamic = 'force-dynamic';
 type P = { params: Promise<{ locale: string }> };
@@ -35,6 +36,13 @@ export default async function ProductsPage({ params }: P) {
       <section className="v2-section product-list-section" aria-labelledby="product-list-title">
         <h2 id="product-list-title" className="sr-only">{isolateText(locale === 'ar' ? '4R و6R و16R' : '4R, 6R and 16R', locale)}</h2>
         <ControllerRows locale={locale} />
+      </section>
+      <section className="v2-section product-selector-section" aria-labelledby="product-selector-title">
+        <div className="v2-section-head">
+          <span className="v2-eyebrow">{locale === 'ar' ? 'اختار الكنترولر' : 'Pick a controller'}</span>
+          <h2 id="product-selector-title">{locale === 'ar' ? 'محتاج كام قناة؟' : 'How many channels do you need?'}</h2>
+        </div>
+        <SmartProductSelector locale={locale} />
       </section>
     </>
   );

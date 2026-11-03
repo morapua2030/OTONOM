@@ -7,9 +7,7 @@ import { localProductText } from '@/lib/products.ts';
 import {
   MAX_CIRCUITS_PER_ROOM,
   MAX_ROOMS,
-  MAX_SINGLE_CONTROLLER_CHANNELS,
   ROOM_TYPES,
-  isRoomType,
   packageChannelCapacity,
   packageControllers,
   packagesCovering,
@@ -20,7 +18,8 @@ import {
   totalCircuits,
   type RoomType,
 } from '@/lib/product-selector.ts';
-import { packageText } from '@/lib/smart-home-packages.ts';
+import { formatPackageAmount, packageCurrency, packageText, SMART_HOME_PACKAGES } from '@/lib/smart-home-packages.ts';
+import { EXTERNAL_LINK, whatsappHref } from '@/lib/contact.ts';
 import { Bidi } from './bidi.tsx';
 
 const tx = (locale: Locale, ar: string, en: string) => (locale === 'ar' ? ar : en);
@@ -28,59 +27,32 @@ const tx = (locale: Locale, ar: string, en: string) => (locale === 'ar' ? ar : e
 const CHANNEL_MIN = 1;
 const CHANNEL_MAX = 48;
 const CHANNEL_PRESETS = [4, 6, 16, 32, 48] as const;
+/** Largest package capacity (2 × 16R = 32): above it no single package covers the need. */
+const MAX_PACKAGE_CHANNELS = Math.max(...SMART_HOME_PACKAGES.map(packageChannelCapacity));
 
 type Mode = 'channels' | 'rooms';
 type RoomRow = { id: number; type: RoomType; circuits: number };
 
-/** Package guidance: names, controller quantities and capacities all come from the registries. */
-function PackageGuidance({ locale, total }: { locale: Locale; total: number }) {
-  const packages = packagesCovering(total);
-  if (packages.length === 0) return null;
-  return (
-    <section className="selector-packages" aria-labelledby="selector-packages-title" data-testid="selector-packages">
-      <h4 id="selector-packages-title">{tx(locale, 'إن كنت تفكر في باقة منزل ذكي كاملة', 'If you are considering a complete smart-home package')}</h4>
-      <ul>
-        {packages.map((pkg) => {
-          const controllers = packageControllers(pkg);
-          const capacity = packageChannelCapacity(pkg);
-          return (
-            <li key={pkg.id} data-package={pkg.id}>
-              <p>
-                <strong><Bidi text={packageText(pkg.name, locale)} locale={locale} /></strong>
-                {': '}
-                {tx(locale, 'تشمل ', 'includes ')}
-                {controllers.map((entry, index) => (
-                  <span key={entry.product.model}>
-                    {index > 0 ? ' + ' : null}
-                    <bdi dir="ltr">{entry.quantity}</bdi>
-                    {' × '}
-                    {tx(locale, 'وحدة ', '')}
-                    <bdi dir="ltr">{`OTONOM ${entry.product.model.toUpperCase()}`}</bdi>
-                  </span>
-                ))}
-                {tx(locale, ' — حتى ', ' — up to ')}
-                <bdi dir="ltr">{capacity}</bdi>
-                {tx(locale, ' قناة تحكم', ' control channels')}
-              </p>
-              <div className="selector-package-links">
-                <a href={`/${locale}/smart-home/packages#package-${pkg.id}`}>{tx(locale, 'اعرض الباقة', 'View the package')}</a>
-                <a href={`/${locale}/start-project?package=${pkg.id}&service=smart-home`}>{tx(locale, 'ابدأ موجزًا بهذه الباقة', 'Start a brief with this package')}</a>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-      <p className="selector-caveat">
-        {tx(
-          locale,
-          'سعة القنوات محسوبة من وحدات التحكم الموجودة في الباقة فقط، ولا تؤكد ملاءمتها لمشروعك قبل المراجعة الهندسية.',
-          'Channel capacity is calculated from the controllers included in the package only and does not confirm fit before engineering review.',
-        )}
-      </p>
-    </section>
-  );
+/**
+ * WhatsApp message built only from the visitor's choices (no free text): channel count, room count in room mode,
+ * and the suggested controller(s). Example: «أهلًا OTONOM، محتاج حوالي 20 قناة في 3 أوضة، والمقترح 2 × 16R.»
+ */
+export function selectorMessage(locale: Locale, input: { channels: number; rooms: number | null; model: string }): string {
+  const { channels: n, rooms: r, model } = input;
+  if (locale === 'ar') return `أهلًا OTONOM، محتاج حوالي ${n} قناة${r ? ` في ${r} أوضة` : ''}، والمقترح ${model}.`;
+  return `Hi OTONOM, I need about ${n} channels${r ? ` in ${r} rooms` : ''}, and the suggestion is ${model}.`;
 }
 
+/** The suggested controller(s) as written in the message: one model, the controllers of the covering package, or a review. */
+export function selectorModel(locale: Locale, total: number): string {
+  const product = recommendController(total);
+  if (product) return product.model.toUpperCase();
+  const pkg = packagesCovering(total)[0];
+  if (pkg) return packageControllers(pkg).map((entry) => `${entry.quantity} × ${entry.product.model.toUpperCase()}`).join(' + ');
+  return tx(locale, 'مراجعة مهندس', 'an engineer review');
+}
+
+/** Design v3 restyle of the D6 Smart Product Selector (DR-112): chips, white cards with navy borders, pills. Logic unchanged. */
 export function SmartProductSelector({ locale }: { locale: Locale }) {
   const [mode, setMode] = useState<Mode>('channels');
   const [channels, setChannels] = useState(4);
@@ -90,7 +62,7 @@ export function SmartProductSelector({ locale }: { locale: Locale }) {
 
   useEffect(() => {
     if (focusRoomId === null) return;
-    document.getElementById(`selector-room-type-${focusRoomId}`)?.focus();
+    document.getElementById(`selector-room-${focusRoomId}`)?.focus();
     setFocusRoomId(null);
   }, [focusRoomId]);
 
@@ -98,14 +70,16 @@ export function SmartProductSelector({ locale }: { locale: Locale }) {
   const roomNames = roomControlNames(rooms, locale);
   const total = mode === 'channels' ? channels : roomTotal;
   const product = recommendController(total);
+  const packages = packagesCovering(total);
   const atRoomLimit = rooms.length >= MAX_ROOMS;
+  const message = selectorMessage(locale, { channels: total, rooms: mode === 'rooms' ? rooms.length : null, model: selectorModel(locale, total) });
 
   const updateRoom = (id: number, patch: Partial<Omit<RoomRow, 'id'>>) =>
     setRooms((current) => current.map((room) => (room.id === id ? { ...room, ...patch } : room)));
-  const addRoom = () => {
+  const addRoom = (type: RoomType) => {
     if (atRoomLimit) return;
     const id = nextRoomId.current++;
-    setRooms((current) => [...current, { id, type: 'other', circuits: 1 }]);
+    setRooms((current) => [...current, { id, type, circuits: 1 }]);
     setFocusRoomId(id);
   };
   const removeRoom = (id: number) => {
@@ -117,143 +91,116 @@ export function SmartProductSelector({ locale }: { locale: Locale }) {
   };
 
   return (
-    <div className="product-selector" data-testid="smart-product-selector" data-mode={mode}>
-      <div className="product-selector-control">
-        <div className="selector-mode" role="group" aria-label={tx(locale, 'طريقة الاختيار', 'Selection method')}>
-          <button type="button" aria-pressed={mode === 'channels'} onClick={() => setMode('channels')}>{tx(locale, 'بعدد القنوات', 'By channel count')}</button>
-          <button type="button" aria-pressed={mode === 'rooms'} onClick={() => setMode('rooms')}>{tx(locale, 'بالغرف', 'By room')}</button>
+    <div className="product-selector v3-selector" data-testid="smart-product-selector" data-mode={mode}>
+      <div className="product-selector-control v2-card">
+        <div className="selector-mode v2-chip-row" role="group" aria-label={tx(locale, 'طريقة الاختيار', 'Selection method')}>
+          <button type="button" className="v2-chip" aria-pressed={mode === 'channels'} onClick={() => setMode('channels')}>{tx(locale, 'بعدد القنوات', 'By channel count')}</button>
+          <button type="button" className="v2-chip" aria-pressed={mode === 'rooms'} onClick={() => setMode('rooms')}>{tx(locale, 'بالغرف', 'By room')}</button>
         </div>
-        <p className="eyebrow"><Bidi text={tx(locale, 'منتقي منتج OTONOM', 'OTONOM PRODUCT SELECTOR')} locale={locale} /></p>
-        <h2>{tx(locale, 'ابدأ بعدد دوائر التحكم', 'Start with the control-circuit count')}</h2>
-        <p>
-          {mode === 'channels'
-            ? tx(locale, 'اختر عدد القنوات المستقلة المتوقع. النتيجة إرشاد مبدئي فقط ولا تستبدل مراجعة التصميم والتركيب.', 'Choose the expected number of independent channels. The result is preliminary guidance and does not replace design and installation review.')
-            : tx(locale, 'أضف غرف المكان وعدد الدوائر التي تريد التحكم فيها في كل غرفة. النتيجة إرشاد مبدئي فقط ولا تستبدل مراجعة التصميم والتركيب.', 'Add the rooms in your space and how many circuits you want to control in each. The result is preliminary guidance and does not replace design and installation review.')}
+        <p className="selector-intro">
+          <Bidi
+            text={mode === 'channels'
+              ? tx(locale, 'اختار عدد القنوات اللي محتاجها، وهنقولك الكنترولر والباقة اللي تغطيها.', 'Pick how many channels you need, and we’ll show the controller and package that cover them.')
+              : tx(locale, 'ضيف الأوض وعدد القنوات في كل أوضة: كل خط نور أو جهاز = قناة.', 'Add your rooms and the channels in each one: every lighting line or device = 1 channel.')}
+            locale={locale}
+          />
         </p>
         {mode === 'channels' ? (
           <>
-            <label htmlFor="selector-channels">{tx(locale, 'عدد القنوات المتوقع', 'Expected channel count')}</label>
+            <label className="selector-label" htmlFor="selector-channels">{tx(locale, 'عدد القنوات', 'Channels')}</label>
             <div className="product-selector-input">
-              <input
-                id="selector-channels"
-                type="range"
-                min={CHANNEL_MIN}
-                max={CHANNEL_MAX}
-                step="1"
-                value={channels}
-                onChange={(event) => setChannels(Number(event.target.value))}
-              />
+              <input id="selector-channels" type="range" min={CHANNEL_MIN} max={CHANNEL_MAX} step="1" value={channels} onChange={(event) => setChannels(Number(event.target.value))} />
               <output htmlFor="selector-channels"><bdi dir="ltr">{channels}</bdi></output>
             </div>
-            <div className="product-selector-presets" aria-label={tx(locale, 'اختيارات سريعة', 'Quick choices')}>
-              {CHANNEL_PRESETS.map((value) => <button type="button" key={value} aria-pressed={channels === value} onClick={() => setChannels(value)}><bdi dir="ltr">{value}</bdi></button>)}
+            <div className="product-selector-presets v2-chip-row" role="group" aria-label={tx(locale, 'اختيارات سريعة', 'Quick choices')}>
+              {CHANNEL_PRESETS.map((value) => <button type="button" className="v2-chip" key={value} aria-pressed={channels === value} onClick={() => setChannels(value)}><bdi dir="ltr">{value}</bdi></button>)}
             </div>
           </>
         ) : (
           <div className="selector-rooms">
-            <p className="selector-rooms-help">{tx(locale, 'الدائرة = إضاءة أو حمل تتحكم فيه بشكل مستقل (مثلًا مجموعة مصابيح على مفتاح واحد).', 'A circuit is one independently controlled light or load (e.g. a group of lights on one switch).')}</p>
             <ol className="selector-room-list">
               {rooms.map((room, index) => {
-                const name = roomNames[index];
+                const name = roomNames[index] ?? '';
                 return (
                   <li className="selector-room-row" key={room.id}>
-                    <div className="selector-room-field">
-                      <label htmlFor={`selector-room-type-${room.id}`}>{tx(locale, 'نوع الغرفة', 'Room type')}</label>
-                      <select
-                        id={`selector-room-type-${room.id}`}
-                        aria-label={tx(locale, `نوع الغرفة: ${name}`, `Room type: ${name}`)}
-                        value={room.type}
-                        onChange={(event) => { if (isRoomType(event.target.value)) updateRoom(room.id, { type: event.target.value }); }}
-                      >
-                        {ROOM_TYPES.map((type) => <option key={type} value={type}>{roomTypeLabel(type, locale)}</option>)}
-                      </select>
-                    </div>
-                    <div className="selector-room-field">
-                      <label htmlFor={`selector-room-circuits-${room.id}`}>{tx(locale, 'عدد الدوائر', 'Circuits')}</label>
-                      <div className="selector-room-actions">
-                        <div className="selector-stepper">
-                          <button
-                            type="button"
-                            aria-label={tx(locale, `قلّل الدوائر: ${name}`, `Fewer circuits: ${name}`)}
-                            disabled={room.circuits <= 1}
-                            onClick={() => updateRoom(room.id, { circuits: sanitizeCircuits(room.circuits - 1) })}
-                          >−</button>
-                          <input
-                            id={`selector-room-circuits-${room.id}`}
-                            aria-label={tx(locale, `عدد الدوائر: ${name}`, `Circuits: ${name}`)}
-                            type="number"
-                            inputMode="numeric"
-                            dir="ltr"
-                            min={1}
-                            max={MAX_CIRCUITS_PER_ROOM}
-                            step={1}
-                            value={room.circuits}
-                            onChange={(event) => { if (event.target.value !== '') updateRoom(room.id, { circuits: sanitizeCircuits(event.target.value) }); }}
-                          />
-                          <button
-                            type="button"
-                            aria-label={tx(locale, `زِد الدوائر: ${name}`, `More circuits: ${name}`)}
-                            disabled={room.circuits >= MAX_CIRCUITS_PER_ROOM}
-                            onClick={() => updateRoom(room.id, { circuits: sanitizeCircuits(room.circuits + 1) })}
-                          >+</button>
-                        </div>
-                        <button
-                          type="button"
-                          className="selector-room-remove"
-                          aria-label={tx(locale, `احذف: ${name}`, `Remove: ${name}`)}
-                          disabled={rooms.length <= 1}
-                          onClick={() => removeRoom(room.id)}
-                        >{tx(locale, 'احذف', 'Remove')}</button>
+                    <h3 className="selector-room-name" id={`selector-room-${room.id}`} tabIndex={-1}>{name}</h3>
+                    <div className="selector-room-actions">
+                      <div className="selector-stepper">
+                        <button type="button" aria-label={tx(locale, `قلّل القنوات: ${name}`, `Fewer channels: ${name}`)} disabled={room.circuits <= 1} onClick={() => updateRoom(room.id, { circuits: sanitizeCircuits(room.circuits - 1) })}>−</button>
+                        <output className="selector-stepper-value" aria-label={tx(locale, `القنوات: ${name}`, `Channels: ${name}`)}><bdi dir="ltr">{room.circuits}</bdi></output>
+                        <button type="button" aria-label={tx(locale, `زوّد القنوات: ${name}`, `More channels: ${name}`)} disabled={room.circuits >= MAX_CIRCUITS_PER_ROOM} onClick={() => updateRoom(room.id, { circuits: sanitizeCircuits(room.circuits + 1) })}>+</button>
                       </div>
+                      <button type="button" className="selector-room-remove" aria-label={tx(locale, `شيل: ${name}`, `Remove: ${name}`)} disabled={rooms.length <= 1} onClick={() => removeRoom(room.id)}>{tx(locale, 'شيل', 'Remove')}</button>
                     </div>
                   </li>
                 );
               })}
             </ol>
-            <div className="selector-rooms-footer">
-              <button type="button" className="selector-room-add" onClick={addRoom} disabled={atRoomLimit} aria-describedby={atRoomLimit ? 'selector-room-limit' : undefined}>
-                {tx(locale, 'أضف غرفة', 'Add a room')}
-              </button>
-              <p className="selector-room-total">
-                {tx(locale, 'إجمالي الدوائر: ', 'Total circuits: ')}<bdi dir="ltr">{roomTotal}</bdi>
-              </p>
-            </div>
+            <p className="selector-room-total">{tx(locale, 'الإجمالي: ', 'Total: ')}<bdi dir="ltr">{roomTotal}</bdi>{tx(locale, ' قناة', ' channels')}</p>
             {atRoomLimit ? (
-              <p className="selector-room-limit" id="selector-room-limit">
-                {tx(locale, 'وصلت إلى الحد الأقصى: ', 'Maximum reached: ')}<bdi dir="ltr">{MAX_ROOMS}</bdi>{tx(locale, ' غرفة.', ' rooms.')}
-              </p>
-            ) : null}
+              <p className="selector-room-limit" id="selector-room-limit">{tx(locale, 'وصلت لأقصى عدد أوض (', 'You’ve reached the maximum of ')}<bdi dir="ltr">{MAX_ROOMS}</bdi>{tx(locale, ').', ' rooms.')}</p>
+            ) : (
+              <div className="selector-room-add-row" role="group" aria-label={tx(locale, 'ضيف أوضة', 'Add a room')}>
+                {ROOM_TYPES.map((type) => (
+                  <button type="button" className="v2-chip selector-room-add" key={type} onClick={() => addRoom(type)}>{`+ ${roomTypeLabel(type, locale)}`}</button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
-      <div className="product-selector-result" aria-live="polite">
+      <div className="product-selector-result v2-card" aria-live="polite">
+        <span className="v2-eyebrow">{tx(locale, 'المقترح', 'Suggested')}</span>
         {product ? (
-          <>
-            <Image src={product.image} alt={localProductText(product.alt, locale)} width={1254} height={1254} sizes="(max-width: 760px) 80vw, 360px" />
+          <div className="selector-result-product">
+            <span className="selector-result-photo"><Image src={product.image} alt={localProductText(product.alt, locale)} width={1254} height={1254} sizes="120px" /></span>
             <div>
-              <p className="eyebrow">{tx(locale, 'نقطة بداية مبدئية', 'Preliminary starting point')}</p>
-              <h3>{product.name}</h3>
-              <p><Bidi text={tx(locale, `يغطي الموديل ${product.channels} قنوات مؤكدة. يلزم تأكيد توزيع الدوائر والحماية والملاءمة قبل الاختيار النهائي.`, `This model has ${product.channels} confirmed channels. Circuit allocation, protection and fit must be reviewed before a final selection.`)} locale={locale} /></p>
-              <div className="actions">
-                <a className="btn" href={`/${locale}/products/${product.model}`}>{tx(locale, 'راجع المنتج', 'Review product')}</a>
-                <a className="btn secondary" href={`/${locale}/start-project?service=smart-home`}>{tx(locale, 'اطلب مراجعة هندسية', 'Request engineering review')}</a>
-              </div>
+              <h3><bdi dir="ltr">{product.model.toUpperCase()}</bdi></h3>
+              <span className="v2-pill"><Bidi text={tx(locale, `${product.channels} قنوات تحكم`, `${product.channels} control channels`)} locale={locale} /></span>
             </div>
-          </>
+          </div>
+        ) : packages.length ? (
+          <div className="selector-result-product product-selector-multi">
+            <div>
+              <h3><bdi dir="ltr">{selectorModel(locale, total)}</bdi></h3>
+              <span className="v2-pill"><Bidi text={tx(locale, `حتى ${packageChannelCapacity(packages[0]!)} قناة`, `up to ${packageChannelCapacity(packages[0]!)} channels`)} locale={locale} /></span>
+            </div>
+          </div>
         ) : (
           <div className="product-selector-complex">
-            <p className="eyebrow">{tx(locale, 'نطاق متعدد الوحدات', 'MULTI-CONTROLLER SCOPE')}</p>
-            <h3>{tx(locale, 'راجع المعمارية قبل اختيار الموديلات', 'Review the architecture before choosing models')}</h3>
-            <p>{tx(locale, `الاحتياج يتجاوز ${MAX_SINGLE_CONTROLLER_CHANNELS} قناة. لا يفترض المنتقي عدد الوحدات أو توزيعها؛ يبدأ الفريق بمراجعة الدوائر وحدود النظام.`, `The requirement exceeds ${MAX_SINGLE_CONTROLLER_CHANNELS} channels. The selector does not assume controller quantity or allocation; the team first reviews circuits and system boundaries.`)}</p>
-            <a className="btn" href={`/${locale}/start-project?service=smart-home`}>{tx(locale, 'ابدأ موجز المشروع', 'Start a project brief')}</a>
-            <p className="product-selector-business">{tx(locale, 'للمشروعات متعددة الوحدات أو مع المطوّرين والمقاولين:', 'For multi-unit projects, developers and contractors:')}</p>
-            <div className="actions">
+            <h3>{tx(locale, 'مشروعك محتاج مراجعة مهندس', 'Your project needs an engineer review')}</h3>
+            <p><Bidi text={tx(locale, `الاحتياج أكتر من ${MAX_PACKAGE_CHANNELS} قناة، فالمهندس بيراجع توزيع الكنترولرات معاك.`, `That’s more than ${MAX_PACKAGE_CHANNELS} channels, so an engineer reviews the controller layout with you.`)} locale={locale} /></p>
+            <p className="product-selector-business">{tx(locale, 'للمشروعات متعددة الوحدات:', 'For multi-unit projects:')}</p>
+            <div className="v2-actions">
               <a className="btn secondary" href={`/${locale}/business/developers`}>{tx(locale, 'للمطوّرين', 'Developers')}</a>
               <a className="btn secondary" href={`/${locale}/business/contractors`}>{tx(locale, 'للمقاولين', 'Contractors')}</a>
             </div>
           </div>
         )}
-        <PackageGuidance locale={locale} total={total} />
+        {packages.length ? (
+          <section className="selector-packages" aria-labelledby="selector-packages-title" data-testid="selector-packages">
+            <h4 id="selector-packages-title" className="v2-entry-label">{tx(locale, 'الباقة اللي تغطيها', 'The package that covers it')}</h4>
+            <ul>
+              {packages.map((pkg) => {
+                const controllers = packageControllers(pkg);
+                return (
+                  <li key={pkg.id} data-package={pkg.id}>
+                    <span className="selector-package-name"><Bidi text={packageText(pkg.name, locale)} locale={locale} /></span>
+                    <span className="selector-package-meta">
+                      {controllers.map((entry) => <bdi dir="ltr" key={entry.product.model}>{`${entry.quantity} × ${entry.product.model.toUpperCase()}`}</bdi>)}
+                      {' · '}
+                      <bdi dir="ltr">{formatPackageAmount(pkg.priceEgp)}</bdi> {packageCurrency(locale)}
+                    </span>
+                    <span className="selector-package-links"><a href={`/${locale}/smart-home/packages#package-${pkg.id}`}>{tx(locale, 'شوف الباقة', 'See the package')}</a></span>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ) : null}
+        <a className="btn selector-whatsapp" href={whatsappHref(message)} {...EXTERNAL_LINK} data-testid="selector-whatsapp">{tx(locale, 'ابعت على واتساب', 'Send on WhatsApp')}</a>
+        <p className="selector-caveat">{tx(locale, 'ده تقدير مبدئي، والمهندس بيأكد في الزيارة.', 'This is an initial estimate; the engineer confirms it at the visit.')}</p>
+        <a className="selector-sim-link" href={`/${locale}/try`} data-testid="selector-sim-link">{tx(locale, 'جرّب بيتك الذكي ←', 'Try your smart home →')}</a>
       </div>
     </div>
   );
