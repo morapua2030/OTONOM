@@ -14,10 +14,10 @@ Consolidated from the 2026-11-02 remaining-work audit (private evidence). Status
 | D5 real public intake (RFQ) | `BLOCKED` | `PUBLIC_INTAKE_DISABLED`; hosted hard-deny | Privacy policy, consent text, retention and deletion, recipients and access, hosted test | Owner and legal approvals |
 | D5 lead workflow and notifications | `BLOCKED` | No approved provider; ClickUp is manual only | Lead owner, SLA, provider or manual runbook | Owner decisions |
 | D5 package commercial terms | `CONTENT PENDING` | Names, prices and items are published as supplied | Inclusions and exclusions: installation, shipping, tax, wiring, price validity, zones | Owner (S5) |
-| D5.5 Hybrid 03 redesign → design v2 | `PREVIEW` (Hybrid 03) / `IMPLEMENTED (local only)` (v2) | PR #16 draft; design v2 local (DR-099) | Push on owner «ارفع», new protected Preview, team-lead review (GATE-C3) | D8-C |
+| D5.5 Hybrid 03 redesign → design v2 → v3.1 inner pages | `PREVIEW` (v2) / `IMPLEMENTED` (v3.1) | PR #16 draft head `1a7a1b9a` (v2, DR-099); v3.1 inner pages DR-106..DR-109 | Fast-forward push after full verification, new protected Preview, team-lead review (GATE-C3) | D8-C |
 | D6-A catalogue 4R/6R/16R | `LIVE` (base) / `IMPLEMENTED (local only)` (single source) | Product routes 200; commit `a768f7b0` | Verified datasheets and specs | Owner and engineering (S5) |
-| D6-B comparison | `LIVE` (base) | `/en/products/compare` | Mobile comparison layout; package contents comparison | S2; specs (S5) |
-| D6-C smart product selector | `IMPLEMENTED (local only)` | Commits `f208728b`, `20563b1e`; unit and browser tests | Hosted acceptance; links to business paths for large needs | S2, S3 |
+| D6-B comparison | `LIVE` (base) / `RETIRED` (v3.1) | `/products/compare` becomes a 308 to `/products` (DR-107); the package contents comparison stays on `/smart-home/packages` | — | — |
+| D6-C smart product selector | `RETIRED` (v3.1) | Removed from `/products` (DR-109); code and unit tests kept in Git | Only if the owner brings it back | Owner |
 | D6-D packages integration | `IMPLEMENTED (local only)` | Commits `11cafa40`, `20563b1e` | Package state kept on language switch; hosted acceptance | S2, S3 |
 | D6-E B2B / bulk / developer inquiries | `LIVE` (informational) / `BLOCKED` (functional intake) | B2B pages 200; CTA reaches disabled RFQ | Intake approvals; partner terms | D5 intake decisions |
 | D6-F store, cart, checkout | `IMPLEMENTED (local only)` (architecture) / `DEFERRED` (public activation) | Gated domain services with synthetic data | Separate owner approval | `AGENTS.md` commerce rule |

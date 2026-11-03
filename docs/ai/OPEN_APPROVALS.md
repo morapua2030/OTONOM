@@ -22,7 +22,7 @@ Do not treat any open item as agreed. Ask only about the items relevant to the t
 | 16 | Production database plan: no migrations expected; read-only identity and migration re-check (G04) | `PROPOSED` (D8-D) | G04/G15 | BO and ENG |
 | 17 | Performance budgets for the release (proposal in `RELEASE_CHECKLIST.md`) | `PROPOSED` (D8-D) | Post-release acceptance | BO |
 | 18 | Monitoring minimum (proposal: scheduled GitHub Actions page check, no new vendor) | `PROPOSED` (D8-D) | Post-release watch | BO |
-| 19 | Privacy page text (still open, **release blocker**; the page stays a noindex placeholder and no text is generated). Contact channel: phone/WhatsApp `RESOLVED` by DR-101; address and social links still not provided | `PARTIAL` | Public release content | BO and LEG |
+| 19 | Approved privacy text (still open, **release blocker**; no text is generated). The `/legal/privacy` page is removed and redirects to `/contact` (DR-108), and every privacy link is gone. Contact channel: phone/WhatsApp `RESOLVED` by DR-101; address `RESOLVED` by DR-106 (Creativa Damanhour); social links still not provided | `PARTIAL` | Public release content | BO and LEG |
 | 20 | Legacy `public/brand/otonom-logo.png` (unused, still served): keep or retire | `PROPOSED` (D8-D) | Asset hygiene | BO |
 
 ## Resolved
@@ -32,3 +32,4 @@ Do not treat any open item as agreed. Ask only about the items relevant to the t
 | R16 in the package brochure vs the OTONOM 16R controller | `RESOLVED` — DR-094: R16 is the 16R controller |
 | How D6 commits reach review | `RESOLVED` — DR-096: fast-forward onto PR #16 after the pre-push audit and full QA; running it is S4 |
 | Visual direction, home page, contact channel, package claims, 16R display name, fonts | `RESOLVED` — DR-099–DR-104 (owner chat 2026-11-03); implementation is D8-C |
+| Inner pages, public address, retired routes, privacy page, `/products` selector, `/services` index | `RESOLVED` — DR-106–DR-109 (owner chat 2026-11-03); specs, privacy text and real projects stay out of scope; implementation is D8-C v3 |

@@ -1,6 +1,6 @@
-# OTONOM Web Design System — v2
+# OTONOM Web Design System — v2 + v3.1 inner pages
 
-This design system replaces the Hybrid 03 page styling (DR-099). The logo and brand asset files are unchanged: the locked Hybrid 03 artwork in `app/web/public/brand/otonom/` is used byte-for-byte. Source of the look: the owner-approved Claude Design v2 reference, kept privately as design data.
+This design system replaces the Hybrid 03 page styling (DR-099). The v3.1 inner pages (DR-106..DR-109) extend it with the same tokens. The logo and brand asset files are unchanged: the locked Hybrid 03 artwork in `app/web/public/brand/otonom/` is used byte-for-byte. Source of the look: the owner-approved Claude Design v2 reference, kept privately as design data.
 
 ## Implementation
 
@@ -16,8 +16,13 @@ This design system replaces the Hybrid 03 page styling (DR-099). The logo and br
   | `ControllerRows` | `components/products.tsx` |
   | `ContactBooking` | `components/ContactBooking.tsx` |
   | Item visuals | `components/package-items.tsx` |
+  | v3.1 blocks: `InnerHero`, `SplitTitle`, `Circuit`, `Icon`, `IconCards`, `StepCards`, `CtaBand` | `components/v3.tsx` |
+  | v3.1 pages: service, smart home, services index, company, product, Our work, business, support | `components/v3-pages.tsx` |
+  | FAQ accordion | `components/FaqAccordion.tsx` |
+  | Start a project (chips → WhatsApp message) | `components/StartProject.tsx`, `lib/start-message.ts` |
 
-- The contact channel has a single source: `lib/contact.ts` (DR-101). It holds the number, `tel:`, `wa.me` and the reference message texts. There is no form, storage or analytics.
+- The contact channel has a single source: `lib/contact.ts` (DR-101). It holds the number, `tel:`, `wa.me`, the reference message texts and the public address (DR-106). There is no form, storage or analytics.
+- The v3.1 copy is verbatim from the design: `lib/site-copy.ts` (design constants, AR/EN) and `lib/site-copy-inner.ts` (inner-page strings). Design placeholders (sample projects, optional spec rows, privacy text) are not shipped; a unit test fails if one appears.
 
 ## Tokens
 
@@ -63,10 +68,15 @@ This design system replaces the Hybrid 03 page styling (DR-099). The logo and br
 
 - **Header:**
   - Sticky, page background, hairline bottom border, the locked `wordmark_only_light.svg` (`clamp(128px, 14vw, 160px)`).
-  - Desktop nav pills: Home · Services ▾ · Controllers · Packages · Work · Contact. The active pill has a 1px navy border and `aria-current`.
+  - Desktop nav pills (v3.1): Home · Smart Home · Controllers · Packages · Services ▾ · Our work · Contact. The Services menu lists All services plus the four disciplines. The active pill has a 1px navy border and `aria-current`.
   - Then the language link and "Book a visit" (WhatsApp).
-  - Below 1000px: the language link and a 44×44 hamburger (`<details>`). The drawer holds all main pages plus Solutions, Company, Engineering process, Project Builder and Support, then a full-width "Book a visit". Escape closes it and returns focus to the button.
-- **Footer:** navy, the locked `primary_dark.svg` at 240px, phone (`tel:`) and WhatsApp, three link groups (main pages, services, company and support), and "© 2026 OTONOM" in `#B8DDF3`.
+  - Below 1000px: the language link and a 44×44 hamburger (`<details>`). The drawer holds the main pages, then a divider and Company, Developers, Contractors, Start a project and Support, then a full-width "Book a visit". Escape closes it and returns focus to the button.
+- **Footer (v3.1):** navy. Three link columns, then a Contact column with the phone (`tel:`, isolated LTR), the address, WhatsApp, Contact and Support. The bottom row has the locked `primary_dark.svg`, the language link and "© 2026 OTONOM" in `#B8DDF3`. There is no Privacy link (DR-108).
+- **Inner hero (v3.1):** eyebrow, H1 with the key word split out (`SplitTitle`), lead, actions. Service pages add the decorative `Circuit` visual (`aria-hidden`).
+- **Icon cards and steps (v3.1):** white cards with a 1px navy border and an ice icon box (inline SVG paths from the design). Steps are numbered cards with Latin digits.
+- **FAQ accordion (v3.1):** native `<button aria-expanded aria-controls>` per question with the answer in a `hidden` region. One answer is open at a time; Enter and Space work natively.
+- **CTA band (v3.1):** navy band with "Book a visit" (WhatsApp, the page's own message) and Call (`tel:`).
+- **Start a project chips (v3.1):** three labelled groups of `aria-pressed` buttons (44px min height). Pressing a chip again clears it. The message updates in an `aria-live="polite"` region, and one WhatsApp button sends it from the visitor's app.
 - **Buttons:**
   - Primary: sky fill, navy text, 1px navy border, 13×20 padding.
   - Outline: transparent.
@@ -86,5 +96,5 @@ This design system replaces the Hybrid 03 page styling (DR-099). The logo and br
 - Correct RTL/LTR order. The Latin logo is never mirrored.
 - Numbers, model ids and the phone number are isolated LTR. `<Bidi>` wraps a mixed Arabic sentence in one inline element, so the spaces next to an isolate survive inside flex containers. The visual suite (`BIDI-SPACING`) fails if an Arabic letter touches an isolate.
 - Arabic pages use Latin digits for prices and figures.
-- **One Arabic register per page:** the v2 marketing pages (Home, Contact) use the reference's Egyptian colloquial; inner, technical and legal pages stay MSA.
+- **One Arabic register per page:** the v2 and v3.1 public screens use the design reference's Arabic verbatim (Egyptian colloquial where the reference uses it; short neutral labels on the controllers and packages headers). Full MSA prose remains only on the gated pages and on legacy pages that render in the local synthetic test harness.
 - **Review viewports:** 390, 768 and 1440 px in Arabic and English.

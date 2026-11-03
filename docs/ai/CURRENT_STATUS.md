@@ -2,16 +2,16 @@
 
 | Field | Value |
 |---|---|
-| Checked at (Cairo) | 2026-11-03 (D8-A) |
+| Checked at (Cairo) | 2026-11-03 (D8-C v3) |
 | Repository | `morapua2030/OTONOM` (public) |
-| Local branch / code head | `codex/d6-products-smarthome-20261102`. `025d382b` is in PR #16 (DR-096). Local only, not pushed: the S4 status commit `986c1c95`, four D8-A commits up to `51069f26`, and this status commit. |
+| Local branch / code head | `codex/d6-products-smarthome-20261102`. Up to `1a7a1b9a` (design v2) is in PR #16. The D8-C v3 commits (`168f7329` onward, including this docs commit) are pushed fast-forward to PR #16 only after the full verification on this head passes and the pre-push audit is clean (owner pre-authorization, 2026-11-03). |
 | `origin/main` | `b6181212` (contains D5); `git ls-remote`, checked now |
-| PR #16 | `OPEN`, draft, head `025d382b` on `codex/hybrid03-redesign-20261028` (Hybrid 03 + D6, 11 D6 commits added by fast-forward). GitHub Quality Gate on that head: secret/history scan PASS, unit/dependency/build PASS. |
+| PR #16 | `OPEN`, draft, head `1a7a1b9a` on `codex/hybrid03-redesign-20261028` (Hybrid 03 + D6 + design v2, added by fast-forward). GitHub Quality Gate on that head: secret/history scan PASS, unit/dependency/build PASS. |
 | Public canonical | `https://otonom-smart-home-web.vercel.app` serves the D4-era build. Source fingerprint `57f72bc` is HISTORICAL (2026-11-02 project map). Route fingerprint re-verified now with anonymous GET: `/en`, `/ar`, `/en/products`, `/en/products/16r`, `/en/projects` → 200; `/en/start-project`, `/en/smart-home/packages` → 404 |
-| Protected Preview | New Preview of `025d382b`: READY, Preview target, Vercel Authentication on; anonymous `/`, `/ar`, `/en/smart-home/packages`, `/api/ready` → 302 (2026-11-03, no bypass). The earlier `3df493e2` Preview is preserved. URL and ID are kept in private evidence. Team-lead Shareable Link: pending owner action. |
+| Protected Preview | Preview of `1a7a1b9a` (design v2): READY, Preview target, Vercel Authentication on; anonymous `/`, `/ar`, `/en/smart-home/packages`, `/api/ready` → 302 (2026-11-03, no bypass). The earlier `3df493e2` and `025d382b` Previews are preserved. URL and ID are kept in private evidence. Team-lead Shareable Link: owner action. |
 | Brand Guardian | `validate_brand.py --project app/web` PASS on the D8-A candidate (2026-11-03, 0 legacy references) |
 | Release gates | Production is frozen (DR-093); canonical unchanged (`/en` 200, D5/D6 routes 404). There is no G01–G16 verdict for any D6 candidate. |
-| Latest owner decisions | DR-092..DR-098, recorded 2026-11-03 |
+| Latest owner decisions | DR-092..DR-109, recorded 2026-11-03 |
 
 ## Phase status
 
@@ -23,12 +23,28 @@
 | D5 Project Builder and packages UI | `PREVIEW` | In `origin/main` and the protected Preview; 404 on canonical |
 | D5 public intake backend | `BLOCKED` (disabled) | Endpoint returns `PUBLIC_INTAKE_DISABLED`; hard-denied on hosted builds |
 | D5.5 Hybrid 03 redesign | `PREVIEW` | PR #16 draft; protected Preview of `025d382b`. Page styling superseded by design v2 (DR-099); logo files unchanged |
-| D8-C design v2 (Claude Design, option A) | `IMPLEMENTED (local only)` | 2026-11-03: DR-099..DR-105; Home (mix), v2 packages, controllers and contact, inner template, self-hosted fonts, published phone/WhatsApp (no form), brochure photos, D8-A carry-overs. Local, not pushed; full verification on the final SHA pending (private evidence `execution/evidence/d8c-v2-2026-11-03/`) |
+| D8-C design v2 (Claude Design, option A) | `PREVIEW` | 2026-11-03: DR-099..DR-105; Home (mix), v2 packages, controllers and contact, inner template, self-hosted fonts, published phone/WhatsApp (no form), brochure photos, D8-A carry-overs. PR #16 head `1a7a1b9a` and its protected Preview; its background full chain was stopped on the owner's instruction because v3 supersedes it |
+| D8-C v3 inner pages (Claude Design v3.1) | `IMPLEMENTED` | 2026-11-03: DR-106..DR-109; header, drawer, footer and address; service template, smart-home landing, services index, company, support, business, product, Our work (empty state) and Start a project (chips → one WhatsApp message); `/products` without the selector; 308 redirects for routes outside the design; privacy page removed. Verification on this head: private evidence `execution/evidence/d8c-v3-2026-11-03/` |
 | D6 products and smart home | `PREVIEW` | Commits below are in PR #16 and the protected Preview of `025d382b`; full local QA on `16c2b42a` plus d4 on `025d382b` |
 | D7 customer account, devices, service, warranty | `PARTIAL` | Local backend foundations only; no customer UI; not authorized live |
 | D8-A full-site audit + objective fixes | `IMPLEMENTED (local only)` | 2026-11-03: 21 objective findings fixed in `b181dab3`..`51069f26`; after-run has 0 axe violations, 0 broken links/anchors, 0 console errors; 18 design/content items listed for D8-C |
 | D8-D release dry-run | `IMPLEMENTED (local only)` | 2026-11-03: delta from live Production has no migrations and no new env names; gate dry-run `PROMOTION_ALLOWED=false` as expected; plan in `RELEASE_CHECKLIST.md`, decisions 13–20 in `OPEN_APPROVALS.md`. Live Production is `noindex` with robots disallow-all because marketing-only mode is off |
 | D8-B/E review and release | `PLANNED` | D8-B needs the owner's Shareable Link; D8-C after team-lead feedback; D8-E only on owner gates |
+
+## D8-C v3 (2026-11-03)
+
+| SHA | Change |
+|---|---|
+| `168f7329` | V1: header (Home · Smart Home · Controllers · Packages · Services ▾ · Our work · Contact), drawer, footer with the public address from `lib/contact.ts` |
+| `e95b08b1` | V2/V4/V6: service template (IoT, Software, Custom), smart-home landing, `/services` index, company, support and business pages |
+| `f981e872` | V3: product pages without a spec table; Smart Product Selector removed from `/products` (code kept in Git, DR-109) |
+| `80c41c10` | V4: Our work empty state while no project is published |
+| `79659747` | V5: Start a project as three chip groups and one WhatsApp message (no form, no input, nothing stored) |
+| `75cf402b` | V7: 308 redirects (locale kept, query dropped) and every privacy link removed (DR-107, DR-108) |
+| `26c8753c` | Support page keeps the warranty-disabled notice (feature gate; deviation from the design noted in the private plan) |
+| `84755230` | Test expectations for v3.1 and new v3 checks (GATE-T, pre-approved within limits; table in private evidence) |
+
+The copy is verbatim from the design (`lib/site-copy.ts`, `lib/site-copy-inner.ts`). Specs, privacy text and real projects are out of scope (DR-106). In the local synthetic test harness only, the retired routes still render, so the existing stored-XSS, claims-gate and RFQ security suites run unchanged (DR-107).
 
 ## D6 commits (in PR #16 since 2026-11-03)
 

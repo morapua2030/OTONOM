@@ -45,7 +45,7 @@ The full list is in `OPEN_APPROVALS.md`, items 13–20:
 4. The Production database plan: no migrations expected; read-only G04 re-check.
 5. Performance budgets. Proposed: ≤ 300 KB per key page, LCP ≤ 2.5 s mobile, CLS ≤ 0.1, zero console errors.
 6. Monitoring minimum. Proposed: a scheduled GitHub Actions page check with no new vendor; any vendor is a separate approval.
-7. **Release blocker:** approved privacy-page text. `/legal/privacy` stays a noindex placeholder until the owner supplies the approved text; no text is generated. The contact channel is resolved (DR-101).
+7. **Release blocker:** approved privacy text. Since D8-C v3 the `/legal/privacy` page is removed (308 → `/contact`, DR-108) and nothing links to it; the owner decides where the approved text is published before release. No text is generated. The contact channel (DR-101) and the address (DR-106) are resolved.
 8. The legacy logo file.
 
 ## Rollback principle
