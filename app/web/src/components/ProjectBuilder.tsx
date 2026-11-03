@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { BUILDER_QUERY_EVENT, isBuilderServiceKey, SERVICE_DISCIPLINE, type BuilderDiscipline } from '@/lib/builder-query.ts';
 import type { Locale } from '@/lib/i18n.ts';
 import { isSmartHomePackageId, packageText, SMART_HOME_PACKAGES, smartHomePackage, type SmartHomePackageId } from '@/lib/smart-home-packages.ts';
+import { EXTERNAL_LINK, whatsappHref } from '@/lib/contact.ts';
 
 type ClientKind = 'INDIVIDUAL' | 'BUSINESS' | 'PREFER_NOT';
 type ProjectStage = 'IDEA' | 'PROTOTYPE' | 'EXISTING' | 'UNSURE';
@@ -225,6 +226,11 @@ export function ProjectBuilder({ locale, intakeEnabled }: { locale: Locale; inta
               <div className="intake-locked" data-testid="project-intake-disabled">
                 <strong>{L('الاستقبال الإلكتروني للبيانات غير مفعّل حاليًا.', 'Online personal-data intake is not currently enabled.')}</strong>
                 <p>{L('يمكنك نسخ الموجز أو طباعته الآن. لن يطلب الموقع اسمك أو بريدك أو هاتفك حتى اعتماد إشعار الخصوصية وسياسة الاحتفاظ وتشغيل مسار المتابعة.', 'You can copy or print the brief now. The site will not request your name, email or phone until the privacy notice, retention policy and operational follow-up are approved.')}</p>
+                {/* Owner-approved (D8-C): user-initiated wa.me link with the brief text; capped length, nothing stored or sent by this site. */}
+                <p className="actions">
+                  <a className="btn" href={whatsappHref(brief)} {...EXTERNAL_LINK} data-testid="builder-whatsapp">{L('أرسل الموجز عبر واتساب', 'Send this brief on WhatsApp')}</a>
+                </p>
+                <p className="small">{L('يفتح تطبيق واتساب لديك ومعه نص الموجز، ولا يحفظ هذا الموقع أي شيء.', 'Opens your own WhatsApp with the brief text; this site stores nothing.')}</p>
               </div>
             )}
           </div>

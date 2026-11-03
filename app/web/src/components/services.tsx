@@ -6,6 +6,7 @@ import type { ServiceItem, ServicePageContent } from '@/lib/services.ts';
 import { requireProductByModel } from '@/lib/products.ts';
 import { Bidi } from './bidi.tsx';
 import { EngineeringLayerExplorer, StartingPointFinder } from './ServiceExplorer.tsx';
+import { SwashText } from './v2.tsx';
 
 function LocalLink({ locale, href, className, children }: { locale: Locale; href: string; className?: string; children: ReactNode }) {
   return <Link className={className} href={`/${locale}${href}`}>{children}</Link>;
@@ -29,7 +30,7 @@ export function ServiceHero({ locale, page }: { locale: Locale; page: ServicePag
     <section className="service-hero">
       <div className="service-hero-copy">
         <p className="eyebrow">{page.eyebrow}</p>
-        <h1><Bidi text={page.title} locale={locale} /></h1>
+        <h1><SwashText text={page.title} locale={locale} /></h1>
         <p className="wave-lead"><Bidi text={page.summary} locale={locale} /></p>
         <div className="actions">
           <a className="btn" href="#capabilities">{locale === 'ar' ? 'استكشف الخدمة' : 'Explore the service'}</a>

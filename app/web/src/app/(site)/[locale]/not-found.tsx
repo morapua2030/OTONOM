@@ -10,7 +10,7 @@ export default function LocalizedNotFound() {
       <p>{locale === 'ar' ? 'قد يكون الرابط قديمًا أو أن الصفحة المطلوبة غير متاحة.' : 'The link may be outdated or the requested page may be unavailable.'}</p>
       <div className="actions">
         <a className="btn" href={`/${locale}`}>{locale === 'ar' ? 'العودة للرئيسية' : 'Back to home'}</a>
-        <a className="btn secondary" href={`/${locale}/business/request-a-proposal`}>{locale === 'ar' ? 'اطلب عرضًا' : 'Request a proposal'}</a>
+        <a className="btn secondary" href={`/${locale}/contact`}>{locale === 'ar' ? 'تواصل معنا' : 'Contact us'}</a>
       </div>
     </section>
   );

@@ -4,6 +4,7 @@ import { isLocale, t, type Locale } from '@/lib/i18n.ts';
 import { publishedDoc, publishableClaims } from '@/lib/public.ts';
 import { Placeholder, Section } from '@/components/site.tsx';
 import { Bidi } from '@/components/bidi.tsx';
+import { SwashText } from '@/components/v2.tsx';
 import { Cards, Checklist, CtaBand, Faq, Steps } from '@/components/blocks.tsx';
 import { c } from '@/lib/content.ts';
 import { pageMetadata, summarise } from '@/lib/seo.ts';
@@ -39,6 +40,12 @@ const ROUTES: Record<string, keyof ReturnType<typeof t>['pages']> = {
   'legal/privacy': 'privacy',
 };
 
+/**
+ * Placeholder or "coming soon" pages (owner decision D8-C #7): kept out of the sitemap and noindex until approved
+ * content is published in the CMS. /technology/controllers has real registry content and is indexed instead.
+ */
+const PLACEHOLDER_ROUTES = new Set(['solutions/villas', 'solutions/apartments', 'solutions/scenarios', 'technology/documentation', 'insights', 'support/service', 'legal/privacy']);
+
 const PARENT_CRUMBS: Record<string, 'solutions' | 'technology' | 'support'> = { solutions: 'solutions', technology: 'technology', support: 'support' };
 
 type P = { params: Promise<{ locale: string; slug: string[] }> };
@@ -55,7 +62,7 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
   if (!key) return {};
   const cms = await publishedDoc('pages', slug.join('-'), locale);
   const pg = t(locale).pages[key];
-  return pageMetadata({ locale, path: `/${slug.join('/')}`, title: cms?.seoTitle ?? cms?.title ?? pg.title, description: cms?.seoDescription ?? summarise(cms?.summary ?? pg.body) });
+  return pageMetadata({ locale, path: `/${slug.join('/')}`, title: cms?.seoTitle ?? cms?.title ?? pg.title, description: cms?.seoDescription ?? summarise(cms?.summary ?? pg.body), noindex: !cms && PLACEHOLDER_ROUTES.has(path) ? true : undefined });
 }
 
 export default async function MarketingPage({ params }: P) {
@@ -109,7 +116,7 @@ export default async function MarketingPage({ params }: P) {
       <section className="hero">
         {!cms && !publicRelease && <Placeholder locale={locale} />}
         <h1>
-          <Bidi text={cms?.title ?? d.pages[key].title} locale={locale} />
+          <SwashText text={cms?.title ?? d.pages[key].title} locale={locale} />
         </h1>
         <p className="lead">
           <Bidi text={cms?.summary ?? d.pages[key].body} locale={locale} />

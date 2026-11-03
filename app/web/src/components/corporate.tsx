@@ -6,6 +6,7 @@ import { wave, type WaveItem, type WavePage } from '@/lib/wave1.ts';
 import { requireProductByModel } from '@/lib/products.ts';
 import { Bidi } from './bidi.tsx';
 import { BrandLogo } from './BrandLogo.tsx';
+import { SwashText } from './v2.tsx';
 
 function LocalLink({ locale, href, className, children }: { locale: Locale; href: string; className?: string; children: ReactNode }) {
   return <Link className={className} href={`/${locale}${href}`}>{children}</Link>;
@@ -100,7 +101,7 @@ export function CorporatePage({ locale, page }: { locale: Locale; page: WavePage
     <>
       <section className="wave-page-hero">
         <p className="eyebrow">{page.eyebrow}</p>
-        <h1><Bidi text={page.title} locale={locale} /></h1>
+        <h1><SwashText text={page.title} locale={locale} /></h1>
         <p className="wave-lead"><Bidi text={page.body} locale={locale} /></p>
       </section>
       {page.sections.map((section, index) => (

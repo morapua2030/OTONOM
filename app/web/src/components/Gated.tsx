@@ -4,6 +4,7 @@ import { isLocale, t, type Locale } from '@/lib/i18n.ts';
 import { pageMetadata } from '@/lib/seo.ts';
 import { Bidi } from './bidi.tsx';
 import { PRODUCTS, localProductText } from '@/lib/products.ts';
+import { SwashText } from './v2.tsx';
 
 /** Commerce/portal placeholder during the preview (G-1/G-2): informational only, no forms, noindex. */
 export async function GatedPage({ locale, feature }: { locale: Locale; feature: string }) {
@@ -12,7 +13,7 @@ export async function GatedPage({ locale, feature }: { locale: Locale; feature: 
   if (stage === 'COMMERCIAL') return <p data-stage="COMMERCIAL">{feature}: commercial mode — not implemented yet.</p>;
   return (
     <section className="hero" data-stage="PREVIEW" data-feature={feature}>
-      <h1>{d.gated.title}</h1>
+      <h1><SwashText text={d.gated.title} locale={locale} /></h1>
       <p>
         <Bidi text={d.gated.body} locale={locale} />
       </p>
@@ -46,11 +47,21 @@ export async function GatedPage({ locale, feature }: { locale: Locale; feature: 
   );
 }
 /** Localized, always-noindex metadata for a gated page at `path`. */
+const GATED_TITLES: Record<string, Record<Locale, string>> = {
+  '/account': { ar: 'حساب العميل', en: 'Customer account' },
+  '/shop': { ar: 'المتجر', en: 'Store' },
+  '/cart': { ar: 'سلة الشراء', en: 'Cart' },
+  '/checkout': { ar: 'إتمام الطلب', en: 'Checkout' },
+  '/support/warranty': { ar: 'تسجيل الضمان', en: 'Warranty registration' },
+};
+
 export const gatedMetadataFor =
   (path: string) =>
   async ({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> => {
     const { locale } = await params;
     if (!isLocale(locale)) return { robots: { index: false, follow: false } };
     const d = t(locale);
-    return pageMetadata({ locale, path, title: d.gated.title, description: d.gated.body, noindex: true });
+    // Unique per-page titles (D8-A carry-over); the visible gated copy is unchanged.
+    const feature = GATED_TITLES[path]?.[locale];
+    return pageMetadata({ locale, path, title: feature ? `${feature} — ${d.gated.title}` : d.gated.title, description: d.gated.body, noindex: true });
   };

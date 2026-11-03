@@ -4,6 +4,7 @@ import { ProjectBuilder } from '@/components/ProjectBuilder.tsx';
 import { isLocale, type Locale } from '@/lib/i18n.ts';
 import { pageMetadata } from '@/lib/seo.ts';
 import { publicRfqEnabled } from '@/lib/server.ts';
+import { SwashText } from '@/components/v2.tsx';
 
 export const dynamic = 'force-dynamic';
 type P = { params: Promise<{ locale: string }> };
@@ -31,7 +32,7 @@ export default async function StartProjectPage({ params }: P) {
       </nav>
       <section className="hero compact-hero builder-hero">
         <p className="eyebrow">OTONOM PROJECT BUILDER</p>
-        <h1>{locale === 'ar' ? 'ابدأ من سياقك، لا من اسم خدمة' : 'Start with your context, not a service label'}</h1>
+        <h1><SwashText text={locale === 'ar' ? 'ابدأ من سياقك، لا من اسم خدمة' : 'Start with your context, not a service label'} word={locale === 'ar' ? 'سياقك،' : 'context,'} locale={locale} /></h1>
         <p className="lead">{locale === 'ar' ? 'أجب عن أسئلة تتغير حسب نوع العميل ومرحلة المشروع ومجاله، ثم احصل على موجز واضح يمكنك الاحتفاظ به.' : 'Answer questions that adapt to the client, project stage and disciplines, then keep a clear brief you can use.'}</p>
       </section>
       <ProjectBuilder locale={locale} intakeEnabled={publicRfqEnabled()} />
