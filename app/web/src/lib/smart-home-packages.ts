@@ -107,9 +107,11 @@ export function packageText(value: LocalText, locale: Locale): string {
 }
 
 export function formatPackagePrice(priceEgp: number, locale: Locale): string {
+  // Latin digits in both locales, as in the design v2 price cards ("44,000"); see lib/format.ts NUMBERING.
   return new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', {
     style: 'currency',
     currency: 'EGP',
+    numberingSystem: 'latn',
     maximumFractionDigits: 0,
   }).format(priceEgp);
 }

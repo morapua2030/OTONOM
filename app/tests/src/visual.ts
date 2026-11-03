@@ -17,7 +17,7 @@ const PROFILE = path.join(APP_ROOT, 'tests', '.edge-profile');
 const SHOTS = path.resolve(APP_ROOT, '..', 'execution', 'evidence', 'screenshots', 's11-20261021');
 const PORT = 9334;
 const WIDTHS = [360, 768, 1366];
-const PAGES = ['', '/solutions', '/solutions/villas', '/solutions/apartments', '/business/developers', '/business/contractors', '/technology/controllers', '/technology/integrations', '/technology/documentation', '/products', '/products/4r', '/products/6r', '/products/16r', '/products/compare', '/projects', '/business/request-a-proposal', '/consultation', '/shop', '/support/warranty', '/preview', '/preview/bidi-samples'];
+const PAGES = ['', '/smart-home/packages', '/contact', '/solutions', '/solutions/villas', '/solutions/apartments', '/business/developers', '/business/contractors', '/technology/controllers', '/technology/integrations', '/technology/documentation', '/products', '/products/4r', '/products/6r', '/products/16r', '/products/compare', '/projects', '/business/request-a-proposal', '/consultation', '/shop', '/support/warranty', '/preview', '/preview/bidi-samples'];
 const rec = new Recorder();
 
 class Cdp {
@@ -82,6 +82,39 @@ const PROBE = `(() => {
       else if (LAT.test(t) && AR.test((p.textContent || '').replace(ISO, '')) && p.childElementCount === 0) mixed.push('[adjacent] ' + (p.textContent || '').trim().slice(0, 70));
     }
   }
+  // Arabic letters must never render touching an isolated LTR run (e.g. "كنترولر16R"): a space next to the isolate must
+  // actually be drawn, and an Arabic letter may attach without a space only as a one-letter prefix (و ب ل ف ك) or a tatweel.
+  const touch = [];
+  if (html.lang === 'ar') {
+    const LETTER = /[\\u0621-\\u063F\\u0641-\\u064A]/, PREFIX = /(^|[\\s\\u00A0(«])[وبلفك]$/;
+    const texts = [];
+    const tw2 = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let tn;
+    while ((tn = tw2.nextNode())) if (tn.nodeValue && tn.parentElement && !skip(tn.parentElement)) texts.push(tn);
+    const charRect = (node, i) => { const r = document.createRange(); r.setStart(node, i); r.setEnd(node, i + 1); return r.getBoundingClientRect(); };
+    const isolates = [...document.querySelectorAll('bdi[dir=ltr], bdi.ltr')].filter((b) => !b.parentElement.closest('bdi[dir=ltr], bdi.ltr') && b.getClientRects().length);
+    for (const b of isolates) {
+      const inner = texts.filter((x) => b.contains(x));
+      if (!inner.length) continue;
+      const rects = [...b.getClientRects()];
+      for (const side of ['before', 'after']) {
+        const node = texts[texts.indexOf(side === 'before' ? inner[0] : inner[inner.length - 1]) + (side === 'before' ? -1 : 1)];
+        if (!node || b.contains(node)) continue;
+        const raw = node.nodeValue;
+        const at = side === 'before' ? raw.search(/\\S\\s*$/) : raw.search(/\\S/);
+        if (at < 0 || !LETTER.test(raw[at]) && raw[at] !== '\\u0640') continue;
+        const spaced = side === 'before' ? at < raw.length - 1 : at > 0;
+        const lr = charRect(node, at);
+        if (!lr.width) continue;
+        const br = rects.reduce((best, r) => (Math.min(r.bottom, lr.bottom) - Math.max(r.top, lr.top) > Math.min(best.bottom, lr.bottom) - Math.max(best.top, lr.top) ? r : best), rects[0]);
+        if (Math.min(br.bottom, lr.bottom) - Math.max(br.top, lr.top) < Math.min(br.height, lr.height) * 0.5) continue;
+        const gap = side === 'before' ? (html.dir === 'rtl' ? lr.left - br.right : br.left - lr.right) : (html.dir === 'rtl' ? br.left - lr.right : lr.left - br.right);
+        if (gap >= 2) continue;
+        const attachedPrefix = side === 'before' && !spaced && (PREFIX.test(raw.slice(0, at + 1)) || raw[at] === '\\u0640');
+        if (!attachedPrefix) touch.push((spaced ? 'space lost ' : 'no space ') + side + ': ' + (raw.slice(Math.max(0, at - 12), at + 12) + ' | ' + b.textContent).replace(/\\s+/g, ' ').trim().slice(0, 80));
+      }
+    }
+  }
   const fields = [...document.querySelectorAll('input,select,textarea')].filter((f) => f.type !== 'hidden' && !f.closest('.hp'));
   const unlabelled = fields.filter((f) => !(f.closest('label') || f.getAttribute('aria-label') || (f.id && document.querySelector('label[for=\"' + f.id + '\"]')))).map((f) => f.name || f.id);
   const ltrTypes = fields.filter((f) => ['email', 'tel', 'date', 'number', 'url'].includes(f.type));
@@ -126,7 +159,7 @@ const PROBE = `(() => {
   return JSON.stringify({
     orderBad, wrapped, tablesClipped, lowContrast: lowContrast.slice(0, 6), lowContrastCount: lowContrast.length, headingSkips, nameless, landmarks, smallTargets: smallTargets.slice(0, 6), dupIds: [...new Set(dupIds)],
     lang: html.lang, dir: html.dir, vw, scrollW: html.scrollWidth, contentH: Math.ceil(document.documentElement.scrollHeight),
-    overflow: over.slice(0, 8), overflowCount: over.length, mixed: mixed.slice(0, 8), mixedCount: mixed.length,
+    overflow: over.slice(0, 8), overflowCount: over.length, mixed: mixed.slice(0, 8), mixedCount: mixed.length, touch: touch.slice(0, 8), touchCount: touch.length,
     fields: fields.length, unlabelled, ltrWrong, h1: document.querySelectorAll('h1').length,
     title: document.title, description: meta('meta[name=description]'), robots: meta('meta[name=robots]'),
     canonical: document.querySelector('link[rel=canonical]')?.getAttribute('href') || '',
@@ -203,6 +236,7 @@ async function main() {
           rec.add(`${id}-LTR-ORDER`, 'BIDI', `${locale}${page} LTR tokens render in left-to-right character order at ${width}px`, (p?.orderBad ?? ['probe failed']).length === 0, p?.orderBad);
           rec.add(`${id}-NOWRAP`, 'BIDI', `${locale}${page} short technical tokens never break across lines at ${width}px`, (p?.wrapped ?? ['probe failed']).length === 0, p?.wrapped);
           rec.add(`${id}-TABLES`, 'VISUAL', `${locale}${page} data tables fit their container at ${width}px`, p?.tablesClipped === 0, p?.tablesClipped);
+          if (locale === 'ar') rec.add(`${id}-BIDI-SPACING`, 'BIDI', `${locale}${page} Arabic letters never touch an isolated Latin/number run at ${width}px`, p?.touchCount === 0, p?.touch);
           if (locale === 'ar') rec.add(`${id}-BIDI`, 'BIDI', `${locale}${page} no un-isolated Latin/number run inside Arabic text at ${width}px`, p?.mixedCount === 0, p?.mixed);
           if (p?.fields) {
             rec.add(`${id}-LABELS`, 'A11Y', `${locale}${page} every field labelled`, p.unlabelled.length === 0, p.unlabelled);
