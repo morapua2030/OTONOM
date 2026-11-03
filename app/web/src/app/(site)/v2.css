@@ -597,6 +597,7 @@ html[lang='en'] .v3-faq-q { font-family: var(--font-english); letter-spacing: 0;
 html[lang='ar'] .v3-text h1 { font-size: clamp(36px, 5.6vw, 64px); line-height: 1.3; }
 .v3-text h2 { color: var(--v2-navy); font-size: clamp(26px, 3vw, 36px); margin: 24px 0 0; }
 .v3-updated { color: var(--v2-blue-text); font-size: 14px; font-weight: 600; margin: 0; }
+.v3-note { padding: 12px 16px; border-inline-start: 3px solid var(--v2-sky); background: var(--v2-ice); color: var(--v2-navy); border-radius: 8px; }
 .v3-tips { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
 .v3-tips li { display: flex; align-items: center; gap: 14px; padding: 14px 18px; background: var(--v2-card); border: 1px solid var(--v2-navy); border-radius: 16px; }
 .v3-start { gap: 28px; max-width: 900px; }

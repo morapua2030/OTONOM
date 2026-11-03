@@ -270,6 +270,8 @@ export function SupportV3({ locale }: { locale: Locale }) {
         <h1><Bidi text={c.doc.support.title} locale={locale} /></h1>
         <p className="v3-updated"><Bidi text={t.lastUpdated} locale={locale} /></p>
         <p><Bidi text={t.supportLine} locale={locale} /></p>
+        {/* Feature gate (not in the v3.1 design): warranty/service intake stays off the website until the commercial release. */}
+        <p className="v3-note" data-testid="warranty-disabled"><Bidi text={t.warrantyOff} locale={locale} /></p>
         <h2>{t.beforeContact}</h2>
         <ol className="v3-tips">
           {c.tips.map((tip, index) => <li key={tip}><span className="v2-step-num" dir="ltr">{index + 1}</span><span><Bidi text={tip} locale={locale} /></span></li>)}

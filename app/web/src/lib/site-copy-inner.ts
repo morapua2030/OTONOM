@@ -14,7 +14,7 @@ export const INNER = {
     startEyebrow: 'Start your project', startH1: ['Start your ', 'project', ''], startLead: 'Pick from the options below and the message writes itself.',
     message: 'Message', sendWa: 'Send on WhatsApp', startNote: 'Your answers aren’t saved by us. The message is sent from your own WhatsApp.',
     bizEyebrow: 'For businesses', callUs: 'Call us', whatWeOffer: 'What we offer', howItGoes: 'How it goes',
-    lastUpdated: 'Last updated: 3 November 2026', supportLine: 'Support runs through the contact channel agreed in your project.', beforeContact: 'Before you contact us',
+    lastUpdated: 'Last updated: 3 November 2026', supportLine: 'Support runs through the contact channel agreed in your project.', warrantyOff: 'Online warranty and service requests are disabled on the website; they continue through our support channels.', beforeContact: 'Before you contact us',
     ready: 'Ready to start?', servicesEyebrow: 'Services', servicesH1: ['More than ', 'smart home', ''], servicesLead: 'OTONOM works across four engineering disciplines.',
     smart: {
       eyebrow: 'OTONOM Smart Home · 2026', h1: ['Your home, ', 'switched on.', ''],
@@ -37,7 +37,7 @@ export const INNER = {
     startEyebrow: 'ابدأ مشروعك', startH1: ['ابدأ ', 'مشروعك', ''], startLead: 'اختار من الاختيارات تحت، والرسالة هتتكتب لوحدها.',
     message: 'الرسالة', sendWa: 'ابعت على واتساب', startNote: 'إجاباتك ما بتتحفظش عندنا، الرسالة بتتبعت من واتساب بتاعك.',
     bizEyebrow: 'للشركات', callUs: 'كلّمنا', whatWeOffer: 'بنقدّم إيه', howItGoes: 'إزاي بنمشي',
-    lastUpdated: 'آخر تحديث: 3 نوفمبر 2026', supportLine: 'الدعم بيكون من خلال قناة التواصل اللي اتفقنا عليها في مشروعك.', beforeContact: 'قبل ما تكلّمنا',
+    lastUpdated: 'آخر تحديث: 3 نوفمبر 2026', supportLine: 'الدعم بيكون من خلال قناة التواصل اللي اتفقنا عليها في مشروعك.', warrantyOff: 'طلبات الضمان والخدمة أونلاين معطّلة على الموقع، وبتكمل من خلال قنوات الدعم بتاعتنا.', beforeContact: 'قبل ما تكلّمنا',
     ready: 'جاهز نبدأ؟', servicesEyebrow: 'الخدمات', servicesH1: ['أكتر من ', 'منزل ذكي', ''], servicesLead: 'OTONOM بتشتغل في أربع تخصصات هندسية.',
     smart: {
       eyebrow: 'OTONOM Smart Home · 2026', h1: ['بيتك، شغّال ', 'بذكاء.', ''],
