@@ -9,6 +9,7 @@ import { Circuit, CtaBand, Icon, IconCards, InnerHero, SplitTitle, StepCards } f
 import { FaqAccordion } from './FaqAccordion.tsx';
 import { HomeItemsSection, HomePackagesSection } from './home-mix.tsx';
 import { ItemVisual } from './package-items.tsx';
+import { SIM_ENTRY } from '@/lib/simulator/copy.ts';
 
 const L = (locale: Locale, p: string) => `/${locale}${p}`;
 
@@ -102,6 +103,7 @@ export function SmartHomeLanding({ locale }: { locale: Locale }) {
           <p className="v2-lead"><Bidi text={s.lead} locale={locale} /></p>
           <div className="v2-actions">
             <a className="btn" href={L(locale, '/smart-home/packages')}>{t.seePackages}</a>
+            <a className="btn secondary" href={L(locale, '/try')} data-testid="sim-entry">{SIM_ENTRY[locale].cta}</a>
             <a className="btn secondary" href={L(locale, '/products')}>{s.explore}</a>
           </div>
         </div>
@@ -173,6 +175,7 @@ export function ProductV3({ locale, model }: { locale: Locale; model: ProductMod
           <div className="v2-actions">
             <a className="btn" href={whatsappHref(talk)} {...EXTERNAL_LINK}>{t.bookVisit}</a>
             <a className="btn secondary" href={L(locale, '/smart-home/packages')}>{t.seePackages}</a>
+            {model === '16r' ? <a className="btn secondary" href={L(locale, '/try')} data-testid="sim-entry">{SIM_ENTRY[locale].cta}</a> : null}
           </div>
         </div>
         <div className="v2-img-panel v3-product-photo">

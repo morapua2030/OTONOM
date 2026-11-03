@@ -9,6 +9,7 @@ import { BrandLogo } from './BrandLogo.tsx';
 import { EscapableDetails } from './EscapableDetails.tsx';
 import { ADDRESS, bookVisitMessage, EXTERNAL_LINK, PHONE_DISPLAY, telHref, whatsappHref } from '@/lib/contact.ts';
 import { SITE_COPY } from '@/lib/site-copy.ts';
+import { SIM_ENTRY } from '@/lib/simulator/copy.ts';
 
 const label = (locale: Locale, ar: string, en: string) => (locale === 'ar' ? ar : en);
 
@@ -32,6 +33,7 @@ function NavLinks({ locale, drawer = false }: { locale: Locale; drawer?: boolean
       <SiteNavLink href={L('/services/smart-home-automation')} label={n.smart} exact />
       <SiteNavLink href={L('/products')} label={n.ctrl} />
       <SiteNavLink href={L('/smart-home/packages')} label={n.pk} />
+      {drawer ? <SiteNavLink href={L('/try')} label={SIM_ENTRY[locale].cta} /> : null}
       <ServiceNavMenu locale={locale} label={n.svc} items={serviceItems(locale)} />
       <SiteNavLink href={L('/projects')} label={n.work} />
       <SiteNavLink href={L('/contact')} label={n.contact} />
@@ -92,7 +94,7 @@ export function SiteFooter({ locale }: { locale: Locale; publicRelease?: boolean
   const c = SITE_COPY[locale];
   const L = (p: string) => `/${locale}${p}`;
   const columns: Array<{ title: string; links: Array<[string, string]> }> = [
-    { title: c.foot.c1, links: [[c.nav.smart, '/services/smart-home-automation'], [c.nav.ctrl, '/products'], [c.nav.pk, '/smart-home/packages'], ['16R', '/products/16r'], ['4R', '/products/4r'], ['6R', '/products/6r']] },
+    { title: c.foot.c1, links: [[c.nav.smart, '/services/smart-home-automation'], [c.nav.ctrl, '/products'], [c.nav.pk, '/smart-home/packages'], [SIM_ENTRY[locale].cta, '/try'], ['16R', '/products/16r'], ['4R', '/products/4r'], ['6R', '/products/6r']] },
     { title: c.foot.c2, links: serviceItems(locale).map((item) => [item.title, item.href] as [string, string]) },
     { title: c.foot.c3, links: [[c.nav.about, '/about'], [c.nav.work, '/projects'], [c.nav.dev, '/business/developers'], [c.nav.contr, '/business/contractors'], [c.nav.start, '/start-project']] },
   ];

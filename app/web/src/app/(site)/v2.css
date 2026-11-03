@@ -664,3 +664,9 @@ html[lang='en'] .v3-selector .selector-room-name { font-family: var(--font-engli
 .v3-selector .selector-whatsapp { align-self: stretch; }
 .v3-selector .selector-caveat { margin: 0; font-size: 14px; font-weight: 600; color: var(--v2-blue-text); }
 .v3-selector .selector-sim-link { align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; font-weight: 600; }
+
+/* ---------- D8-C v4: simulator entry points (DR-111) ---------- */
+.sim-entry-banner { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; background: var(--v2-ice); border: 1px solid var(--v2-navy); border-radius: 20px; padding: 20px 24px; }
+.sim-entry-banner p { margin: 0; font-size: 18px; font-weight: 600; line-height: 1.5; color: var(--v2-navy); }
+.sim-entry-banner { margin-block-start: clamp(40px, 6vw, 64px); }
+.sim-entry-btn { align-self: flex-start; }

@@ -6,6 +6,7 @@ import { bookVisitMessage, EXTERNAL_LINK, whatsappHref } from '@/lib/contact.ts'
 import { Bidi } from './bidi.tsx';
 import { SwashText } from './v2.tsx';
 import { ItemVisual } from './package-items.tsx';
+import { SIM_ENTRY } from '@/lib/simulator/copy.ts';
 import { PackageTiles, packageDisplayName, packageItemLine } from './SmartHomePackages.tsx';
 
 const tx = (locale: Locale, ar: string, en: string) => (locale === 'ar' ? ar : en);
@@ -117,6 +118,7 @@ export function HomeMix({ locale }: { locale: Locale }) {
           <p className="v2-lead"><Bidi text={HOME_MIX.lead[locale]} locale={locale} /></p>
           <div className="v2-actions">
             <a className="btn" href={L('/smart-home/packages')}>{tx(locale, 'عرض الباقات', 'See packages')}</a>
+            <a className="btn secondary" href={L('/try')} data-testid="sim-entry">{SIM_ENTRY[locale].cta}</a>
             <a className="btn secondary" href="#start">{tx(locale, 'ابدأ مشروعك', 'Start your project')}</a>
           </div>
         </div>

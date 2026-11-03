@@ -11,6 +11,7 @@ import {
 } from '@/lib/smart-home-packages.ts';
 import { Bidi } from './bidi.tsx';
 import { ItemVisual } from './package-items.tsx';
+import { SIM_ENTRY } from '@/lib/simulator/copy.ts';
 
 const tx = (locale: Locale, ar: string, en: string) => (locale === 'ar' ? ar : en);
 
@@ -126,6 +127,12 @@ export function SmartHomePackages({ locale, comparison = false }: { locale: Loca
           </article>
         ))}
       </div>
+      {comparison ? (
+        <div className="sim-entry-banner" data-testid="sim-entry">
+          <p><Bidi text={SIM_ENTRY[locale].banner} locale={locale} /></p>
+          <a className="btn" href={`/${locale}/try`}>{SIM_ENTRY[locale].cta}</a>
+        </div>
+      ) : null}
       {comparison ? <section className="v2-section" aria-label={tx(locale, 'قارن المكونات', 'Compare what’s included')}><PackageComparison locale={locale} /><PackageCaveat locale={locale} /></section> : <PackageCaveat locale={locale} />}
     </>
   );

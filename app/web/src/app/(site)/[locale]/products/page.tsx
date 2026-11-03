@@ -7,6 +7,7 @@ import { SwashText } from '@/components/v2.tsx';
 import { PRODUCT_REVIEW_NOTICE, localProductText } from '@/lib/products.ts';
 import { Bidi, isolateText } from '@/components/bidi.tsx';
 import { SmartProductSelector } from '@/components/SmartProductSelector.tsx';
+import { SIM_ENTRY } from '@/lib/simulator/copy.ts';
 
 export const dynamic = 'force-dynamic';
 type P = { params: Promise<{ locale: string }> };
@@ -31,6 +32,7 @@ export default async function ProductsPage({ params }: P) {
       <section className="v2-page-head products-intro">
         <span className="v2-eyebrow"><Bidi text={locale === 'ar' ? 'وحدات تحكم OTONOM' : 'OTONOM Controllers'} locale={locale} /></span>
         <h1><SwashText text={locale === 'ar' ? 'وحدة تحكم لكل مساحة.' : 'One controller for every room size.'} word={locale === 'ar' ? 'مساحة.' : 'controller'} locale={locale} /></h1>
+        <a className="btn secondary sim-entry-btn" href={`/${locale}/try`} data-testid="sim-entry">{SIM_ENTRY[locale].cta}</a>
         <p className="hero-note"><Bidi text={localProductText(PRODUCT_REVIEW_NOTICE, locale)} locale={locale} /></p>
       </section>
       <section className="v2-section product-list-section" aria-labelledby="product-list-title">
