@@ -3,7 +3,7 @@ import { SITE_URL } from '@/lib/server.ts';
 
 export const dynamic = 'force-dynamic';
 
-const STATIC = ['', '/about', '/services', '/services/iot-embedded', '/services/software-engineering', '/services/smart-home-automation', '/services/custom-engineering', '/business/developers', '/business/contractors', '/start-project', '/smart-home/packages', '/projects', '/products', '/products/4r', '/products/6r', '/products/16r', '/contact', '/support'];
+const STATIC = ['', '/about', '/services', '/services/iot-embedded', '/services/software-engineering', '/services/smart-home-automation', '/services/custom-engineering', '/business/developers', '/business/contractors', '/start-project', '/smart-home/packages', '/try', '/projects', '/products', '/products/4r', '/products/6r', '/products/16r', '/contact', '/support'];
 
 /** Built from PUBLISHED content only, with reciprocal hreflang alternates. */
 export async function GET() {
