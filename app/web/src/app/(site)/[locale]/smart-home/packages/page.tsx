@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { isLocale, type Locale } from '@/lib/i18n.ts';
 import { pageMetadata } from '@/lib/seo.ts';
 import { SmartHomePackages } from '@/components/SmartHomePackages.tsx';
-import { Bidi } from '@/components/bidi.tsx';
+import { Bidi, isolateText } from '@/components/bidi.tsx';
 import { SwashText } from '@/components/v2.tsx';
 
 export const dynamic = 'force-dynamic';
@@ -39,7 +39,7 @@ export default async function SmartHomePackagesPage({ params }: P) {
         <p className="v2-lead">{locale === 'ar' ? 'ثلاث باقات، لكل باقة مكوناتها وسعرها الإجمالي.' : 'Three packages, each with its included items and total price.'}</p>
       </section>
       <section className="v2-section" aria-labelledby="package-list-title">
-        <h2 id="package-list-title" className="sr-only"><Bidi text={locale === 'ar' ? 'Premium وPlus وEssential' : 'Premium, Plus and Essential'} locale={locale} /></h2>
+        <h2 id="package-list-title" className="sr-only">{isolateText(locale === 'ar' ? 'Premium وPlus وEssential' : 'Premium, Plus and Essential', locale)}</h2>
         <SmartHomePackages locale={locale} comparison />
       </section>
     </>

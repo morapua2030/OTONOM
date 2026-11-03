@@ -5,7 +5,7 @@ import { pageMetadata } from '@/lib/seo.ts';
 import { ControllerRows, ProductComparison } from '@/components/products.tsx';
 import { SwashText } from '@/components/v2.tsx';
 import { PRODUCT_REVIEW_NOTICE, localProductText } from '@/lib/products.ts';
-import { Bidi } from '@/components/bidi.tsx';
+import { Bidi, isolateText } from '@/components/bidi.tsx';
 import { SmartProductSelector } from '@/components/SmartProductSelector.tsx';
 
 export const dynamic = 'force-dynamic';
@@ -34,11 +34,11 @@ export default async function ProductsPage({ params }: P) {
         <p className="hero-note"><Bidi text={localProductText(PRODUCT_REVIEW_NOTICE, locale)} locale={locale} /></p>
       </section>
       <section className="v2-section product-list-section" aria-labelledby="product-list-title">
-        <h2 id="product-list-title" className="sr-only"><Bidi text={locale === 'ar' ? '4R و6R و16R' : '4R, 6R and 16R'} locale={locale} /></h2>
+        <h2 id="product-list-title" className="sr-only">{isolateText(locale === 'ar' ? '4R و6R و16R' : '4R, 6R and 16R', locale)}</h2>
         <ControllerRows locale={locale} />
       </section>
       <section className="section" aria-labelledby="product-selector-title">
-        <span className="sr-only" id="product-selector-title"><Bidi text={locale === 'ar' ? 'منتقي منتج OTONOM' : 'OTONOM product selector'} locale={locale} /></span>
+        <span className="sr-only" id="product-selector-title">{isolateText(locale === 'ar' ? 'منتقي منتج OTONOM' : 'OTONOM product selector', locale)}</span>
         <SmartProductSelector locale={locale} />
       </section>
       <section className="section" aria-labelledby="quick-compare-title">
