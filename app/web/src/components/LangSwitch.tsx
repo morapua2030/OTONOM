@@ -5,7 +5,7 @@ import { BUILDER_QUERY_EVENT } from '../lib/builder-query.ts';
 import { localeSwitchHref } from '../lib/locale-switch.ts';
 
 /** Switches to the same page in the other locale, keeping only allow-listed state (see `localeSwitchHref`). */
-export function LangSwitch({ locale, label }: { locale: 'ar' | 'en'; label: string }) {
+export function LangSwitch({ locale, label, name, className }: { locale: 'ar' | 'en'; label: string; name?: string; className?: string }) {
   const pathname = usePathname() ?? `/${locale}`;
   const other = locale === 'ar' ? 'en' : 'ar';
   const [href, setHref] = useState(() => localeSwitchHref(pathname, '', '', other));
@@ -24,7 +24,7 @@ export function LangSwitch({ locale, label }: { locale: 'ar' | 'en'; label: stri
     };
   }, [pathname, other]);
   return (
-    <a href={href} lang={other} hrefLang={other}>
+    <a href={href} lang={other} hrefLang={other} aria-label={name} className={className}>
       {label}
     </a>
   );
