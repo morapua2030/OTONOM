@@ -39,6 +39,8 @@ const ROUTES: Record<string, keyof ReturnType<typeof t>['pages']> = {
   'legal/privacy': 'privacy',
 };
 
+const PARENT_CRUMBS: Record<string, 'solutions' | 'technology' | 'support'> = { solutions: 'solutions', technology: 'technology', support: 'support' };
+
 type P = { params: Promise<{ locale: string; slug: string[] }> };
 
 export async function generateMetadata({ params }: P): Promise<Metadata> {
@@ -100,7 +102,8 @@ export default async function MarketingPage({ params }: P) {
     <>
       <nav className="breadcrumbs" aria-label={locale === 'ar' ? 'مسار الصفحة' : 'Breadcrumb'}>
         <a href={L('')}>{locale === 'ar' ? 'الرئيسية' : 'Home'}</a>
-        {slug.length > 1 && <a href={L(`/${slug[0]}`)}>{d.nav[slug[0] === 'business' ? 'business' : slug[0] === 'technology' ? 'technology' : slug[0] === 'solutions' ? 'solutions' : 'support']}</a>}
+        {/* Parent crumb only where the parent page exists (/business and /legal have no landing page). */}
+        {slug.length > 1 && PARENT_CRUMBS[slug[0]] && <a href={L(`/${slug[0]}`)}>{d.nav[PARENT_CRUMBS[slug[0]]]}</a>}
         <span aria-current="page"><Bidi text={cms?.title ?? d.pages[key].title} locale={locale} /></span>
       </nav>
       <section className="hero">

@@ -104,7 +104,7 @@ export function CorporatePage({ locale, page }: { locale: Locale; page: WavePage
         <p className="wave-lead"><Bidi text={page.body} locale={locale} /></p>
       </section>
       {page.sections.map((section, index) => (
-        <section className={`wave-section${index % 2 === 1 ? ' wave-tint' : ''}`} key={section.title}>
+        <section className={`wave-section${index % 2 === 1 ? ' wave-tint' : ''}`} id={section.id} key={section.title}>
           <div className="section-head">
             {section.eyebrow && <p className="eyebrow">{section.eyebrow}</p>}
             <h2><Bidi text={section.title} locale={locale} /></h2>
