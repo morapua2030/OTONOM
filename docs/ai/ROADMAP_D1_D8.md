@@ -14,7 +14,7 @@ Consolidated from the 2026-11-02 remaining-work audit (private evidence). Status
 | D5 real public intake (RFQ) | `BLOCKED` | `PUBLIC_INTAKE_DISABLED`; hosted hard-deny | Privacy policy, consent text, retention and deletion, recipients and access, hosted test | Owner and legal approvals |
 | D5 lead workflow and notifications | `BLOCKED` | No approved provider; ClickUp is manual only | Lead owner, SLA, provider or manual runbook | Owner decisions |
 | D5 package commercial terms | `CONTENT PENDING` | Names, prices and items are published as supplied | Inclusions and exclusions: installation, shipping, tax, wiring, price validity, zones | Owner (S5) |
-| D5.5 Hybrid 03 redesign | `PREVIEW` | PR #16 draft at `3df493e2`, CI passing | Team-lead review | S4 |
+| D5.5 Hybrid 03 redesign → design v2 | `PREVIEW` (Hybrid 03) / `IMPLEMENTED (local only)` (v2) | PR #16 draft; design v2 local (DR-099) | Push on owner «ارفع», new protected Preview, team-lead review (GATE-C3) | D8-C |
 | D6-A catalogue 4R/6R/16R | `LIVE` (base) / `IMPLEMENTED (local only)` (single source) | Product routes 200; commit `a768f7b0` | Verified datasheets and specs | Owner and engineering (S5) |
 | D6-B comparison | `LIVE` (base) | `/en/products/compare` | Mobile comparison layout; package contents comparison | S2; specs (S5) |
 | D6-C smart product selector | `IMPLEMENTED (local only)` | Commits `f208728b`, `20563b1e`; unit and browser tests | Hosted acceptance; links to business paths for large needs | S2, S3 |

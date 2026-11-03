@@ -22,7 +22,7 @@ Do not treat any open item as agreed. Ask only about the items relevant to the t
 | 16 | Production database plan: no migrations expected; read-only identity and migration re-check (G04) | `PROPOSED` (D8-D) | G04/G15 | BO and ENG |
 | 17 | Performance budgets for the release (proposal in `RELEASE_CHECKLIST.md`) | `PROPOSED` (D8-D) | Post-release acceptance | BO |
 | 18 | Monitoring minimum (proposal: scheduled GitHub Actions page check, no new vendor) | `PROPOSED` (D8-D) | Post-release watch | BO |
-| 19 | Privacy page text (still open). Contact channel: phone/WhatsApp `RESOLVED` by DR-101; address and social links still not provided | `PARTIAL` | Public release content | BO and LEG |
+| 19 | Privacy page text (still open, **release blocker**; the page stays a noindex placeholder and no text is generated). Contact channel: phone/WhatsApp `RESOLVED` by DR-101; address and social links still not provided | `PARTIAL` | Public release content | BO and LEG |
 | 20 | Legacy `public/brand/otonom-logo.png` (unused, still served): keep or retire | `PROPOSED` (D8-D) | Asset hygiene | BO |
 
 ## Resolved

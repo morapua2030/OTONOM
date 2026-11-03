@@ -91,7 +91,7 @@ Owner abbreviations:
 
 **Gap note — DR-064–DR-091:** recorded in the owner's private local register (security, hosting and release-operation decisions). They are intentionally not published (see DR-071/DR-074). This is a numbering note, not a decision.
 
-## 3a. Owner decisions recorded 2026-11-03 (DR-092–DR-104)
+## 3a. Owner decisions recorded 2026-11-03 (DR-092–DR-105)
 | ID | Topic | Decision / position | Status | Owner | Evidence required | Impact | Next action | Approved at |
 |---|---|---|---|---|---|---|---|---|
 | DR-092 | AI continuity | Planning with Claude in chat and execution by Claude Code/Codex in Antigravity on `D:\otonom` continue without resetting scope, architecture, brand or release rules. Supersedes DR-061 for this scope | APPROVED (owner) | BO | — | Agent workflow | Keep `docs/ai/` current | Owner chat, recorded 2026-11-03; original date unverified |
@@ -107,11 +107,12 @@ Owner abbreviations:
 | DR-102 | Package and product claims | Owner-confirmed facts: every package includes Amazon Alexa and voice control works with the controllers; the controllers control lighting, AC and devices; OTONOM installs; installation is included in the package price. Specs beyond channel counts stay "awaiting approval" (DR-097) | APPROVED (owner) | BO | — | Home, packages, controllers copy | D8-C C2–C4 | Owner chat 2026-11-03 |
 | DR-103 | 16R display name | The package item is displayed as "16R Smart Controller" everywhere; the brochure name "R16" is the same product (DR-094) | APPROVED (owner) | BO | — | Package data and copy | D8-C data batch | Owner chat 2026-11-03 |
 | DR-104 | Fonts | Inter (English body), DM Serif Display (English headings) and IBM Plex Sans Arabic (Arabic), self-hosted with no runtime request to a font provider and no CSP change | APPROVED (owner) | BO | Build output serves fonts from the site origin | Typography | D8-C C1 | Owner chat 2026-11-03 |
+| DR-105 | Brochure and component imagery | Owner confirmed rights to all five component images, including the Alexa device image, under owner responsibility (2026-11-03). They are published as WebP with all metadata removed and no edits; Alexa is referred to descriptively only, with no Amazon/Alexa logos or badges | APPROVED (owner) | BO | — | Home and packages imagery | D8-C photo batch | Owner chat 2026-11-03 |
 
 ## 4. Status summary
 | Status | Count | Decisions |
 |---|---|---|
-| APPROVED (incl. "in principle") | 40 | DR-001–006, 008–012, 015, 017, 021, 023, 025, 027–029, 035, 038, 039, 040, 055, 060, 061, 063, 092–104 |
+| APPROVED (incl. "in principle") | 41 | DR-001–006, 008–012, 015, 017, 021, 023, 025, 027–029, 035, 038, 039, 040, 055, 060, 061, 063, 092–105 |
 | CONFIRMED_BY_USER | 9 | DR-013, 014, 018, 019, 020, 026, 030, 031, 033 |
 | PROPOSED | 13 | DR-007, 037, 041 (owner-preferred), 045, 046, 047, 048, 049, 050, 051, 052, 053, 058 |
 | OPEN | 5 | DR-016, 036, 042, 044, 057 |
@@ -119,9 +120,11 @@ Owner abbreviations:
 | DEFERRED | 2 | DR-022, 034 |
 | VERIFIED_BY_AGENT | 1 | DR-056 |
 
-Total: 76 published decisions (DR-001–063 and DR-092–104; updated 2026-11-03). DR-064–091 are private and not counted here.
+Total: 77 published decisions (DR-001–063 and DR-092–105; updated 2026-11-03). DR-064–091 are private and not counted here.
 
 ## Change log
+2.4-draft, 2026-11-03: DR-105 added (owner-confirmed rights to the five brochure component images).
+
 2.3-draft, 2026-11-03: DR-099–DR-104 added from owner chat (design v2, home, contact channel, confirmed package claims, 16R display name, fonts). DR-099 supersedes only the Hybrid 03 page styling in DR-093.
 
 2.2-draft, 2026-11-03: DR-092–DR-098 added from owner chat (recorded 2026-11-03). Gap note added for the private DR-064–DR-091. Earlier entries are unchanged.

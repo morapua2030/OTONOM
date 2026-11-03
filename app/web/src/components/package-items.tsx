@@ -1,65 +1,37 @@
 import Image from 'next/image';
-import type { ReactNode } from 'react';
-import { requireProductByModel } from '@/lib/products.ts';
+import type { Locale } from '@/lib/i18n.ts';
+import { localProductText, requireProductByModel } from '@/lib/products.ts';
 import type { PackageItemKey } from '@/lib/smart-home-packages.ts';
 
+type Photo = { src: string; width: number; height: number; alt: { ar: string; en: string } };
+
 /**
- * Visual for a package item. Only genuine OTONOM product photography is used (the 16R controller).
- * Third-party components (Alexa, lock, IR remote, gas sensor, panel) are shown as generic outline icons until the
- * owner confirms the right to publish their photos; the icons are decorative and never imitate a vendor's mark.
+ * Package component photos. The 16R uses the genuine OTONOM product photo; the other five come from the owner's
+ * brochure (owner confirmed rights to all five, DR-105), re-encoded to WebP with all metadata removed and no edits.
+ * Alt text names the item only: no specs, claims or third-party marks.
  */
-const ICONS: Record<Exclude<PackageItemKey, 'controller'>, ReactNode> = {
-  alexa: (
-    <>
-      <rect x="7" y="3.5" width="10" height="17" rx="3.5" />
-      <circle cx="12" cy="14" r="2.6" />
-      <circle cx="12" cy="7.6" r="0.9" />
-    </>
-  ),
-  lock: (
-    <>
-      <rect x="5" y="10.5" width="14" height="10" rx="2" />
-      <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
-      <path d="M12 14.5v2.5" />
-    </>
-  ),
-  ir: (
-    <>
-      <rect x="8" y="5.5" width="8" height="15" rx="2.5" />
-      <circle cx="12" cy="9.5" r="1.2" />
-      <path d="M10.5 13.5h3M10.5 16.5h3" />
-      <path d="M9.5 3.2a4 4 0 0 1 5 0" />
-    </>
-  ),
-  gas: (
-    <>
-      <circle cx="12" cy="12" r="8" />
-      <circle cx="12" cy="12" r="3" />
-      <path d="M12 4v2.5M12 17.5V20M4 12h2.5M17.5 12H20" />
-    </>
-  ),
-  panel: (
-    <>
-      <rect x="4.5" y="3.5" width="15" height="12" rx="1.5" />
-      <path d="M8 7v5M12 7v5M16 7v5" />
-      <path d="M8 15.5v5M12 15.5v3.5M16 15.5v5" />
-    </>
-  ),
+const PHOTOS: Record<Exclude<PackageItemKey, 'controller'>, Photo> = {
+  alexa: { src: '/products/items/alexa.webp', width: 800, height: 533, alt: { ar: 'جهاز Amazon Alexa', en: 'Amazon Alexa device' } },
+  lock: { src: '/products/items/smart-lock.webp', width: 800, height: 533, alt: { ar: 'قفل ذكي', en: 'Smart lock' } },
+  ir: { src: '/products/items/ir-remote.webp', width: 800, height: 501, alt: { ar: 'ريموت IR', en: 'IR remote' } },
+  gas: { src: '/products/items/gas-sensor.webp', width: 621, height: 426, alt: { ar: 'حساس غاز', en: 'Gas sensor' } },
+  panel: { src: '/products/items/panel.webp', width: 621, height: 426, alt: { ar: 'لوحة كهرباء وأسلاك', en: 'Electrical panel and wires' } },
 };
 
-export function ItemIcon({ item }: { item: Exclude<PackageItemKey, 'controller'> }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-      {ICONS[item]}
-    </svg>
-  );
-}
+export const itemPhotoAlt = (item: PackageItemKey, locale: Locale) =>
+  item === 'controller' ? localProductText(requireProductByModel('16r').alt, locale) : PHOTOS[item].alt[locale];
 
-/** `alt` is empty when a visible label sits next to the visual (avoids announcing the name twice). */
-export function ItemVisual({ item, alt = '', sizes = '120px' }: { item: PackageItemKey; alt?: string; sizes?: string }) {
+/**
+ * Photo for a package item. `alt` is meaningful when the photo carries the item on its own; pass `decorative` when a
+ * visible label right next to it already names the item (tiles, table thumbnails). Explicit width/height avoid layout
+ * shift; images below the fold are lazy-loaded by next/image, which also builds the responsive srcset.
+ */
+export function ItemVisual({ item, locale, decorative = false, sizes = '140px', priority = false }: { item: PackageItemKey; locale: Locale; decorative?: boolean; sizes?: string; priority?: boolean }) {
+  const alt = decorative ? '' : itemPhotoAlt(item, locale);
   if (item === 'controller') {
     const product = requireProductByModel('16r');
-    return <Image src={product.image} alt={alt} width={1254} height={1254} sizes={sizes} />;
+    return <Image src={product.image} alt={alt} width={1254} height={1254} sizes={sizes} priority={priority} />;
   }
-  return <ItemIcon item={item} />;
+  const photo = PHOTOS[item];
+  return <Image src={photo.src} alt={alt} width={photo.width} height={photo.height} sizes={sizes} priority={priority} />;
 }

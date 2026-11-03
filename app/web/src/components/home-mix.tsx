@@ -5,7 +5,7 @@ import { formatPackageAmount, packageCurrency, packageText, SMART_HOME_PACKAGES,
 import { bookVisitMessage, EXTERNAL_LINK, whatsappHref } from '@/lib/contact.ts';
 import { Bidi } from './bidi.tsx';
 import { SwashText } from './v2.tsx';
-import { ItemIcon, ItemVisual } from './package-items.tsx';
+import { ItemVisual } from './package-items.tsx';
 import { PackageTiles, packageDisplayName, packageItemLine } from './SmartHomePackages.tsx';
 
 const tx = (locale: Locale, ar: string, en: string) => (locale === 'ar' ? ar : en);
@@ -94,7 +94,7 @@ export function HomeMix({ locale }: { locale: Locale }) {
         <ul className="v2-items-grid">
           {ITEM_ORDER.map((key) => (
             <li className="v2-item-card" key={key}>
-              <span className="v2-item-visual"><ItemVisual item={key} sizes="140px" /></span>
+              <span className="v2-item-visual"><ItemVisual item={key} locale={locale} sizes="(max-width: 600px) 40vw, 160px" /></span>
               <span className="v2-item-label"><Bidi text={packageText(itemNames.get(key)!, locale)} locale={locale} /></span>
             </li>
           ))}
@@ -119,7 +119,7 @@ export function HomeMix({ locale }: { locale: Locale }) {
                   {entry.badge ? <span className="v2-pkg-badge">{packageText(entry.badge, locale)}</span> : null}
                 </div>
                 <h3><Bidi text={name} locale={locale} /></h3>
-                <PackageTiles entry={entry} />
+                <PackageTiles entry={entry} locale={locale} />
                 <ul className="v2-pkg-items">
                   {entry.items.map((packageItem) => <li key={packageItem.key}><Bidi text={packageItemLine(packageItem, locale)} locale={locale} /></li>)}
                 </ul>
@@ -175,7 +175,7 @@ export function HomeMix({ locale }: { locale: Locale }) {
         <div className="v2-band-dark">
           <h2 id="home-alexa"><Bidi text={tx(locale, 'كل الباقات فيها Amazon Alexa، وتقدر تتحكم في الإضاءة والتكييف والأجهزة بصوتك.', 'Every package includes Amazon Alexa, so you can control lights, AC and devices by voice.')} locale={locale} /></h2>
           <div className="v2-band-side">
-            <span className="v2-band-visual"><ItemIcon item="alexa" /></span>
+            <span className="v2-band-visual"><ItemVisual item="alexa" locale={locale} sizes="200px" /></span>
             <div className="v2-band-actions">
               <a className="btn btn-on-dark is-primary" href={whatsappHref(bookVisitMessage(locale))} {...EXTERNAL_LINK}>{tx(locale, 'احجز زيارة', 'Book a visit')}</a>
               <a className="btn btn-on-dark" href={L('/smart-home/packages')}>{tx(locale, 'قارن الباقات', 'Compare packages')}</a>

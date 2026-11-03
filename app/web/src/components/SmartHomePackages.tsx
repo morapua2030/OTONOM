@@ -26,13 +26,13 @@ export const packageItemLine = (packageItem: SmartHomePackageItem, locale: Local
   showsQuantity(packageItem) ? `${packageText(packageItem.name, locale)} × ${packageItem.quantity}` : packageText(packageItem.name, locale);
 
 /** Decorative photo/icon tiles; the item list next to them carries the names and quantities for assistive technology. */
-export function PackageTiles({ entry, labels = false, locale }: { entry: SmartHomePackage; labels?: boolean; locale?: Locale }) {
+export function PackageTiles({ entry, labels = false, locale }: { entry: SmartHomePackage; labels?: boolean; locale: Locale }) {
   return (
     <ul className="v2-tiles" aria-hidden="true">
       {entry.items.map((packageItem) => (
         <li className="v2-tile" key={packageItem.key}>
-          <span className="v2-tile-visual"><ItemVisual item={packageItem.key} sizes="120px" /></span>
-          {labels && locale ? <span className="v2-tile-label">{packageText(packageItem.name, locale)}</span> : null}
+          <span className="v2-tile-visual"><ItemVisual item={packageItem.key} locale={locale} decorative sizes="(max-width: 600px) 28vw, 140px" /></span>
+          {labels ? <span className="v2-tile-label"><Bidi text={packageText(packageItem.name, locale)} locale={locale} /></span> : null}
           {showsQuantity(packageItem) ? <span className="v2-qty" dir="ltr">×{packageItem.quantity}</span> : null}
         </li>
       ))}
@@ -76,7 +76,7 @@ export function PackageComparison({ locale }: { locale: Locale }) {
               <tr key={row.key}>
                 <th scope="row">
                   <span className="package-compare-item">
-                    <span className="package-compare-thumb" aria-hidden="true"><ItemVisual item={row.item} sizes="44px" /></span>
+                    <span className="package-compare-thumb" aria-hidden="true"><ItemVisual item={row.item} locale={locale} decorative sizes="44px" /></span>
                     {row.model ? (
                       <a href={`/${locale}/products/${row.model}`} data-product-model={row.model}><Bidi text={packageText(row.name, locale)} locale={locale} /></a>
                     ) : (

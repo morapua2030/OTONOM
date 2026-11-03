@@ -22,12 +22,13 @@
 | D4 case-study content | `DEFERRED` | DR-098: zero entries until materials and written client permissions exist |
 | D5 Project Builder and packages UI | `PREVIEW` | In `origin/main` and the protected Preview; 404 on canonical |
 | D5 public intake backend | `BLOCKED` (disabled) | Endpoint returns `PUBLIC_INTAKE_DISABLED`; hard-denied on hosted builds |
-| D5.5 Hybrid 03 redesign | `PREVIEW` | PR #16 draft; protected Preview of `025d382b`; team-lead review pending |
+| D5.5 Hybrid 03 redesign | `PREVIEW` | PR #16 draft; protected Preview of `025d382b`. Page styling superseded by design v2 (DR-099); logo files unchanged |
+| D8-C design v2 (Claude Design, option A) | `IMPLEMENTED (local only)` | 2026-11-03: DR-099..DR-105; Home (mix), v2 packages, controllers and contact, inner template, self-hosted fonts, published phone/WhatsApp (no form), brochure photos, D8-A carry-overs. Local, not pushed; full verification on the final SHA pending (private evidence `execution/evidence/d8c-v2-2026-11-03/`) |
 | D6 products and smart home | `PREVIEW` | Commits below are in PR #16 and the protected Preview of `025d382b`; full local QA on `16c2b42a` plus d4 on `025d382b` |
 | D7 customer account, devices, service, warranty | `PARTIAL` | Local backend foundations only; no customer UI; not authorized live |
 | D8-A full-site audit + objective fixes | `IMPLEMENTED (local only)` | 2026-11-03: 21 objective findings fixed in `b181dab3`..`51069f26`; after-run has 0 axe violations, 0 broken links/anchors, 0 console errors; 18 design/content items listed for D8-C |
 | D8-D release dry-run | `IMPLEMENTED (local only)` | 2026-11-03: delta from live Production has no migrations and no new env names; gate dry-run `PROMOTION_ALLOWED=false` as expected; plan in `RELEASE_CHECKLIST.md`, decisions 13–20 in `OPEN_APPROVALS.md`. Live Production is `noindex` with robots disallow-all because marketing-only mode is off |
-| D8-B/C/E review, polish and release | `PLANNED` | D8-B needs the owner's Shareable Link; D8-C after team-lead feedback; D8-E only on owner gates |
+| D8-B/E review and release | `PLANNED` | D8-B needs the owner's Shareable Link; D8-C after team-lead feedback; D8-E only on owner gates |
 
 ## D6 commits (in PR #16 since 2026-11-03)
 

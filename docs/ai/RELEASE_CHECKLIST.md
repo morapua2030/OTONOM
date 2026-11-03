@@ -41,10 +41,11 @@ The full list is in `OPEN_APPROVALS.md`, items 13–20:
 1. Turn on the marketing-only mode at release. Recommended: only this mode makes the public site indexable and closes API and private routes on the public host. Today every page is `noindex` and robots disallow all.
 2. Where staff/admin is served after that, and how gates G05–G11 are evidenced there.
 3. Confirm in the Vercel UI: uploads disabled, preview-lock flag unset, and the site URL set to the canonical origin. The agent never reads these values.
+   Since design v2 (D8-C), canonical, hreflang and social-card URLs are absolute on `SITE_URL` (`metadataBase`). Production **must** set `OTONOM_SITE_URL` to the canonical domain; otherwise they point to the immutable deployment host.
 4. The Production database plan: no migrations expected; read-only G04 re-check.
 5. Performance budgets. Proposed: ≤ 300 KB per key page, LCP ≤ 2.5 s mobile, CLS ≤ 0.1, zero console errors.
 6. Monitoring minimum. Proposed: a scheduled GitHub Actions page check with no new vendor; any vendor is a separate approval.
-7. Privacy page text and the published contact channel.
+7. **Release blocker:** approved privacy-page text. `/legal/privacy` stays a noindex placeholder until the owner supplies the approved text; no text is generated. The contact channel is resolved (DR-101).
 8. The legacy logo file.
 
 ## Rollback principle

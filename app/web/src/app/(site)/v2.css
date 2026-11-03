@@ -498,7 +498,7 @@ html[lang='ar'] .v2-contact-card-title { font-weight: 700; }
 .v2-tile-label { font-size: 13px; font-weight: 600; text-align: center; line-height: 1.3; }
 .v2-tile-visual { flex: 1; width: 100%; min-height: 0; display: flex; align-items: center; justify-content: center; }
 .v2-tile-visual img { max-height: 100%; }
-.package-compare-scroll { background: var(--v2-card); border: 1px solid var(--v2-navy); border-radius: 16px; }
+.package-compare-scroll { position: relative; background: var(--v2-card); border: 1px solid var(--v2-navy); border-radius: 16px; } /* contains the sr-only cell names, otherwise they widen the page */
 .package-compare { min-width: 620px; border-collapse: collapse; width: 100%; }
 .package-compare th, .package-compare td { border-block-end: 1px solid var(--v2-hairline); padding: 14px 16px; text-align: start; color: var(--v2-navy); background: var(--v2-card); }
 .package-compare thead th { font-weight: 600; font-size: 15px; }
@@ -558,3 +558,4 @@ html[lang='ar'] .package-compare-title { font-size: clamp(30px, 4.4vw, 52px); li
 
 /* Closed disclosures render nothing (Edge keeps layout boxes for closed <details> content otherwise). */
 .menu-mobile:not([open]) > .nav-mobile, .service-nav-menu:not([open]) > .service-nav-panel { display: none; }
+.v2-band-visual img { max-width: 84%; max-height: 84%; width: auto; height: auto; object-fit: contain; }
