@@ -3,8 +3,10 @@ import { isLocale, type Locale } from '@/lib/i18n.ts';
 import type { Metadata } from 'next';
 import { RfqForm } from '@/components/RfqForm.tsx';
 import { Bidi } from '@/components/bidi.tsx';
+import { PHONE_DISPLAY } from '@/lib/contact.ts';
 import { pageMetadata } from '@/lib/seo.ts';
 import { publicRfqEnabled } from '@/lib/server.ts';
+import { SwashText } from '@/components/v2.tsx';
 
 const COPY = {
   ar: { title: 'اطلب عرضًا لمشروعك', partner: 'طلب شراكة', body: 'أرسل تفاصيل مشروعك وسيراجعها مهندس من OTONOM.' },
@@ -27,7 +29,7 @@ export default async function RequestProposal({ params, searchParams }: { params
   return (
     <>
       <section className="hero">
-        <h1>{kind === 'PARTNER' ? COPY[locale].partner : COPY[locale].title}</h1>
+        <h1><SwashText text={kind === 'PARTNER' ? COPY[locale].partner : COPY[locale].title} locale={locale} /></h1>
         <p>
           <Bidi text={COPY[locale].body} locale={locale} />
         </p>
@@ -40,8 +42,8 @@ export default async function RequestProposal({ params, searchParams }: { params
           <p>
             <Bidi
               text={locale === 'ar'
-                ? 'لا يُجمع أي اسم أو بريد أو هاتف من هذه الصفحة. استخدم قناة OTONOM الموثوقة المعروفة لديك حتى اعتماد إشعار الخصوصية وسياسة الاحتفاظ.'
-                : 'This page does not collect names, e-mail addresses or phone numbers. Use your existing verified OTONOM contact channel until the privacy notice and retention policy are approved.'}
+                ? `لا يُجمع أي اسم أو بريد أو هاتف من هذه الصفحة. لطلب عرض، اتصل بـOTONOM أو راسلها عبر واتساب على الرقم ${PHONE_DISPLAY}.`
+                : `This page does not collect names, e-mail addresses or phone numbers. To request a proposal, call or message OTONOM on WhatsApp at ${PHONE_DISPLAY}.`}
               locale={locale}
             />
           </p>
