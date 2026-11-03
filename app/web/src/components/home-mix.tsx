@@ -36,11 +36,78 @@ const STEPS = [
   ['تحكّم بصوتك أو بريموت IR', 'شغّل بيتك بصوتك مع Amazon Alexa أو بريموت IR.', 'Control it by voice or IR remote', 'Run your home by voice with Amazon Alexa or with the IR remote.'],
 ] as const;
 
+/** "Everything in a package" grid (shared by Home and the smart-home page). */
+export function HomeItemsSection({ locale }: { locale: Locale }) {
+  const itemNames = new Map(SMART_HOME_PACKAGES.flatMap((entry) => entry.items).map((entry) => [entry.key, entry.name]));
+  return (
+      <section className="v2-section" aria-labelledby="home-items">
+      <div className="v2-section-head">
+        <h2 id="home-items"><SwashText text={tx(locale, 'كل اللي في الباقة', 'Everything in a package')} word={tx(locale, 'الباقة', 'package')} locale={locale} /></h2>
+        <p><Bidi text={tx(locale, 'المكوّنات التي تتكوّن منها باقات OTONOM للمنزل الذكي.', 'The parts that go into OTONOM Smart Home Packages.')} locale={locale} /></p>
+      </div>
+      <ul className="v2-items-grid">
+        {ITEM_ORDER.map((key) => (
+          <li className="v2-item-card" key={key}>
+            <span className="v2-item-visual"><ItemVisual item={key} locale={locale} sizes="(max-width: 600px) 40vw, 160px" /></span>
+            <span className="v2-item-label"><Bidi text={packageText(itemNames.get(key)!, locale)} locale={locale} /></span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** Package cards; Home opens WhatsApp, the smart-home page preselects the package on Contact (design v2/v3.1). */
+export function HomePackagesSection({ locale, choose }: { locale: Locale; choose: 'whatsapp' | 'contact' }) {
+  const L = (p: string) => `/${locale}${p}`;
+  return (
+      <section className="v2-section" aria-labelledby="home-packages">
+      <div className="v2-section-head-row">
+        <div className="v2-section-head">
+          <h2 id="home-packages">{tx(locale, 'باقات المنزل الذكي', 'Smart Home Packages')}</h2>
+          <p>{tx(locale, 'ثلاث باقات، لكل باقة مكوناتها وسعرها الإجمالي.', 'Three packages, each with its included items and total price.')}</p>
+        </div>
+        <a className="btn secondary" href={L('/smart-home/packages')}>{tx(locale, 'قارن الباقات', 'Compare packages')}</a>
+      </div>
+      <div className="v2-pkg-grid" data-testid="home-packages">
+        {SMART_HOME_PACKAGES.map((entry, index) => {
+          const name = packageDisplayName(entry, locale);
+          return (
+            <article className={`v2-pkg-card${entry.badge ? ' is-featured' : ''}`} key={entry.id} data-package={entry.id}>
+              <div className="v2-pkg-top">
+                <span className="v2-pkg-num" dir="ltr">{String(index + 1).padStart(2, '0')}</span>
+                {entry.badge ? <span className="v2-pkg-badge">{packageText(entry.badge, locale)}</span> : null}
+              </div>
+              <h3><Bidi text={name} locale={locale} /></h3>
+              <PackageTiles entry={entry} locale={locale} />
+              <ul className="v2-pkg-items">
+                {entry.items.map((packageItem) => <li key={packageItem.key}><Bidi text={packageItemLine(packageItem, locale)} locale={locale} /></li>)}
+              </ul>
+              <div className="v2-pkg-price">
+                <span className="v2-pkg-price-label">{tx(locale, 'السعر الإجمالي', 'Total price')}</span>
+                <span className="v2-pkg-price-value"><bdi dir="ltr">{formatPackageAmount(entry.priceEgp)}</bdi> <span className="v2-pkg-currency">{packageCurrency(locale)}</span></span>
+              </div>
+              {choose === 'whatsapp' ? (
+                <a className="btn" href={whatsappHref(bookVisitMessage(locale, entry.id))} {...EXTERNAL_LINK} data-testid={`home-choose-${entry.id}`}>
+                  <Bidi text={tx(locale, `اختر ${name}`, `Choose ${name}`)} locale={locale} />
+                </a>
+              ) : (
+                <a className="btn" href={`/${locale}/contact?package=${entry.id}`}>
+                  <Bidi text={tx(locale, `اختر ${name}`, `Choose ${name}`)} locale={locale} />
+                </a>
+              )}
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export function HomeMix({ locale }: { locale: Locale }) {
   const L = (p: string) => `/${locale}${p}`;
   const r16 = requireProductByModel('16r');
   const minis = (['4r', '6r'] as const).map((model) => requireProductByModel(model));
-  const itemNames = new Map(SMART_HOME_PACKAGES.flatMap((entry) => entry.items).map((entry) => [entry.key, entry.name]));
   return (
     <div className="v2-home">
       <section className="v2-hero" aria-labelledby="home-title">
@@ -86,55 +153,8 @@ export function HomeMix({ locale }: { locale: Locale }) {
         </div>
       </section>
 
-      <section className="v2-section" aria-labelledby="home-items">
-        <div className="v2-section-head">
-          <h2 id="home-items"><SwashText text={tx(locale, 'كل اللي في الباقة', 'Everything in a package')} word={tx(locale, 'الباقة', 'package')} locale={locale} /></h2>
-          <p><Bidi text={tx(locale, 'المكوّنات التي تتكوّن منها باقات OTONOM للمنزل الذكي.', 'The parts that go into OTONOM Smart Home Packages.')} locale={locale} /></p>
-        </div>
-        <ul className="v2-items-grid">
-          {ITEM_ORDER.map((key) => (
-            <li className="v2-item-card" key={key}>
-              <span className="v2-item-visual"><ItemVisual item={key} locale={locale} sizes="(max-width: 600px) 40vw, 160px" /></span>
-              <span className="v2-item-label"><Bidi text={packageText(itemNames.get(key)!, locale)} locale={locale} /></span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="v2-section" aria-labelledby="home-packages">
-        <div className="v2-section-head-row">
-          <div className="v2-section-head">
-            <h2 id="home-packages">{tx(locale, 'باقات المنزل الذكي', 'Smart Home Packages')}</h2>
-            <p>{tx(locale, 'ثلاث باقات، لكل باقة مكوناتها وسعرها الإجمالي.', 'Three packages, each with its included items and total price.')}</p>
-          </div>
-          <a className="btn secondary" href={L('/smart-home/packages')}>{tx(locale, 'قارن الباقات', 'Compare packages')}</a>
-        </div>
-        <div className="v2-pkg-grid" data-testid="home-packages">
-          {SMART_HOME_PACKAGES.map((entry, index) => {
-            const name = packageDisplayName(entry, locale);
-            return (
-              <article className={`v2-pkg-card${entry.badge ? ' is-featured' : ''}`} key={entry.id} data-package={entry.id}>
-                <div className="v2-pkg-top">
-                  <span className="v2-pkg-num" dir="ltr">{String(index + 1).padStart(2, '0')}</span>
-                  {entry.badge ? <span className="v2-pkg-badge">{packageText(entry.badge, locale)}</span> : null}
-                </div>
-                <h3><Bidi text={name} locale={locale} /></h3>
-                <PackageTiles entry={entry} locale={locale} />
-                <ul className="v2-pkg-items">
-                  {entry.items.map((packageItem) => <li key={packageItem.key}><Bidi text={packageItemLine(packageItem, locale)} locale={locale} /></li>)}
-                </ul>
-                <div className="v2-pkg-price">
-                  <span className="v2-pkg-price-label">{tx(locale, 'السعر الإجمالي', 'Total price')}</span>
-                  <span className="v2-pkg-price-value"><bdi dir="ltr">{formatPackageAmount(entry.priceEgp)}</bdi> <span className="v2-pkg-currency">{packageCurrency(locale)}</span></span>
-                </div>
-                <a className="btn" href={whatsappHref(bookVisitMessage(locale, entry.id))} {...EXTERNAL_LINK} data-testid={`home-choose-${entry.id}`}>
-                  <Bidi text={tx(locale, `اختر ${name}`, `Choose ${name}`)} locale={locale} />
-                </a>
-              </article>
-            );
-          })}
-        </div>
-      </section>
+      <HomeItemsSection locale={locale} />
+      <HomePackagesSection locale={locale} choose="whatsapp" />
 
       <section className="v2-section" id="start" aria-labelledby="home-start">
         <div className="v2-section-head">
