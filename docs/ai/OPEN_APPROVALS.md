@@ -16,6 +16,14 @@ Do not treat any open item as agreed. Ask only about the items relevant to the t
 | 10 | North Star, attribution and finance definitions | `BLOCKED` | Operational dashboards and incentives | BO and FIN |
 | 11 | Any new paid provider, capacity or billing | `BLOCKED` | Creating billable resources | BO |
 | 12 | Retire the temporary reviewer access once the Shareable Link works | `PLANNED` (DR-095) | Closing the review-access item | BO (handled privately) |
+| 13 | Turn on the marketing-only mode at release (recommended: makes the site indexable and closes API/private routes on the public host) | `PROPOSED` (D8-D) | Release configuration; indexing | BO |
+| 14 | Where staff/admin is served after marketing-only, and how gates G05–G11 are evidenced there | `PROPOSED` (D8-D) | Release gates; admin access | BO and ENG |
+| 15 | Confirm in the Vercel UI: uploads disabled, preview-lock flag unset, site URL = canonical origin (agent never reads values) | `PROPOSED` (D8-D) | Release configuration | BO |
+| 16 | Production database plan: no migrations expected; read-only identity and migration re-check (G04) | `PROPOSED` (D8-D) | G04/G15 | BO and ENG |
+| 17 | Performance budgets for the release (proposal in `RELEASE_CHECKLIST.md`) | `PROPOSED` (D8-D) | Post-release acceptance | BO |
+| 18 | Monitoring minimum (proposal: scheduled GitHub Actions page check, no new vendor) | `PROPOSED` (D8-D) | Post-release watch | BO |
+| 19 | Privacy page text and whether to publish one verified contact channel | `PROPOSED` (D8-D) | Public release content | BO and LEG |
+| 20 | Legacy `public/brand/otonom-logo.png` (unused, still served): keep or retire | `PROPOSED` (D8-D) | Asset hygiene | BO |
 
 ## Resolved
 
