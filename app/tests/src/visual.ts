@@ -17,8 +17,10 @@ const PROFILE = path.join(APP_ROOT, 'tests', '.edge-profile');
 const SHOTS = path.resolve(APP_ROOT, '..', 'execution', 'evidence', 'screenshots', 's11-20261021');
 const PORT = 9334;
 const WIDTHS = [360, 768, 1366];
+/** D8-C v4: the simulator is also checked at the design's 390 and 1440 widths (all its demo states). */
+const EXTRA_WIDTHS = (page: string) => (page.startsWith('/try') ? [390, 1440] : []);
 // D8-C v3: the design v3.1 pages are covered; legacy pages stay listed because the local synthetic harness still serves them (DR-107).
-const PAGES = ['', '/services', '/services/iot-embedded', '/services/software-engineering', '/services/custom-engineering', '/services/smart-home-automation', '/about', '/start-project', '/support', '/smart-home/packages', '/contact', '/solutions', '/solutions/villas', '/solutions/apartments', '/business/developers', '/business/contractors', '/technology/controllers', '/technology/integrations', '/technology/documentation', '/products', '/products/4r', '/products/6r', '/products/16r', '/products/compare', '/projects', '/business/request-a-proposal', '/consultation', '/shop', '/support/warranty', '/preview', '/preview/bidi-samples'];
+const PAGES = ['', '/services', '/services/iot-embedded', '/services/software-engineering', '/services/custom-engineering', '/services/smart-home-automation', '/about', '/start-project', '/support', '/smart-home/packages', '/contact', '/solutions', '/solutions/villas', '/solutions/apartments', '/business/developers', '/business/contractors', '/technology/controllers', '/technology/integrations', '/technology/documentation', '/products', '/products/4r', '/products/6r', '/products/16r', '/products/compare', '/try', '/try?demo=night', '/try?demo=gas', '/try?demo=plan', '/projects', '/business/request-a-proposal', '/consultation', '/shop', '/support/warranty', '/preview', '/preview/bidi-samples'];
 const rec = new Recorder();
 
 class Cdp {
@@ -266,7 +268,7 @@ async function main() {
     }
     for (const locale of ['ar', 'en'] as const) {
       for (const page of PAGES) {
-        for (const width of WIDTHS) {
+        for (const width of [...WIDTHS, ...EXTRA_WIDTHS(page)]) {
           const url = `${BASE}/${locale}${page}`;
           const { sid, targetId } = await open(url, width);
           // Exercise native lazy-loading before the full-page capture so evidence does not contain blank
@@ -276,12 +278,14 @@ async function main() {
             awaitPromise: true,
           }, sid);
           const p = await evalJson(sid, PROBE);
-          const name = `${locale}${page.replace(/\//g, '_') || '_home'}-${width}.png`;
+          const name = `${locale}${page.replace(/\//g, '_').replace(/[?=&]/g, '-') || '_home'}-${width}.png`;
           await shot(sid, name, width, p?.contentH ?? 900);
           await cdp.send('Target.closeTarget', { targetId });
           const id = `VIS-${locale}${page || '/'}-${width}`;
           const other = locale === 'ar' ? 'en' : 'ar';
-          const expectHreflang = [`ar=/ar${page}`, `en=/en${page}`, `x-default=/ar${page}`].sort();
+          // A demo preset query (/try?demo=…) is not part of the canonical path.
+          const pathOnly = page.split('?')[0];
+          const expectHreflang = [`ar=/ar${pathOnly}`, `en=/en${pathOnly}`, `x-default=/ar${pathOnly}`].sort();
           const isTest = page.includes('bidi-samples');
           rec.add(`${id}-LANGDIR`, 'VISUAL', `${locale}${page} lang/dir`, p?.lang === locale && p?.dir === (locale === 'ar' ? 'rtl' : 'ltr'), { lang: p?.lang, dir: p?.dir });
           rec.add(`${id}-OVERFLOW`, 'VISUAL', `${locale}${page} no horizontal overflow at ${width}px`, p?.scrollW <= width && p?.overflowCount === 0, { scrollW: p?.scrollW, overflow: p?.overflow });
@@ -306,7 +310,7 @@ async function main() {
             rec.add(`${id}-ROBOTS`, 'SEO', `${locale}${page} noindex while not launched`, /noindex/.test(p?.robots ?? ''), p?.robots);
             if (!isTest) {
               rec.add(`${id}-META`, 'SEO', `${locale}${page} localized title + description`, !!p?.title && p.title !== 'OTONOM' && (p?.description ?? '').length > 20, { title: p?.title, description: p?.description });
-              rec.add(`${id}-HREFLANG`, 'SEO', `${locale}${page} canonical + reciprocal hreflang for the same path`, p?.canonical === `${SITE}/${locale}${page}` && JSON.stringify(p?.hreflang) === JSON.stringify(expectHreflang), { canonical: p?.canonical, hreflang: p?.hreflang });
+              rec.add(`${id}-HREFLANG`, 'SEO', `${locale}${page} canonical + reciprocal hreflang for the same path`, p?.canonical === `${SITE}/${locale}${pathOnly}` && JSON.stringify(p?.hreflang) === JSON.stringify(expectHreflang), { canonical: p?.canonical, hreflang: p?.hreflang });
               rec.add(`${id}-LANGSWITCH`, 'I18N', `${locale}${page} language switch keeps the page`, (p?.langSwitch ?? []).includes(`/${other}${page}`), p?.langSwitch);
               (titles[page] ??= {})[locale] = p?.title;
             }

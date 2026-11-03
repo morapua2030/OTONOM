@@ -59,6 +59,8 @@ export class Page {
   /** Document/script responses retained for security diagnostics (headers never include request bodies or credentials). */
   responses: PageResponse[] = [];
   lastUrls = new Map<string, string>();
+  /** Every request this page started (method, CDP resource type, URL without query), in order. */
+  requests: Array<{ method: string; type: string; url: string; rsc: boolean }> = [];
   constructor(
     private cdp: Cdp,
     private sid: string,
@@ -142,7 +144,13 @@ export class Page {
     await this.cdp.send('Emulation.setTouchEmulationEnabled', { enabled: on, maxTouchPoints: on ? 5 : 1 }, this.sid);
   }
   /** Send a real keyboard key through CDP to the currently focused element. */
-  async press(key: 'Enter' | 'Space') {
+  async press(key: 'Enter' | 'Space' | 'Tab' | 'ShiftTab') {
+    if (key === 'Tab' || key === 'ShiftTab') {
+      const modifiers = key === 'ShiftTab' ? 8 : 0;
+      await this.cdp.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9, nativeVirtualKeyCode: 9, modifiers }, this.sid);
+      await this.cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9, nativeVirtualKeyCode: 9, modifiers }, this.sid);
+      return;
+    }
     const code = key === 'Enter' ? 'Enter' : 'Space';
     const virtualKeyCode = key === 'Enter' ? 13 : 32;
     await this.cdp.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: key === 'Space' ? ' ' : key, code, windowsVirtualKeyCode: virtualKeyCode, nativeVirtualKeyCode: virtualKeyCode }, this.sid);
@@ -192,6 +200,7 @@ export class Browser {
         page.issues.push({ kind: 'request-failed', text: [p.errorText, p.blockedReason, p.corsErrorStatus?.corsError].filter(Boolean).join(' | '), url: clean(page.lastUrls.get(p.requestId)) });
       if (method === 'Network.requestWillBeSent') {
         page.lastUrls.set(p.requestId, p.request?.url);
+        page.requests.push({ method: String(p.request?.method ?? ''), type: String(p.type ?? ''), url: String(p.request?.url ?? '').split('?')[0], rsc: /[?&]_rsc=/.test(String(p.request?.url ?? '')) });
         const u = String(p.request?.url ?? '');
         if (/^https?:\/\//.test(u) && !u.startsWith(this.base)) page.issues.push({ kind: 'third-party', text: 'request to another host', url: u.split('?')[0] });
       }

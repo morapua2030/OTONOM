@@ -114,22 +114,98 @@ async function main() {
     await packages.screenshot('hybrid03-packages-ar-390.png');
     await packages.close();
 
-    // D8-C v3 (DR-109): /products is the v2 header plus the controller cards; the D6 selector is no longer on the page.
+    // D8-C v4 (DR-112, supersedes DR-109): the D6 selector is back on /products, directly under the controller cards,
+    // restyled to v3. Restored checks: presets, multi-controller card with business links, no form, no overflow.
     const products = await browser.newPage(768, 1024);
     await products.goto('/en/products');
+    await products.waitHydrated('[data-testid="smart-product-selector"]');
+    const order = await products.eval<boolean>(`(() => { const rows = document.querySelector('.product-list-section'); const sel = document.querySelector('[data-testid="smart-product-selector"]'); return !!rows && !!sel && !!(rows.compareDocumentPosition(sel) & Node.DOCUMENT_POSITION_FOLLOWING); })()`);
+    await products.click('.product-selector-presets button:nth-child(2)');
+    await products.waitFor(`document.querySelector('.product-selector-result h3')?.textContent?.includes('6R')`);
+    const sixResult = await products.text('.product-selector-result h3');
+    const sixMessage = await products.eval<string>(`new URL(document.querySelector('[data-testid="selector-whatsapp"]').href).searchParams.get('text')`);
+    await products.click('.product-selector-presets button:nth-child(5)');
+    await products.waitFor(`document.querySelector('.product-selector-complex')`);
     const productFacts = await products.eval<any>(`({
-      selector: !!document.querySelector('[data-testid="smart-product-selector"]'),
-      compare: !!document.querySelector('[data-testid="product-compare-stack"], .product-compare'),
-      productLinks: [...new Set([...document.querySelectorAll('main a[href^="/en/products/"]')].map((node) => node.getAttribute('href')))].sort(),
-      packagesLink: !!document.querySelector('main a[href="/en/smart-home/packages"]'),
+      result: document.querySelector('.product-selector-complex h3')?.textContent,
+      business: [...document.querySelectorAll('.product-selector-complex a')].map((node) => node.getAttribute('href')),
       forms: document.querySelectorAll('main form').length,
+      textInputs: document.querySelectorAll('[data-testid="smart-product-selector"] input:not([type="range"]), [data-testid="smart-product-selector"] select, [data-testid="smart-product-selector"] textarea').length,
+      productLinks: [...new Set([...document.querySelectorAll('main .product-list-section a[href^="/en/products/"]')].map((node) => node.getAttribute('href')))].sort(),
+      simLink: document.querySelector('[data-testid="selector-sim-link"]')?.getAttribute('href'),
+      price: /EGP|ج\\.م/.test(document.querySelector('[data-testid="smart-product-selector"]')?.textContent ?? ''),
       h1: document.querySelectorAll('main h1').length,
       overflow: document.documentElement.scrollWidth > innerWidth,
     })`);
-    add('products-v3-controller-cards', !productFacts.selector && !productFacts.compare && JSON.stringify(productFacts.productLinks) === '["/en/products/16r","/en/products/4r","/en/products/6r"]' && productFacts.packagesLink && productFacts.forms === 0 && productFacts.h1 === 1 && !productFacts.overflow, productFacts);
+    add('d6-selector-tablet', order && /6R/.test(sixResult) && sixMessage === 'Hi OTONOM, I need about 6 channels, and the suggestion is 6R.' && /engineer review/i.test(productFacts.result ?? '') && productFacts.forms === 0 && productFacts.textInputs === 0 && !productFacts.price && productFacts.h1 === 1 && !productFacts.overflow, { order, sixResult, sixMessage, ...productFacts });
+    add('d6-selector-business-links', JSON.stringify(productFacts.business) === '["/en/business/developers","/en/business/contractors"]', productFacts);
+    add('products-v3-controller-cards', JSON.stringify(productFacts.productLinks) === '["/en/products/16r","/en/products/4r","/en/products/6r"]' && productFacts.simLink === '/en/try', productFacts);
     add('products-browser-errors', cleanIssues(products.issues).length === 0, cleanIssues(products.issues));
     await products.screenshot('hybrid03-products-en-768.png');
     await products.close();
+
+    // D6 room mode (restored): totals drive the result, package guidance from the registries, focus moves to the new room.
+    const rooms = await browser.newPage(1440, 1000);
+    await rooms.reducedMotion();
+    await rooms.goto('/en/products');
+    await rooms.waitHydrated('[data-testid="smart-product-selector"]');
+    await rooms.click('.selector-mode button:nth-child(2)');
+    await rooms.waitFor(`document.querySelectorAll('.selector-room-row').length === 1`);
+    await rooms.click('.selector-room-add:nth-child(2)');
+    await rooms.waitFor(`document.querySelectorAll('.selector-room-row').length === 2`);
+    const focusMoved = await rooms.eval<boolean>(`document.activeElement === document.querySelector('.selector-room-row:nth-child(2) .selector-room-name')`);
+    for (let i = 0; i < 15; i++) await rooms.click('.selector-room-row:nth-child(1) .selector-stepper button:last-child');
+    for (let i = 0; i < 3; i++) await rooms.click('.selector-room-row:nth-child(2) .selector-stepper button:last-child');
+    const roomFacts = () => rooms.eval<any>(`(() => {
+      const selector = document.querySelector('[data-testid="smart-product-selector"]');
+      return {
+        mode: selector?.getAttribute('data-mode'),
+        total: document.querySelector('.selector-room-total bdi')?.textContent,
+        packages: [...document.querySelectorAll('.selector-packages [data-package]')].map((node) => node.getAttribute('data-package')),
+        packageLinks: [...document.querySelectorAll('.selector-package-links a')].map((node) => node.getAttribute('href')),
+        caveat: document.querySelector('.selector-caveat')?.textContent,
+        message: new URL(document.querySelector('[data-testid="selector-whatsapp"]').href).searchParams.get('text'),
+        rel: document.querySelector('[data-testid="selector-whatsapp"]')?.rel,
+        price: /EGP|ج\\.م/.test(selector?.textContent ?? ''),
+        forms: selector?.querySelectorAll('form').length ?? -1,
+        overflow: document.documentElement.scrollWidth > innerWidth,
+      };
+    })()`);
+    await rooms.waitFor(`document.querySelector('.selector-room-total bdi')?.textContent === '20'`);
+    const twenty = await roomFacts();
+    add('d6-room-mode-20-plus-premium', twenty.mode === 'rooms' && JSON.stringify(twenty.packages) === '["plus","premium"]' && twenty.message === 'Hi OTONOM, I need about 20 channels in 2 rooms, and the suggestion is 2 × 16R.' && /noopener/.test(twenty.rel ?? '') && /initial estimate/.test(twenty.caveat ?? '') && !twenty.price && twenty.forms === 0 && focusMoved && twenty.packageLinks.includes('/en/smart-home/packages#package-plus') && !twenty.overflow, { ...twenty, focusMoved });
+    await rooms.screenshot('hybrid03-products-en-1440-rooms-20.png');
+    for (let i = 0; i < 10; i++) await rooms.click('.selector-room-row:nth-child(1) .selector-stepper button:first-child');
+    await rooms.waitFor(`document.querySelector('.selector-room-total bdi')?.textContent === '10'`);
+    const ten = await roomFacts();
+    add('d6-room-mode-10-16r-essential', JSON.stringify(ten.packages) === '["essential"]' && /16R/.test(ten.message ?? '') && !ten.price && !ten.overflow, ten);
+    add('d6-room-mode-browser-errors', cleanIssues(rooms.issues).length === 0, cleanIssues(rooms.issues));
+    await rooms.close();
+
+    const roomsAr = await browser.newPage(390, 844);
+    await roomsAr.touch();
+    await roomsAr.goto('/ar/products');
+    await roomsAr.waitHydrated('[data-testid="smart-product-selector"]');
+    await roomsAr.click('.selector-mode button:nth-child(2)');
+    await roomsAr.waitFor(`document.querySelectorAll('.selector-room-row').length === 1`);
+    const singleRow = await roomsAr.eval<any>(`({ removeDisabled: document.querySelector('.selector-room-remove')?.disabled, removeLabel: document.querySelector('.selector-room-remove')?.getAttribute('aria-label') })`);
+    await roomsAr.click('.selector-room-add:last-child');
+    await roomsAr.click('.selector-room-add:last-child');
+    await roomsAr.waitFor(`document.querySelectorAll('.selector-room-row').length === 3`);
+    const arFacts = await roomsAr.eval<any>(`({
+      dir: document.documentElement.dir,
+      overflow: document.documentElement.scrollWidth > innerWidth,
+      smallestTarget: Math.min(...[...document.querySelectorAll('.selector-mode button, .selector-stepper button, .selector-room-remove, .selector-room-add, .product-selector-presets button, [data-testid="selector-whatsapp"]')].filter((node) => node.offsetParent !== null).map((node) => Math.min(node.getBoundingClientRect().width, node.getBoundingClientRect().height))),
+      remove: [...document.querySelectorAll('.selector-room-remove')].map((node) => node.getAttribute('aria-label')),
+      circuits: [...document.querySelectorAll('.selector-stepper-value')].map((node) => node.getAttribute('aria-label')),
+      message: new URL(document.querySelector('[data-testid="selector-whatsapp"]').href).searchParams.get('text'),
+      simLink: document.querySelector('[data-testid="selector-sim-link"]')?.textContent,
+    })`);
+    add('d6-room-mode-ar-mobile', arFacts.dir === 'rtl' && !arFacts.overflow && singleRow.removeDisabled === true && singleRow.removeLabel === 'شيل: صالة' && arFacts.smallestTarget >= 44 && arFacts.message === 'أهلًا OTONOM، محتاج حوالي 3 قناة في 3 أوضة، والمقترح 4R.' && arFacts.simLink === 'جرّب بيتك الذكي ←', { ...arFacts, ...singleRow });
+    add('d6-room-names-unique-ar', JSON.stringify(arFacts.remove) === JSON.stringify(['شيل: صالة', 'شيل: أخرى (1)', 'شيل: أخرى (2)']) && new Set(arFacts.circuits).size === 3 && arFacts.circuits[2] === 'القنوات: أخرى (2)', arFacts);
+    add('d6-room-mode-ar-browser-errors', cleanIssues(roomsAr.issues).length === 0, cleanIssues(roomsAr.issues));
+    await roomsAr.screenshot('hybrid03-products-ar-390-rooms.png');
+    await roomsAr.close();
 
     // Package preselection: ?package= (allow-listed) presses the Smart home chip; no package and no service presses nothing.
     const startAr = await browser.newPage(390, 844);

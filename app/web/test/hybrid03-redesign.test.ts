@@ -16,44 +16,46 @@ test('Hybrid 03 shell uses locked SVG source variants rather than the retired PN
 
 test('D6 product selector stays preliminary and does not activate commerce or collect data', () => {
   const selector = component('SmartProductSelector.tsx');
-  assert.match(selector, /preliminary guidance/);
-  assert.match(selector, /does not assume controller quantity/);
+  // v4 restyle (DR-112): the preliminary-guidance wording is now the design's short estimate line.
+  assert.ok(selector.includes("'ده تقدير مبدئي، والمهندس بيأكد في الزيارة.', 'This is an initial estimate; the engineer confirms it at the visit.'"));
   assert.doesNotMatch(selector, /fetch\(|checkout|payment|localStorage|sessionStorage/i);
   assert.match(selector, /products\/\$\{product\.model\}/);
-  assert.match(selector, /start-project\?service=smart-home/);
+  // The only outbound action is the visitor's own WhatsApp link, built from the choices (no free text, no form).
+  assert.match(selector, /whatsappHref\(message\)\} \{\.\.\.EXTERNAL_LINK\}/);
+  assert.doesNotMatch(selector, /<form|<textarea|<select|type="(text|number|email|tel)"/);
 });
 
 test('D6 selector room mode and package guidance derive every figure from the registries', () => {
   const selector = component('SmartProductSelector.tsx');
   assert.doesNotMatch(selector, /fetch\(|checkout|payment|localStorage|sessionStorage|document\.cookie|sendBeacon/i);
   assert.match(selector, /from '@\/lib\/product-selector\.ts'/);
-  for (const copy of ['By channel count', 'By room', 'Add a room', 'Total circuits: ', 'A circuit is one independently controlled light or load', 'If you are considering a complete smart-home package', 'Channel capacity is calculated from the controllers included in the package only and does not confirm fit before engineering review.']) {
+  for (const copy of ['By channel count', 'By room', 'Add a room', 'Total: ', 'every lighting line or device = 1 channel', 'The package that covers it', 'بعدد القنوات', 'بالغرف', 'ابعت على واتساب', 'جرّب بيتك الذكي ←']) {
     assert.ok(selector.includes(copy), `missing selector copy: ${copy}`);
   }
   assert.match(selector, /aria-pressed=\{mode === 'channels'\}/);
   assert.match(selector, /aria-pressed=\{mode === 'rooms'\}/);
   assert.match(selector, /packageChannelCapacity\(pkg\)/);
   assert.match(selector, /smart-home\/packages#package-\$\{pkg\.id\}/);
-  assert.match(selector, /start-project\?package=\$\{pkg\.id\}&service=smart-home/);
+  assert.match(selector, /href=\{`\/\$\{locale\}\/try`\}/);
   const guidance = selector.slice(selector.indexOf('function PackageGuidance'), selector.indexOf('export function SmartProductSelector'));
   assert.ok(guidance.length > 200, 'PackageGuidance block must exist');
-  assert.doesNotMatch(guidance, /\b(16|32)\b/, 'package capacity numbers must come from packageChannelCapacity');
-  assert.doesNotMatch(guidance, /priceEgp|formatPackagePrice|EGP/, 'the selector never shows a package price');
+  assert.doesNotMatch(guidance, /(16|32)/, 'package capacity numbers must come from packageChannelCapacity');
+  assert.doesNotMatch(guidance, /priceEgp|formatPackagePrice|formatPackageAmount|EGP/, 'the selector never shows a package price');
+  assert.doesNotMatch(selector, /priceEgp|formatPackagePrice|formatPackageAmount|packageCurrency/, 'no price anywhere in the selector');
   const packages = component('SmartHomePackages.tsx');
   assert.match(packages, /id=\{`package-\$\{entry\.id\}`\}/);
 });
 
 test('D6 selector intro follows the mode and room controls carry unique names', () => {
   const selector = component('SmartProductSelector.tsx');
-  assert.match(selector, /preliminary guidance/);
-  assert.ok(selector.includes('Add the rooms in your space and how many circuits you want to control in each. The result is preliminary guidance and does not replace design and installation review.'));
-  assert.match(selector, /mode === 'channels'\s*\?\s*tx\(locale, 'اختر عدد القنوات المستقلة المتوقع/);
+  assert.match(selector, /mode === 'channels'\s*\?\s*tx\(locale, 'اختار عدد القنوات اللي محتاجها/);
+  assert.ok(selector.includes('Add your rooms and the channels in each one: every lighting line or device = 1 channel.'));
   assert.match(selector, /roomControlNames\(rooms, locale\)/);
-  for (const [ar, en] of [['نوع الغرفة', 'Room type'], ['عدد الدوائر', 'Circuits'], ['قلّل الدوائر', 'Fewer circuits'], ['زِد الدوائر', 'More circuits'], ['احذف', 'Remove']]) {
+  for (const [ar, en] of [['قلّل القنوات', 'Fewer channels'], ['القنوات', 'Channels'], ['زوّد القنوات', 'More channels'], ['شيل', 'Remove']]) {
     assert.ok(selector.includes(`aria-label={tx(locale, \`${ar}: \${name}\`, \`${en}: \${name}\`)}`), `per-room accessible name for ${en}`);
   }
-  assert.doesNotMatch(selector, /aria-label="(عدد الدوائر|نوع الغرفة|Circuits|Room type)"/);
-  assert.doesNotMatch(selector, /aria-label=\{tx\(locale, '(عدد الدوائر|نوع الغرفة)'/);
+  assert.doesNotMatch(selector, /aria-label="(القنوات|Channels|عدد الدوائر|Circuits)"/);
+  assert.doesNotMatch(selector, /aria-label=\{tx\(locale, '(القنوات|عدد الدوائر)'/);
 });
 
 test('D6 product comparison renders the table and the stacked cards from one row array', () => {
@@ -75,8 +77,8 @@ test('D6 product comparison renders the table and the stacked cards from one row
 test('D6 selector multi-controller card links to the developer and contractor paths', () => {
   const selector = component('SmartProductSelector.tsx');
   const card = selector.slice(selector.indexOf('className="product-selector-complex"'), selector.indexOf('<PackageGuidance locale={locale} total={total} />'));
-  assert.match(card, /does not assume controller quantity/);
-  assert.ok(card.includes("'للمشروعات متعددة الوحدات أو مع المطوّرين والمقاولين:', 'For multi-unit projects, developers and contractors:'"));
+  assert.ok(card.includes("'مشروعك محتاج مراجعة مهندس', 'Your project needs an engineer review'"));
+  assert.ok(card.includes("'للمشروعات متعددة الوحدات:', 'For multi-unit projects:'"));
   assert.match(card, /href=\{`\/\$\{locale\}\/business\/developers`\}/);
   assert.match(card, /href=\{`\/\$\{locale\}\/business\/contractors`\}/);
   assert.doesNotMatch(card, /priceEgp|EGP|partner price/i);
