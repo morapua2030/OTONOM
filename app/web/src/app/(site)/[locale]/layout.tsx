@@ -38,7 +38,8 @@ export default async function LocaleLayout({ children, params }: { children: Rea
           </div>
         )}
         <SiteHeader locale={locale} />
-        <main id="main" className="wrap">
+        {/* tabIndex -1: the skip link moves focus into <main>, not only the scroll position */}
+        <main id="main" className="wrap" tabIndex={-1}>
           {children}
         </main>
         <SiteFooter locale={locale} publicRelease={publicRelease} />

@@ -7,6 +7,7 @@ import { LangSwitch } from './LangSwitch.tsx';
 import { ServiceNavMenu } from './ServiceNavMenu.tsx';
 import { SiteNavLink } from './SiteNavLink.tsx';
 import { BrandLogo } from './BrandLogo.tsx';
+import { EscapableDetails } from './EscapableDetails.tsx';
 
 function NavLinks({ locale }: { locale: Locale }) {
   const d = wave(locale);
@@ -34,7 +35,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
           <LangSwitch locale={locale} label={d.switchLang} />
           <Link className="btn btn-sm" href={`/${locale}/start-project`}>{w.nav.build}</Link>
         </div>
-        <details className="menu-mobile">
+        <EscapableDetails className="menu-mobile">
           <summary aria-label={navLabel}>{locale === 'ar' ? 'القائمة' : 'Menu'}</summary>
           <nav className="nav nav-mobile" aria-label={navLabel}>
             <NavLinks locale={locale} />
@@ -42,7 +43,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
             <Link href={`/${locale}/contact`}>{locale === 'ar' ? 'تواصل' : 'Contact'}</Link>
             <Link href={`/${locale}/support`}>{locale === 'ar' ? 'الدعم' : 'Support'}</Link>
           </nav>
-        </details>
+        </EscapableDetails>
       </div>
     </header>
   );
