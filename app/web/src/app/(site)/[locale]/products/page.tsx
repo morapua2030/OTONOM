@@ -2,11 +2,10 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { isLocale, type Locale } from '@/lib/i18n.ts';
 import { pageMetadata } from '@/lib/seo.ts';
-import { ControllerRows, ProductComparison } from '@/components/products.tsx';
+import { ControllerRows } from '@/components/products.tsx';
 import { SwashText } from '@/components/v2.tsx';
 import { PRODUCT_REVIEW_NOTICE, localProductText } from '@/lib/products.ts';
 import { Bidi, isolateText } from '@/components/bidi.tsx';
-import { SmartProductSelector } from '@/components/SmartProductSelector.tsx';
 
 export const dynamic = 'force-dynamic';
 type P = { params: Promise<{ locale: string }> };
@@ -36,15 +35,6 @@ export default async function ProductsPage({ params }: P) {
       <section className="v2-section product-list-section" aria-labelledby="product-list-title">
         <h2 id="product-list-title" className="sr-only">{isolateText(locale === 'ar' ? '4R و6R و16R' : '4R, 6R and 16R', locale)}</h2>
         <ControllerRows locale={locale} />
-      </section>
-      <section className="section" aria-labelledby="product-selector-title">
-        <span className="sr-only" id="product-selector-title">{isolateText(locale === 'ar' ? 'منتقي منتج OTONOM' : 'OTONOM product selector', locale)}</span>
-        <SmartProductSelector locale={locale} />
-      </section>
-      <section className="section" aria-labelledby="quick-compare-title">
-        <h2 id="quick-compare-title">{locale === 'ar' ? 'مقارنة واضحة بلا مواصفات مفترضة' : 'A clear comparison without assumed specifications'}</h2>
-        <ProductComparison locale={locale} />
-        <p className="actions"><a className="btn secondary" href={`/${locale}/products/compare`}>{locale === 'ar' ? 'افتح المقارنة الكاملة' : 'Open full comparison'}</a> <a className="btn secondary" href={`/${locale}/smart-home/packages`}>{locale === 'ar' ? 'اطّلع على باقات المنزل الذكي' : 'See smart-home packages'}</a></p>
       </section>
     </>
   );
