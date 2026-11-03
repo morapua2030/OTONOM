@@ -2,6 +2,7 @@ import type { Locale } from './i18n.ts';
 import { isBuilderServiceKey } from './builder-query.ts';
 import { portfolioQuery, portfolioSearch } from './portfolio.ts';
 import { isSmartHomePackageId, SMART_HOME_PACKAGE_IDS } from './smart-home-packages.ts';
+import { isSimDemo } from './simulator/demo.ts';
 
 const PACKAGE_HASH = new RegExp(`^#package-(?:${SMART_HOME_PACKAGE_IDS.join('|')})$`);
 
@@ -25,6 +26,10 @@ export function localeSwitchHref(pathname: string, search: string, hash: string,
     const serviceValue = params.get('service')?.toLowerCase();
     if (isBuilderServiceKey(serviceValue)) kept.set('service', serviceValue);
     query = kept.size ? `?${kept.toString()}` : '';
+  } else if (rest === '/try') {
+    // Only an allow-listed simulator demo preset survives the switch (design simDemo values).
+    const demo = params.get('demo');
+    query = isSimDemo(demo) && demo !== 'fresh' ? `?demo=${demo}` : '';
   } else if (rest === '/smart-home/packages' && PACKAGE_HASH.test(hash)) {
     fragment = hash;
   }

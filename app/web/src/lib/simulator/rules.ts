@@ -166,12 +166,8 @@ export const clampDevice = (n: number) => Math.max(0, Math.min(MAX_PER_DEVICE, n
 export const canAddRoom = (rooms: readonly unknown[]) => rooms.length < MAX_ROOMS;
 
 // ---- Demo presets (`simDemo`), allow-listed --------------------------------------------------------------------------
-export const SIM_DEMOS = ['fresh', 'apartment', 'night', 'routine', 'gas', 'day', 'over', 'plan'] as const;
-export type SimDemo = (typeof SIM_DEMOS)[number];
-/** Only the design's `simDemo` values are accepted; anything else (or nothing) is ignored. */
-export function isSimDemo(value: unknown): value is SimDemo {
-  return typeof value === 'string' && (SIM_DEMOS as readonly string[]).includes(value);
-}
+import { type SimDemo } from './demo.ts';
+export { isSimDemo, SIM_DEMOS, type SimDemo } from './demo.ts';
 
 export type SimCoreState = {
   home: HomeKey | null; rooms: SimRoom[]; on: OnMap; night: boolean; gas: boolean; door: boolean; lock: boolean;
