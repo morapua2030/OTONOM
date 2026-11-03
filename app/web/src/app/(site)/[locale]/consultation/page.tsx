@@ -33,7 +33,7 @@ export default async function Consultation({ params }: { params: Promise<{ local
       ) : (
         <section className="section" data-testid="consultation-disabled" aria-labelledby="consultation-disabled-title">
           <h2 id="consultation-disabled-title">{locale === 'ar' ? 'حجز الاستشارات عبر الموقع غير مفعّل' : 'Online consultation booking is not enabled'}</h2>
-          <p>{locale === 'ar' ? 'لا تجمع هذه الصفحة اسمًا أو بريدًا أو هاتفًا. استخدم قناة OTONOM الموثوقة المعروفة لديك حتى اعتماد إشعار الخصوصية وسياسة الاحتفاظ.' : 'This page does not collect a name, email address or phone number. Use an existing verified OTONOM contact channel until the privacy notice and retention policy are approved.'}</p>
+          <p><Bidi text={locale === 'ar' ? 'لا تجمع هذه الصفحة اسمًا أو بريدًا أو هاتفًا. استخدم قناة OTONOM الموثوقة المعروفة لديك حتى اعتماد إشعار الخصوصية وسياسة الاحتفاظ.' : 'This page does not collect a name, email address or phone number. Use an existing verified OTONOM contact channel until the privacy notice and retention policy are approved.'} locale={locale} /></p>
           <p><a className="btn secondary" href={`/${locale}/build-with-us`}>{locale === 'ar' ? 'حضّر موجز مشروعك' : 'Prepare your project brief'}</a></p>
         </section>
       )}

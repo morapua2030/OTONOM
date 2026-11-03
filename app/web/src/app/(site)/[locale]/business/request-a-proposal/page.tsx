@@ -38,9 +38,12 @@ export default async function RequestProposal({ params, searchParams }: { params
         <section className="section" data-testid="rfq-disabled" aria-labelledby="rfq-disabled-title">
           <h2 id="rfq-disabled-title">{locale === 'ar' ? 'استقبال الطلبات عبر الموقع غير مفعّل' : 'Online proposal intake is not enabled'}</h2>
           <p>
-            {locale === 'ar'
-              ? 'لا يُجمع أي اسم أو بريد أو هاتف من هذه الصفحة. استخدم قناة OTONOM الموثوقة المعروفة لديك حتى اعتماد إشعار الخصوصية وسياسة الاحتفاظ.'
-              : 'This page does not collect names, e-mail addresses or phone numbers. Use your existing verified OTONOM contact channel until the privacy notice and retention policy are approved.'}
+            <Bidi
+              text={locale === 'ar'
+                ? 'لا يُجمع أي اسم أو بريد أو هاتف من هذه الصفحة. استخدم قناة OTONOM الموثوقة المعروفة لديك حتى اعتماد إشعار الخصوصية وسياسة الاحتفاظ.'
+                : 'This page does not collect names, e-mail addresses or phone numbers. Use your existing verified OTONOM contact channel until the privacy notice and retention policy are approved.'}
+              locale={locale}
+            />
           </p>
         </section>
       )}

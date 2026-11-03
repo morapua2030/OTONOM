@@ -112,7 +112,7 @@ export function SmartHomePackages({ locale, compact = false, comparison = false 
       <aside className="package-caveat" aria-label={tx(locale, 'تنبيه تجاري', 'Commercial notice')}>
         <strong>{tx(locale, 'قبل الاتفاق النهائي', 'Before any final agreement')}</strong>
         <p><Bidi text={packageText(PACKAGE_COMMERCIAL_CAVEAT, locale)} locale={locale} /></p>
-        <p>{tx(locale, 'لا تتضمن هذه الصفحة دفعًا أو حجزًا أو Checkout.', 'This page does not provide payment, booking or checkout.')}</p>
+        <p><Bidi text={tx(locale, 'لا تتضمن هذه الصفحة دفعًا أو حجزًا أو Checkout.', 'This page does not provide payment, booking or checkout.')} locale={locale} /></p>
       </aside>
     </>
   );

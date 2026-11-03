@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { isLocale, type Locale } from '@/lib/i18n.ts';
 import { pageMetadata } from '@/lib/seo.ts';
 import { SmartHomePackages } from '@/components/SmartHomePackages.tsx';
+import { Bidi } from '@/components/bidi.tsx';
 
 export const dynamic = 'force-dynamic';
 type P = { params: Promise<{ locale: string }> };
@@ -41,7 +42,7 @@ export default async function SmartHomePackagesPage({ params }: P) {
         </p>
       </section>
       <section className="section" aria-labelledby="package-list-title">
-        <h2 id="package-list-title">{locale === 'ar' ? 'Premium وPlus وEssential' : 'Premium, Plus and Essential'}</h2>
+        <h2 id="package-list-title"><Bidi text={locale === 'ar' ? 'Premium وPlus وEssential' : 'Premium, Plus and Essential'} locale={locale} /></h2>
         <SmartHomePackages locale={locale} comparison />
       </section>
     </>

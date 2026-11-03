@@ -86,7 +86,7 @@ export function ServiceFAQ({ locale, page }: { locale: Locale; page: ServicePage
     <section className="service-section service-faq">
       <SectionHead eyebrow="FAQ" title={page.faqTitle} locale={locale} />
       <div>
-        {page.faqs.map((item) => <details key={item.question}><summary>{item.question}</summary><p>{item.answer}</p></details>)}
+        {page.faqs.map((item) => <details key={item.question}><summary><Bidi text={item.question} locale={locale} /></summary><p><Bidi text={item.answer} locale={locale} /></p></details>)}
       </div>
     </section>
   );
@@ -119,8 +119,8 @@ function ProductProof({ locale }: { locale: Locale }) {
     <section className="service-section service-product-proof">
       <div>
         <p className="eyebrow">{locale === 'ar' ? 'منتجات قائمة' : 'Existing products'}</p>
-        <h2>{locale === 'ar' ? 'عائلة وحدات OTONOM الفعلية' : 'The real OTONOM controller family'}</h2>
-        <p>{locale === 'ar' ? 'تربط خدمة الأتمتة إلى صفحات 4R و6R و16R الحالية. تظل المواصفات الكهربائية والتوافقات مقيدة بالأدلة المنشورة والمراجعة الخاصة بالمشروع.' : 'The automation service connects to the current 4R, 6R and 16R pages. Electrical specifications and compatibility remain limited to published evidence and project-specific review.'}</p>
+        <h2><Bidi text={locale === 'ar' ? 'عائلة وحدات OTONOM الفعلية' : 'The real OTONOM controller family'} locale={locale} /></h2>
+        <p><Bidi text={locale === 'ar' ? 'تربط خدمة الأتمتة إلى صفحات 4R و6R و16R الحالية. تظل المواصفات الكهربائية والتوافقات مقيدة بالأدلة المنشورة والمراجعة الخاصة بالمشروع.' : 'The automation service connects to the current 4R, 6R and 16R pages. Electrical specifications and compatibility remain limited to published evidence and project-specific review.'} locale={locale} /></p>
         <div className="actions">
           <LocalLink className="btn secondary" locale={locale} href="/products">{locale === 'ar' ? 'استكشف عائلة وحدات التحكم' : 'Explore the controller family'}</LocalLink>
           <LocalLink className="btn" locale={locale} href="/smart-home/packages">{locale === 'ar' ? 'قارن الباقات' : 'Compare packages'}</LocalLink>
