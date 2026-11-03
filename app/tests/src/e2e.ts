@@ -61,13 +61,15 @@ const reload = async (page: Page, p: string, selector: string) => {
 async function main() {
   const browser = await Browser.launch(BASE, path.join(APP_ROOT, 'tests', '.edge-profile-e2e'), SHOTS);
   try {
-    // ---------- 1. public journey: home → solutions → developers → RFQ form (Arabic, mobile) ----------
+    // ---------- 1. public journey: home → services → developers → RFQ form (Arabic, mobile) ----------
+    // D8-C v3 (DR-107): public pages no longer link to the RFQ form (it is a 308 to /contact outside the local synthetic
+    // harness), so the journey opens the harness-only form directly; every RFQ assertion below is unchanged.
     const visitor = await browser.newPage(390, 844);
-    for (const p of ['/ar', '/ar/solutions', '/ar/business/developers']) {
+    for (const p of ['/ar', '/ar/services', '/ar/business/developers']) {
       await visitor.goto(p);
       rec.add(`E2E-PUBLIC${p}`, 'PUBLIC', `${p} renders in the browser`, (await visitor.eval<string>('document.documentElement.dir')) === 'rtl' && (await visitor.exists('h1')), null);
     }
-    await visitor.click('a[href="/ar/business/request-a-proposal"]');
+    await visitor.goto('/ar/business/request-a-proposal');
     await visitor.waitFor(`location.pathname === '/ar/business/request-a-proposal' && !!document.querySelector('form.rfq')`, 15000, 'rfq page');
     await visitor.waitHydrated('form.rfq');
     const org = `شركة اختبار ${tag}`;

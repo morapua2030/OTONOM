@@ -17,7 +17,8 @@ const PROFILE = path.join(APP_ROOT, 'tests', '.edge-profile');
 const SHOTS = path.resolve(APP_ROOT, '..', 'execution', 'evidence', 'screenshots', 's11-20261021');
 const PORT = 9334;
 const WIDTHS = [360, 768, 1366];
-const PAGES = ['', '/smart-home/packages', '/contact', '/solutions', '/solutions/villas', '/solutions/apartments', '/business/developers', '/business/contractors', '/technology/controllers', '/technology/integrations', '/technology/documentation', '/products', '/products/4r', '/products/6r', '/products/16r', '/products/compare', '/projects', '/business/request-a-proposal', '/consultation', '/shop', '/support/warranty', '/preview', '/preview/bidi-samples'];
+// D8-C v3: the design v3.1 pages are covered; legacy pages stay listed because the local synthetic harness still serves them (DR-107).
+const PAGES = ['', '/services', '/services/iot-embedded', '/services/software-engineering', '/services/custom-engineering', '/services/smart-home-automation', '/about', '/start-project', '/support', '/smart-home/packages', '/contact', '/solutions', '/solutions/villas', '/solutions/apartments', '/business/developers', '/business/contractors', '/technology/controllers', '/technology/integrations', '/technology/documentation', '/products', '/products/4r', '/products/6r', '/products/16r', '/products/compare', '/projects', '/business/request-a-proposal', '/consultation', '/shop', '/support/warranty', '/preview', '/preview/bidi-samples'];
 const rec = new Recorder();
 
 class Cdp {

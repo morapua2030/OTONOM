@@ -62,36 +62,43 @@ async function main() {
     await arabic.screenshot('hybrid03-home-ar-390-menu.png');
     await arabic.close();
 
-    const builder = await browser.newPage(390, 844);
-    await builder.touch();
-    await builder.goto('/en/start-project?package=premium&service=smart-home');
-    await builder.waitHydrated('[data-testid="project-builder"]');
-    await builder.click('.builder-choice:nth-child(1)');
-    await builder.click('.builder-nav .btn:not(.secondary)');
-    await builder.waitFor(`document.querySelector('.builder-progress [aria-current="step"] span')?.textContent === '2'`);
-    await builder.click('.builder-choice:nth-child(1)');
-    await builder.click('.builder-nav .btn:not(.secondary)');
-    await builder.waitFor(`document.querySelector('.builder-progress [aria-current="step"] span')?.textContent === '3'`);
-    const disciplinePrefilled = await builder.exists('.builder-choice[data-selected="true"]');
-    if (!disciplinePrefilled) await builder.click('.builder-choice:nth-child(4)');
-    await builder.click('.builder-nav .btn:not(.secondary)');
-    await builder.waitFor(`document.querySelector('.builder-progress [aria-current="step"] span')?.textContent === '4'`);
-    await builder.fill('.builder-fields textarea[required]', 'A safe synthetic outcome description for browser verification only.');
-    await builder.click('.builder-nav .btn:not(.secondary)');
-    await builder.waitFor(`document.querySelector('.builder-progress [aria-current="step"] span')?.textContent === '5'`);
-    const brief = await builder.text('.builder-brief');
-    await builder.click('.builder-nav .btn:not(.secondary)');
-    await builder.waitFor(`document.querySelector('[data-testid="project-intake-disabled"]')`);
-    const builderFacts = await builder.eval<any>(`({
-      steps: document.querySelectorAll('.builder-progress li').length,
-      disabled: !!document.querySelector('[data-testid="project-intake-disabled"]'),
-      piiFields: document.querySelectorAll('.builder-contact input').length,
-      overflow: document.documentElement.scrollWidth > innerWidth,
-    })`);
-    add('builder-six-stage-flow', builderFacts.steps === 6 && builderFacts.disabled && builderFacts.piiFields === 0 && /Premium/.test(brief) && !builderFacts.overflow, { ...builderFacts, packagePrefill: /Premium/.test(brief) });
-    add('builder-browser-errors', cleanIssues(builder.issues).length === 0, cleanIssues(builder.issues));
-    await builder.screenshot('hybrid03-builder-en-390-locked.png');
-    await builder.close();
+    // D8-C v3 (design "09 Start a project"): three chip groups build a WhatsApp message. No form, no input, nothing stored.
+    const start = await browser.newPage(390, 844);
+    await start.touch();
+    await start.goto('/en/start-project?package=premium&service=smart-home');
+    await start.waitHydrated('[data-testid="start-project"]');
+    const chip = (group: number, index: number) => `.v3-start-group:nth-of-type(${group}) .v2-chip:nth-child(${index})`;
+    const startFacts = () => start.eval<any>(`(() => {
+      const root = document.querySelector('[data-testid="start-project"]');
+      const wa = document.querySelector('[data-testid="start-whatsapp"]');
+      return {
+        message: document.querySelector('[data-testid="start-message"]')?.textContent?.trim(),
+        href: wa?.getAttribute('href'),
+        rel: wa?.getAttribute('rel'),
+        pressed: [...root.querySelectorAll('.v2-chip[aria-pressed="true"]')].map((node) => node.textContent.trim()),
+        groups: root.querySelectorAll('[role="group"][aria-labelledby]').length,
+        chips: root.querySelectorAll('button.v2-chip[aria-pressed]').length,
+        piiFields: document.querySelectorAll('main form, main input, main textarea, main select').length,
+        live: document.querySelector('[data-testid="start-message"]')?.getAttribute('aria-live'),
+        smallestTarget: Math.min(...[...root.querySelectorAll('.v2-chip, [data-testid="start-whatsapp"]')].map((node) => Math.min(node.getBoundingClientRect().width, node.getBoundingClientRect().height))),
+        storage: localStorage.length + sessionStorage.length,
+        overflow: document.documentElement.scrollWidth > innerWidth,
+      };
+    })()`);
+    const prefilled = await startFacts();
+    await start.click(chip(1, 2));
+    await start.click(chip(2, 1));
+    await start.waitFor(`document.querySelector('[data-testid="start-message"]')?.textContent?.includes("we're a company")`);
+    const picked = await startFacts();
+    await start.click(chip(2, 1));
+    await start.waitFor(`!document.querySelector('[data-testid="start-message"]')?.textContent?.includes('idea')`);
+    const toggled = await startFacts();
+    const expected = "Hi OTONOM, we're a company, I have an idea in smart home and I'd like to talk about a project.";
+    add('start-project-chips-build-whatsapp-message', JSON.stringify(prefilled.pressed) === '["Smart home"]' && picked.message === expected && /^https:\/\/wa\.me\/\d+\?text=/.test(picked.href ?? '') && picked.href?.endsWith(`?text=${encodeURIComponent(expected)}`) && /noopener/.test(picked.rel ?? '') && toggled.message === "Hi OTONOM, we're a company, I'm interested in smart home and I'd like to talk about a project." && JSON.stringify(toggled.pressed) === '["Company","Smart home"]', { prefilled, picked, toggled });
+    add('start-project-no-pii-no-storage', picked.groups === 3 && picked.chips === 11 && picked.piiFields === 0 && picked.storage === 0 && picked.live === 'polite' && picked.smallestTarget >= 44 && !picked.overflow, picked);
+    add('start-project-browser-errors', cleanIssues(start.issues).length === 0, cleanIssues(start.issues));
+    await start.screenshot('hybrid03-start-en-390-chips.png');
+    await start.close();
 
     const packages = await browser.newPage(390, 844);
     await packages.goto('/ar/smart-home/packages');
@@ -107,144 +114,72 @@ async function main() {
     await packages.screenshot('hybrid03-packages-ar-390.png');
     await packages.close();
 
+    // D8-C v3 (DR-109): /products is the v2 header plus the controller cards; the D6 selector is no longer on the page.
     const products = await browser.newPage(768, 1024);
     await products.goto('/en/products');
-    await products.waitHydrated('[data-testid="smart-product-selector"]');
-    await products.click('.product-selector-presets button:nth-child(2)');
-    await products.waitFor(`document.querySelector('.product-selector-result h3')?.textContent?.includes('6R')`);
-    const sixResult = await products.text('.product-selector-result h3');
-    await products.click('.product-selector-presets button:nth-child(4)');
-    await products.waitFor(`document.querySelector('.product-selector-complex')`);
     const productFacts = await products.eval<any>(`({
-      result: document.querySelector('.product-selector-complex h3')?.textContent,
-      forms: document.querySelectorAll('[data-testid="smart-product-selector"] form').length,
+      selector: !!document.querySelector('[data-testid="smart-product-selector"]'),
+      compare: !!document.querySelector('[data-testid="product-compare-stack"], .product-compare'),
+      productLinks: [...new Set([...document.querySelectorAll('main a[href^="/en/products/"]')].map((node) => node.getAttribute('href')))].sort(),
+      packagesLink: !!document.querySelector('main a[href="/en/smart-home/packages"]'),
+      forms: document.querySelectorAll('main form').length,
+      h1: document.querySelectorAll('main h1').length,
       overflow: document.documentElement.scrollWidth > innerWidth,
     })`);
-    add('d6-selector-tablet', /6R/.test(sixResult) && /architecture/i.test(productFacts.result ?? '') && productFacts.forms === 0 && !productFacts.overflow, { sixResult, ...productFacts });
+    add('products-v3-controller-cards', !productFacts.selector && !productFacts.compare && JSON.stringify(productFacts.productLinks) === '["/en/products/16r","/en/products/4r","/en/products/6r"]' && productFacts.packagesLink && productFacts.forms === 0 && productFacts.h1 === 1 && !productFacts.overflow, productFacts);
     add('products-browser-errors', cleanIssues(products.issues).length === 0, cleanIssues(products.issues));
-    await products.screenshot('hybrid03-products-en-768-selector.png');
+    await products.screenshot('hybrid03-products-en-768.png');
     await products.close();
 
-    // D6 room mode: totals drive the same result panel, package guidance is derived from the registries.
-    const rooms = await browser.newPage(1440, 1000);
-    await rooms.reducedMotion();
-    await rooms.goto('/en/products');
-    await rooms.waitHydrated('[data-testid="smart-product-selector"]');
-    await rooms.click('.selector-mode button:nth-child(2)');
-    await rooms.waitFor(`document.querySelectorAll('.selector-room-row').length === 1`);
-    await rooms.click('.selector-room-add');
-    await rooms.waitFor(`document.querySelectorAll('.selector-room-row').length === 2`);
-    await rooms.click('.selector-room-add');
-    await rooms.waitFor(`document.querySelectorAll('.selector-room-row').length === 3`);
-    const focusMoved = await rooms.eval<boolean>(`document.activeElement?.id === document.querySelector('.selector-room-row:nth-child(3) select')?.id`);
-    const setCircuits = async (values: number[]) => {
-      for (const [index, value] of values.entries()) await rooms.fill(`.selector-room-row:nth-child(${index + 1}) .selector-stepper input`, String(value));
-    };
-    const roomFacts = () => rooms.eval<any>(`(() => {
-      const selector = document.querySelector('[data-testid="smart-product-selector"]');
-      return {
-        mode: selector?.getAttribute('data-mode'),
-        total: document.querySelector('.selector-room-total bdi')?.textContent,
-        controller: document.querySelector('.product-selector-result > img + div h3')?.textContent ?? null,
-        multi: !!document.querySelector('.product-selector-complex'),
-        packages: [...document.querySelectorAll('.selector-packages [data-package]')].map((node) => node.getAttribute('data-package')),
-        packageLinks: [...document.querySelectorAll('.selector-package-links a')].map((node) => node.getAttribute('href')),
-        caveat: !!document.querySelector('.selector-packages .selector-caveat'),
-        price: /EGP|ج\\.م/.test(selector?.textContent ?? ''),
-        forms: selector?.querySelectorAll('form').length ?? -1,
-        removeDisabled: [...document.querySelectorAll('.selector-room-remove')].map((node) => node.disabled),
-        overflow: document.documentElement.scrollWidth > innerWidth,
-      };
-    })()`);
-    await setCircuits([8, 6, 6]);
-    await rooms.waitFor(`document.querySelector('.selector-room-total bdi')?.textContent === '20'`);
-    const twenty = await roomFacts();
-    add('d6-room-mode-20-multi-plus-premium', twenty.mode === 'rooms' && twenty.multi && twenty.controller === null && JSON.stringify(twenty.packages) === '["plus","premium"]' && twenty.caveat && !twenty.price && twenty.forms === 0 && focusMoved && twenty.packageLinks.includes('/en/smart-home/packages#package-plus') && twenty.packageLinks.includes('/en/start-project?package=premium&service=smart-home') && !twenty.overflow, { ...twenty, focusMoved });
-    await rooms.screenshot('hybrid03-products-en-1440-rooms-20.png');
-    await setCircuits([4, 3, 3]);
-    await rooms.waitFor(`document.querySelector('.selector-room-total bdi')?.textContent === '10'`);
-    const ten = await roomFacts();
-    add('d6-room-mode-10-16r-essential', /16R/.test(ten.controller ?? '') && !ten.multi && JSON.stringify(ten.packages) === '["essential"]' && ten.caveat && !ten.price && !ten.overflow, ten);
-    add('d6-room-mode-browser-errors', cleanIssues(rooms.issues).length === 0, cleanIssues(rooms.issues));
-    await rooms.close();
-
-    const roomsAr = await browser.newPage(390, 844);
-    await roomsAr.touch();
-    await roomsAr.goto('/ar/products');
-    await roomsAr.waitHydrated('[data-testid="smart-product-selector"]');
-    await roomsAr.click('.selector-mode button:nth-child(2)');
-    await roomsAr.waitFor(`document.querySelectorAll('.selector-room-row').length === 1`);
-    const singleRow = await roomsAr.eval<any>(`({ removeDisabled: document.querySelector('.selector-room-remove')?.disabled, removeLabel: document.querySelector('.selector-room-remove')?.getAttribute('aria-label') })`);
-    await roomsAr.click('.selector-room-add');
-    await roomsAr.waitFor(`document.querySelectorAll('.selector-room-row').length === 2`);
-    const arFacts = await roomsAr.eval<any>(`({
+    // Package preselection: ?package= (allow-listed) presses the Smart home chip; no package and no service presses nothing.
+    const startAr = await browser.newPage(390, 844);
+    await startAr.touch();
+    await startAr.goto('/ar/start-project?package=plus&service=smart-home');
+    await startAr.waitHydrated('[data-testid="start-project"]');
+    const arStart = await startAr.eval<any>(`({
       dir: document.documentElement.dir,
-      overflow: document.documentElement.scrollWidth > innerWidth,
-      rowWidth: document.querySelector('.selector-room-row')?.getBoundingClientRect().width,
-      selectWidth: document.querySelector('.selector-room-row select')?.getBoundingClientRect().width,
-      smallestTarget: Math.min(...[...document.querySelectorAll('.selector-mode button, .selector-stepper button, .selector-room-remove, .selector-room-add')].map((node) => Math.min(node.getBoundingClientRect().width, node.getBoundingClientRect().height))),
-      packages: [...document.querySelectorAll('.selector-packages [data-package]')].map((node) => node.getAttribute('data-package')),
-    })`);
-    add('d6-room-mode-ar-mobile', arFacts.dir === 'rtl' && !arFacts.overflow && singleRow.removeDisabled === true && singleRow.removeLabel === 'احذف: صالة' && arFacts.smallestTarget >= 44 && arFacts.selectWidth > arFacts.rowWidth * 0.8 && JSON.stringify(arFacts.packages) === '["essential"]', { ...arFacts, ...singleRow });
-    add('d6-room-mode-ar-browser-errors', cleanIssues(roomsAr.issues).length === 0, cleanIssues(roomsAr.issues));
-    await roomsAr.screenshot('hybrid03-products-ar-390-rooms.png');
-    await roomsAr.click('.selector-room-add');
-    await roomsAr.waitFor(`document.querySelectorAll('.selector-room-row').length === 3`);
-    const roomNames = await roomsAr.eval<any>(`({
-      intro: document.querySelector('.product-selector-control > h2 + p')?.textContent?.trim(),
-      remove: [...document.querySelectorAll('.selector-room-remove')].map((node) => node.getAttribute('aria-label')),
-      circuits: [...document.querySelectorAll('.selector-stepper input')].map((node) => node.getAttribute('aria-label')),
-    })`);
-    const uniqueNames = (names: string[]) => new Set(names).size === names.length;
-    add('d6-room-names-unique-ar', JSON.stringify(roomNames.remove) === JSON.stringify(['احذف: صالة', 'احذف: أخرى (1)', 'احذف: أخرى (2)']) && uniqueNames(roomNames.circuits) && roomNames.circuits[2] === 'عدد الدوائر: أخرى (2)' && /^أضف غرف المكان/.test(roomNames.intro ?? ''), roomNames);
-    await roomsAr.close();
-
-    const builderNotice = await browser.newPage(390, 844);
-    await builderNotice.goto('/ar/start-project?package=plus&service=smart-home');
-    await builderNotice.waitHydrated('[data-testid="project-builder"]');
-    await builderNotice.waitFor(`document.querySelector('[data-testid="builder-package-notice"]')`);
-    const noticeFacts = await builderNotice.eval<any>(`({
-      step: document.querySelector('.builder-progress [aria-current="step"] span')?.textContent,
-      role: document.querySelector('[data-testid="builder-package-notice"]')?.getAttribute('role'),
-      text: document.querySelector('[data-testid="builder-package-notice"]')?.textContent,
+      pressed: [...document.querySelectorAll('[data-testid="start-project"] .v2-chip[aria-pressed="true"]')].map((node) => node.textContent.trim()),
+      message: document.querySelector('[data-testid="start-message"]')?.textContent?.trim(),
       overflow: document.documentElement.scrollWidth > innerWidth,
     })`);
-    add('d6-builder-package-notice-step1', noticeFacts.step === '1' && noticeFacts.role === 'status' && /Plus/.test(noticeFacts.text ?? '') && /الباقة المختارة/.test(noticeFacts.text ?? '') && !noticeFacts.overflow, noticeFacts);
-    await builderNotice.screenshot('hybrid03-builder-ar-390-package-notice.png');
-    await builderNotice.goto('/ar/start-project');
-    await builderNotice.waitHydrated('[data-testid="project-builder"]');
-    const noNotice = await builderNotice.eval<boolean>(`!document.querySelector('[data-testid="builder-package-notice"]')`);
-    add('d6-builder-no-notice-without-package', noNotice, { noNotice });
-    await builderNotice.close();
+    add('start-project-ar-package-preselects-smart-home', arStart.dir === 'rtl' && JSON.stringify(arStart.pressed) === '["المنزل الذكي"]' && /المنزل الذكي/.test(arStart.message ?? '') && !arStart.overflow, arStart);
+    await startAr.screenshot('hybrid03-start-ar-390-package.png');
+    await startAr.goto('/ar/start-project?service=%3Cscript%3E&package=nope');
+    await startAr.waitHydrated('[data-testid="start-project"]');
+    const unknownQuery = await startAr.eval<number>(`document.querySelectorAll('[data-testid="start-project"] .v2-chip[aria-pressed="true"]').length`);
+    add('start-project-ignores-unknown-query', unknownQuery === 0, { unknownQuery });
+    add('start-project-ar-browser-errors', cleanIssues(startAr.issues).length === 0, cleanIssues(startAr.issues));
+    await startAr.close();
 
-    const compareAr = await browser.newPage(390, 844);
-    await compareAr.touch();
-    await compareAr.goto('/ar/products/compare');
-    const compareFacts = await compareAr.eval<any>(`(() => {
-      const visible = (node) => !!node && getComputedStyle(node).display !== 'none' && node.getBoundingClientRect().height > 0;
-      return {
-        dir: document.documentElement.dir,
-        overflow: document.documentElement.scrollWidth > innerWidth,
-        stackVisible: visible(document.querySelector('[data-testid="product-compare-stack"]')),
-        tableVisible: visible(document.querySelector('.product-compare-wrap')),
-        cards: document.querySelectorAll('.product-compare-card').length,
-        bidiChannels: [...document.querySelectorAll('.product-compare-card dd strong bdi[dir="ltr"]')].map((node) => node.textContent),
-        smallestTarget: Math.min(...[...document.querySelectorAll('.product-compare-card dd a, .compare-next-steps a')].map((node) => Math.min(node.getBoundingClientRect().width, node.getBoundingClientRect().height))),
-      };
-    })()`);
-    add('d6-compare-ar-390-stacked', compareFacts.dir === 'rtl' && !compareFacts.overflow && compareFacts.stackVisible && !compareFacts.tableVisible && compareFacts.cards === 3 && compareFacts.bidiChannels.length === 3 && compareFacts.smallestTarget >= 44, compareFacts);
-    await compareAr.screenshot('hybrid03-compare-ar-390.png');
-    await compareAr.close();
+    // DR-107: retired routes answer 308 to their replacement, keep the locale and drop the query.
+    const redirects = await browser.newPage(390, 844);
+    const redirectFacts: Record<string, string> = {};
+    for (const [from, to] of [['/ar/products/compare?view=table', '/ar/products'], ['/en/products/compare', '/en/products'], ['/ar/solutions/villas?x=1', '/ar/services'], ['/en/legal/privacy', '/en/contact'], ['/ar/build-with-us#idea', '/ar/start-project']]) {
+      await redirects.goto(from);
+      await redirects.waitFor(`document.readyState === 'complete'`);
+      redirectFacts[from] = await redirects.eval<string>(`location.pathname + location.search`);
+      add(`legacy-redirect:${from}`, redirectFacts[from] === to, { from, to, landed: redirectFacts[from] });
+    }
+    add('legacy-redirect-browser-errors', cleanIssues(redirects.issues).length === 0, cleanIssues(redirects.issues));
+    await redirects.close();
 
-    const compareEn = await browser.newPage(1440, 1000);
-    await compareEn.goto('/en/products/compare');
-    const compareDesktop = await compareEn.eval<any>(`({
-      overflow: document.documentElement.scrollWidth > innerWidth,
-      stackHidden: getComputedStyle(document.querySelector('[data-testid="product-compare-stack"]')).display === 'none',
-      tableRows: document.querySelectorAll('.product-compare tbody tr').length,
-    })`);
-    add('d6-compare-en-1440-table', !compareDesktop.overflow && compareDesktop.stackHidden && compareDesktop.tableRows === 5, compareDesktop);
-    await compareEn.close();
+    // Service FAQ (design "05 Service"): native buttons, keyboard operable, one answer open at a time.
+    const faq = await browser.newPage(1440, 1000);
+    await faq.goto('/en/services/iot-embedded');
+    await faq.waitHydrated('[data-testid="faq"]');
+    const faqState = () => faq.eval<any>(`[...document.querySelectorAll('[data-testid="faq"] button[aria-expanded]')].map((button) => ({ expanded: button.getAttribute('aria-expanded'), panelHidden: document.getElementById(button.getAttribute('aria-controls'))?.hidden }))`);
+    const before = await faqState();
+    await faq.eval(`document.querySelector('[data-testid="faq"] button[aria-expanded]')?.focus()`);
+    await faq.press('Enter');
+    await faq.waitFor(`document.querySelector('[data-testid="faq"] button[aria-expanded]')?.getAttribute('aria-expanded') === 'true'`);
+    const opened = await faqState();
+    await faq.eval(`document.querySelectorAll('[data-testid="faq"] button[aria-expanded]')[1]?.focus()`);
+    await faq.press('Space');
+    await faq.waitFor(`document.querySelectorAll('[data-testid="faq"] button[aria-expanded]')[1]?.getAttribute('aria-expanded') === 'true'`);
+    const faqSwitched = await faqState();
+    add('service-faq-keyboard-accordion', before.length >= 3 && before.every((item: any) => item.expanded === 'false' && item.panelHidden === true) && opened[0].expanded === 'true' && opened[0].panelHidden === false && faqSwitched[0].expanded === 'false' && faqSwitched[1].expanded === 'true' && faqSwitched.filter((item: any) => item.expanded === 'true').length === 1, { before, opened, faqSwitched });
+    add('service-faq-browser-errors', cleanIssues(faq.issues).length === 0, cleanIssues(faq.issues));
+    await faq.close();
 
     const packagesAr = await browser.newPage(390, 844);
     await packagesAr.touch();
@@ -269,28 +204,31 @@ async function main() {
 
     const switchPage = await browser.newPage(390, 844);
     await switchPage.goto('/ar/start-project?package=plus&service=smart-home');
-    await switchPage.waitHydrated('[data-testid="project-builder"]');
+    await switchPage.waitHydrated('[data-testid="start-project"]');
     await switchPage.waitFor(`document.querySelector('a[hreflang="en"]')?.getAttribute('href') === '/en/start-project?package=plus&service=smart-home'`);
     await switchPage.click('a[hreflang="en"]');
     await switchPage.waitFor(`location.pathname === '/en/start-project'`);
-    await switchPage.waitHydrated('[data-testid="project-builder"]');
-    await switchPage.waitFor(`document.querySelector('[data-testid="builder-package-notice"]')`);
+    await switchPage.waitHydrated('[data-testid="start-project"]');
     const switched = await switchPage.eval<any>(`({
       lang: document.documentElement.lang,
       search: location.search,
-      notice: document.querySelector('[data-testid="builder-package-notice"]')?.textContent,
+      pressed: [...document.querySelectorAll('[data-testid="start-project"] .v2-chip[aria-pressed="true"]')].map((node) => node.textContent.trim()),
     })`);
-    add('d6-lang-switch-keeps-package', switched.lang === 'en' && switched.search === '?package=plus&service=smart-home' && /Selected package: Plus/.test(switched.notice ?? ''), switched);
+    add('d6-lang-switch-keeps-package', switched.lang === 'en' && switched.search === '?package=plus&service=smart-home' && JSON.stringify(switched.pressed) === '["Smart home"]', switched);
     await switchPage.close();
 
-    const selectorBusiness = await browser.newPage(1440, 1000);
-    await selectorBusiness.goto('/en/products');
-    await selectorBusiness.waitHydrated('[data-testid="smart-product-selector"]');
-    await selectorBusiness.click('.product-selector-presets button:nth-child(4)');
-    await selectorBusiness.waitFor(`document.querySelector('.product-selector-complex')`);
-    const businessLinks = await selectorBusiness.eval<string[]>(`[...document.querySelectorAll('.product-selector-complex a')].map((node) => node.getAttribute('href'))`);
-    add('d6-selector-business-links', businessLinks.includes('/en/business/developers') && businessLinks.includes('/en/business/contractors'), { businessLinks });
-    await selectorBusiness.close();
+    // /services index (owner decision): the four discipline cards, each linking to its service page with a unique name.
+    const servicesIndex = await browser.newPage(1440, 1000);
+    await servicesIndex.goto('/en/services');
+    const indexFacts = await servicesIndex.eval<any>(`({
+      links: [...document.querySelectorAll('main .v2-arrow-link')].map((node) => node.getAttribute('href')),
+      names: [...document.querySelectorAll('main .v2-arrow-link')].map((node) => node.textContent.replace(/\\s+/g, ' ').trim()),
+      cta: !!document.querySelector('main [data-testid="cta-book"]'),
+      overflow: document.documentElement.scrollWidth > innerWidth,
+    })`);
+    add('services-index-discipline-cards', JSON.stringify(indexFacts.links) === JSON.stringify(['/en/services/iot-embedded', '/en/services/software-engineering', '/en/services/smart-home-automation', '/en/services/custom-engineering']) && new Set(indexFacts.names).size === 4 && indexFacts.cta && !indexFacts.overflow, indexFacts);
+    add('services-index-browser-errors', cleanIssues(servicesIndex.issues).length === 0, cleanIssues(servicesIndex.issues));
+    await servicesIndex.close();
 
     const packageQuantities = await browser.newPage(390, 844);
     await packageQuantities.touch();
@@ -324,41 +262,11 @@ async function main() {
     add('d6-package-hint-hidden-1440', hintDesktop, { hintDesktop });
     await packageDesktop.close();
 
-    const builderUrl = await browser.newPage(390, 844);
-    await builderUrl.goto('/ar/start-project?package=plus&service=smart-home');
-    await builderUrl.waitHydrated('[data-testid="project-builder"]');
-    await builderUrl.click('.builder-choice:nth-child(1)');
-    await builderUrl.click('.builder-nav .btn:not(.secondary)');
-    await builderUrl.waitFor(`document.querySelector('.builder-progress [aria-current="step"] span')?.textContent === '2'`);
-    await builderUrl.click('.builder-choice:nth-child(1)');
-    await builderUrl.click('.builder-nav .btn:not(.secondary)');
-    await builderUrl.waitFor(`document.querySelector('.builder-progress [aria-current="step"] span')?.textContent === '3'`);
-    await builderUrl.click('.builder-nav .btn:not(.secondary)');
-    await builderUrl.waitFor(`document.querySelector('.builder-progress [aria-current="step"] span')?.textContent === '4'`);
-    await builderUrl.fill('.builder-fields select:has(option[value="premium"])', 'premium');
-    await builderUrl.waitFor(`location.search === '?package=premium&service=smart-home'`);
-    const premiumHref = await builderUrl.waitFor(`document.querySelector('a[hreflang="en"]')?.getAttribute('href') === '/en/start-project?package=premium&service=smart-home' && document.querySelector('a[hreflang="en"]').getAttribute('href')`);
-    await builderUrl.fill('.builder-fields select:has(option[value="premium"])', '');
-    await builderUrl.waitFor(`location.search === '?service=smart-home'`);
-    const clearedHref = await builderUrl.waitFor(`document.querySelector('a[hreflang="en"]')?.getAttribute('href') === '/en/start-project?service=smart-home' && document.querySelector('a[hreflang="en"]').getAttribute('href')`);
-    const builderUrlFacts = await builderUrl.eval<any>(`({ path: location.pathname, step: document.querySelector('.builder-progress [aria-current="step"] span')?.textContent, historyLength: history.length })`);
-    add('d6-builder-url-follows-package', premiumHref === '/en/start-project?package=premium&service=smart-home' && clearedHref === '/en/start-project?service=smart-home' && builderUrlFacts.path === '/ar/start-project' && builderUrlFacts.step === '4', { premiumHref, clearedHref, ...builderUrlFacts });
-    await builderUrl.close();
-
-    // Anchor check (headless Edge: the shared driver always launches --headless=new).
+    // Anchor check (headless Edge: the shared driver always launches --headless=new). The D6 selector that linked here is
+    // gone (DR-109); the package anchor must still land below the sticky header when opened directly.
     const anchor = await browser.newPage(390, 844);
     await anchor.touch();
-    await anchor.goto('/ar/products');
-    await anchor.waitHydrated('[data-testid="smart-product-selector"]');
-    await anchor.click('.selector-mode button:nth-child(2)');
-    await anchor.waitFor(`document.querySelectorAll('.selector-room-row').length === 1`);
-    await anchor.click('.selector-room-add');
-    await anchor.waitFor(`document.querySelectorAll('.selector-room-row').length === 2`);
-    await anchor.fill('.selector-room-row:nth-child(1) .selector-stepper input', '10');
-    await anchor.fill('.selector-room-row:nth-child(2) .selector-stepper input', '10');
-    await anchor.waitFor(`document.querySelector('.selector-room-total bdi')?.textContent === '20'`);
-    const viewLink = await anchor.eval<any>(`(() => { const a = document.querySelector('.selector-package-links a[href="/ar/smart-home/packages#package-plus"]'); return { text: a?.textContent?.trim(), href: a?.getAttribute('href') }; })()`);
-    await anchor.click('.selector-package-links a[href="/ar/smart-home/packages#package-plus"]');
+    await anchor.goto('/ar/smart-home/packages#package-plus');
     await anchor.waitFor(`location.pathname === '/ar/smart-home/packages' && location.hash === '#package-plus' && document.readyState === 'complete'`);
     // Measure only after the anchor scroll has settled (same scrollY across 3 animation frames, max 3 s).
     await anchor.eval(`new Promise((resolve) => { const t0 = performance.now(); let last = -1, same = 0; const tick = () => { if (scrollY === last && scrollY > 0) same += 1; else same = 0; last = scrollY; if (same >= 3 || performance.now() - t0 > 3000) resolve(true); else requestAnimationFrame(tick); }; requestAnimationFrame(tick); })`);
@@ -370,7 +278,7 @@ async function main() {
       const headerBottom = header.getBoundingClientRect().bottom;
       return { top: Math.round(top), headerBottom: Math.round(headerBottom), scrollY: Math.round(scrollY), innerHeight };
     })()`);
-    add('d6-anchor-package-plus-below-header', viewLink.text === 'اعرض الباقة' && anchorFacts.top >= anchorFacts.headerBottom && anchorFacts.top < anchorFacts.innerHeight, { ...viewLink, ...anchorFacts, mode: 'headless' });
+    add('d6-anchor-package-plus-below-header', anchorFacts.top >= anchorFacts.headerBottom && anchorFacts.top < anchorFacts.innerHeight, { ...anchorFacts, mode: 'headless' });
     await anchor.screenshot('hybrid03-anchor-ar-390-package-plus.png');
     await anchor.close();
   } finally {

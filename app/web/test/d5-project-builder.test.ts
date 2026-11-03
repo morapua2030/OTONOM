@@ -25,8 +25,11 @@ test('D6 package 16R controller links to the registered OTONOM 16R product page'
   const component = readFileSync(new URL('../src/components/SmartHomePackages.tsx', import.meta.url), 'utf8');
   assert.match(component, /href=\{`\/\$\{locale\}\/products\/\$\{packageItem\.model\}`\}/);
   assert.doesNotMatch(component, /R16/, 'the package item is displayed as 16R everywhere (DR-103)');
+  // D8-C v3 (DR-109): /products renders ControllerRows, whose 16R row links to the packages page.
   const productsPage = readFileSync(new URL('../src/app/(site)/[locale]/products/page.tsx', import.meta.url), 'utf8');
-  assert.match(productsPage, /href=\{`\/\$\{locale\}\/smart-home\/packages`\}/);
+  assert.match(productsPage, /<ControllerRows locale=\{locale\} \/>/);
+  const rows = readFileSync(new URL('../src/components/products.tsx', import.meta.url), 'utf8').split('export function ProductDetail')[0];
+  assert.match(rows, /product\.model === '16r' \? <a className="btn secondary" href=\{`\/\$\{locale\}\/smart-home\/packages`\}>/);
 });
 
 test('D5 package copy does not claim checkout, warranty or ambiguous inclusions', () => {

@@ -166,7 +166,7 @@ function allStatuses(values: Record<string, number> | undefined, accepted: reado
 }
 
 function marketingOk(values: Record<string, number> | undefined): boolean | undefined {
-  const required = ['/ar', '/en', '/ar/products/4r', '/en/products/6r', '/ar/products/16r', '/en/products/compare', '/ar/solutions', '/en/about'];
+  const required = ['/ar', '/en', '/ar/products/4r', '/en/products/6r', '/ar/products/16r', '/en/products', '/ar/services', '/en/about'];
   if (!values) return undefined;
   return required.every((route) => values[route] === 200);
 }

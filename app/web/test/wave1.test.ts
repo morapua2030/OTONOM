@@ -51,7 +51,7 @@ test('consultation intake uses the same fail-closed server gate as proposal inta
 
 test('sitemap includes the required services and project-start routes', () => {
   const source = readFileSync(new URL('../src/app/(site)/sitemap.xml/route.ts', import.meta.url), 'utf8');
-  for (const route of ['/services/iot-embedded', '/services/software-engineering', '/services/smart-home-automation', '/services/custom-engineering', '/engineering-process', '/build-with-us']) {
+  for (const route of ['/services/iot-embedded', '/services/software-engineering', '/services/smart-home-automation', '/services/custom-engineering', '/about', '/start-project']) {
     assert.match(source, new RegExp(route.replaceAll('/', '\\/')));
   }
 });

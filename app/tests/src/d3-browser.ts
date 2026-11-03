@@ -11,6 +11,19 @@ const ROUTES = process.env.OTONOM_D3_ROUTE ? [process.env.OTONOM_D3_ROUTE] : ['/
 const WIDTHS = process.env.OTONOM_D3_WIDTH ? [Number(process.env.OTONOM_D3_WIDTH)] : [390, 1440];
 
 type Check = { id: string; pass: boolean; detail?: unknown };
+type Facts = { faq: number; cards: number; entry: number; disciplines: string[]; packages: number; controllers: number; cta: boolean; band: boolean };
+// Design v3.1 copy: IoT and Software have 6 cards and 4 questions, Custom has 3 cards and 3 questions.
+const FAQ_COUNT: Record<string, number> = { '/services/software-engineering': 4, '/services/iot-embedded': 4, '/services/custom-engineering': 3 };
+const CARD_COUNT: Record<string, number> = { '/services/software-engineering': 6, '/services/iot-embedded': 6, '/services/custom-engineering': 3 };
+const serviceTemplate = (route: string) => (f: Facts) => f.faq === FAQ_COUNT[route] && f.cards === CARD_COUNT[route] && f.entry === 4 && f.cta;
+const STRUCTURE: Record<string, (f: Facts, locale: string) => boolean> = {
+  '/services': (f, locale) => f.cta && JSON.stringify(f.disciplines) === JSON.stringify(['iot-embedded', 'software-engineering', 'smart-home-automation', 'custom-engineering'].map((slug) => `/${locale}/services/${slug}`)),
+  '/services/software-engineering': serviceTemplate('/services/software-engineering'),
+  '/services/iot-embedded': serviceTemplate('/services/iot-embedded'),
+  '/services/custom-engineering': serviceTemplate('/services/custom-engineering'),
+  // Design "01 Home": the page closes with the Alexa band (Book a visit on WhatsApp), not the navy CTA band.
+  '/services/smart-home-automation': (f) => f.packages === 3 && f.controllers === 3 && f.band,
+};
 const checks: Check[] = [];
 const add = (id: string, pass: boolean, detail?: unknown) => checks.push({ id, pass, ...(pass ? {} : { detail }) });
 
@@ -27,12 +40,18 @@ async function main() {
           await page.goto(`/${locale}${route}`);
           const id = `${locale}${route}@${width}`;
           const facts = await page.eval<{
-            h1: number; faq: number; cards: number; forms: number; overflow: boolean;
+            h1: number; faq: number; cards: number; entry: number; disciplines: string[]; packages: number; controllers: number; cta: boolean; band: boolean; forms: number; overflow: boolean;
             reduced: boolean; lang: string; dir: string; serviceLinks: number; activeNav: string;
           }>(`(() => ({
             h1: document.querySelectorAll('main h1').length,
-            faq: document.querySelectorAll('.service-faq details').length,
-            cards: document.querySelectorAll('.service-card').length,
+            faq: document.querySelectorAll('main [data-testid="faq"] button[aria-expanded]').length,
+            cards: document.querySelectorAll('main .v3-cards > li.v2-card').length,
+            entry: document.querySelectorAll('main .v2-entry a.v2-chip[href^="https://wa.me/"][target="_blank"][rel~="noopener"]').length,
+            disciplines: [...document.querySelectorAll('main .v2-grid-4 .v2-arrow-link')].map((node) => node.getAttribute('href')),
+            packages: document.querySelectorAll('main .v2-pkg-card[data-package]').length,
+            controllers: document.querySelectorAll('main .v3-ctrl-card').length,
+            cta: !!document.querySelector('main [data-testid="cta-book"]'),
+            band: !!document.querySelector('main .v2-band-dark a[href^="https://wa.me/"]'),
             forms: document.querySelectorAll('main form').length,
             overflow: document.documentElement.scrollWidth <= window.innerWidth,
             reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -41,33 +60,17 @@ async function main() {
             serviceLinks: document.querySelectorAll('.nav-desktop .service-nav-panel a').length,
             activeNav: document.querySelector('.nav-desktop .service-nav-menu > summary')?.getAttribute('aria-current') || '',
           }))()`);
-          add(`${id}:structure`, facts.h1 === 1 && facts.faq >= 5 && facts.cards >= 14, facts);
+          // D8-C v3: structure follows the design v3.1 templates (05 Service, 01 Home, /services index; DR-109).
+          add(`${id}:structure`, facts.h1 === 1 && STRUCTURE[route](facts, locale), facts);
           add(`${id}:locale`, facts.lang === locale && facts.dir === (locale === 'ar' ? 'rtl' : 'ltr'), facts);
           add(`${id}:responsive`, facts.overflow, facts);
           add(`${id}:privacy`, facts.forms === 0, facts.forms);
           add(`${id}:reduced-motion`, facts.reduced, facts.reduced);
           add(`${id}:service-navigation`, facts.serviceLinks === 5 && facts.activeNav === 'page', facts);
-          if (route === '/services') {
-            await page.waitHydrated('.service-discovery .service-selector-tabs button');
-            if (width === 1440) {
-              const focused = await page.eval<boolean>(`(() => { const el = document.querySelector('.service-discovery .service-selector-tabs button:last-child'); el?.focus(); return document.activeElement === el; })()`);
-              add(`${id}:starting-point-focus`, focused);
-              await page.press('Enter');
-            } else {
-              await page.click('.service-discovery .service-selector-tabs button:last-child');
-            }
-            const start = await page.eval<{ pressed: boolean; href: string; text: string }>(`(() => ({
-              pressed: document.querySelector('.service-discovery .service-selector-tabs button:last-child')?.getAttribute('aria-pressed') === 'true',
-              href: document.querySelector('.service-discovery .service-selector-result a')?.getAttribute('href') || '',
-              text: document.querySelector('.service-discovery .service-selector-result')?.textContent || '',
-            }))()`);
-            add(`${id}:starting-point`, start.pressed && start.href === `/${locale}/build-with-us#not-sure` && start.text.length > 40, start);
-            await page.click('.service-stack .service-selector-tabs button:nth-child(4)');
-            const stack = await page.eval<{ pressed: boolean; href: string }>(`(() => ({
-              pressed: document.querySelector('.service-stack .service-selector-tabs button:nth-child(4)')?.getAttribute('aria-pressed') === 'true',
-              href: document.querySelector('.service-stack .service-selector-result a')?.getAttribute('href') || '',
-            }))()`);
-            add(`${id}:stack-explorer`, stack.pressed && stack.href.includes('/services/software-engineering#apis'), stack);
+          if (route in FAQ_COUNT && width === 1440) {
+            // Entry chips are plain links to WhatsApp: reachable from the keyboard (no custom widget).
+            const focused = await page.eval<boolean>(`(() => { const el = document.querySelector('main .v2-entry a.v2-chip'); el?.focus(); return document.activeElement === el; })()`);
+            add(`${id}:entry-chip-focus`, focused);
           }
           const nav = width === 390 ? '.nav-mobile' : '.nav-desktop';
           if (width === 390) {

@@ -64,10 +64,11 @@ test('unknown language-code paths get the localized 404; site paths never do', (
   for (const path of ['/ar', '/en/products', '/api/ready', '/admin', '/staff/login', '/brand/otonom/assets/svg/primary_dark.svg', '/robots.txt', '/sitemap.xml', '/arx']) assert.equal(isUnknownLocalePath(path), false, path);
 });
 
-test('sitemap indexes /technology/controllers and keeps the seven placeholder routes out (owner decision D8-C #7)', () => {
+test('sitemap indexes /products and keeps the placeholder and redirected routes out (D8-C #7, DR-107)', () => {
   const sitemap = read('app/(site)/sitemap.xml/route.ts');
-  assert.match(sitemap, /'\/technology\/controllers'/);
-  for (const path of ['/solutions/villas', '/solutions/apartments', '/solutions/scenarios', '/technology/documentation', '/insights', '/support/service', '/legal/privacy']) {
+  assert.match(sitemap, /'\/products'/);
+  for (const path of ['/solutions/villas', '/solutions/apartments', '/solutions/scenarios', '/technology/documentation', '/insights', '/support/service', '/legal/privacy',
+    '/solutions', '/technology', '/technology/controllers', '/engineering-process', '/build-with-us', '/products/compare', '/consultation', '/business/request-a-proposal', '/business/partners']) {
     assert.ok(!sitemap.includes(`'${path}'`), `${path} must stay out of the sitemap`);
   }
   assert.match(read('app/(site)/[locale]/[...slug]/page.tsx'), /noindex: !cms && PLACEHOLDER_ROUTES\.has\(path\) \? true : undefined/);
