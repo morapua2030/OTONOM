@@ -55,6 +55,42 @@ export function ProductGrid({ locale, limit, eager = false }: { locale: Locale; 
   );
 }
 
+/** Design v2 "02 Controllers" note per model, verbatim from the reference (DR-102 facts only). */
+const CONTROLLER_NOTES: Record<string, [string, string]> = {
+  '4r': ['اسأل فريقنا إذا كان 4R مناسبًا لتركيبك.', 'Ask our team whether the 4R fits your installation.'],
+  '6r': ['اسأل فريقنا إذا كان 6R مناسبًا لتركيبك.', 'Ask our team whether the 6R fits your installation.'],
+  '16r': ['موجود في كل باقات المنزل الذكي: اثنان في Premium وPlus، وواحد في Essential.', 'Included in every Smart Home Package: two in Premium and Plus, one in Essential.'],
+};
+
+/** One row card per controller (design v2 "02 Controllers"); facts come from the product registry only. */
+export function ControllerRows({ locale }: { locale: Locale }) {
+  return (
+    <ul className="v2-ctrl-list">
+      {PRODUCTS.map((product, index) => {
+        const name = product.model.toUpperCase();
+        const note = CONTROLLER_NOTES[product.model];
+        return (
+          <li className="v2-ctrl-row" key={product.model} data-model={product.model}>
+            <a className="v2-img-panel" href={productHref(locale, product)} aria-label={product.name}>
+              <Image src={product.image} alt={localProductText(product.alt, locale)} width={1254} height={1254} sizes="(max-width: 760px) 80vw, 420px" priority={index === 0} />
+            </a>
+            <div className="v2-ctrl-info">
+              <h3 className="v2-ctrl-name" dir="ltr">{name}</h3>
+              <span className="v2-ctrl-label">{tx(locale, 'وحدة تحكم ذكية', 'Smart controller')}</span>
+              <span className="v2-pill"><Bidi text={tx(locale, `${product.channels} قنوات تحكم`, `${product.channels} control channels`)} locale={locale} /></span>
+              {note ? <p><Bidi text={tx(locale, note[0], note[1])} locale={locale} /></p> : null}
+              <div className="v2-actions">
+                <a className="btn" href={`/${locale}/contact`}><Bidi text={tx(locale, `اسأل عن ${name}`, `Ask about ${name}`)} locale={locale} /></a>
+                {product.model === '16r' ? <a className="btn secondary" href={`/${locale}/smart-home/packages`}>{tx(locale, 'عرض الباقات', 'See packages')}</a> : null}
+              </div>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 export function ProductDetail({ locale, product }: { locale: Locale; product: PublicProduct }) {
   return (
     <>
