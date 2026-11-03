@@ -311,7 +311,7 @@ async function main() {
             if (!isTest) {
               rec.add(`${id}-META`, 'SEO', `${locale}${page} localized title + description`, !!p?.title && p.title !== 'OTONOM' && (p?.description ?? '').length > 20, { title: p?.title, description: p?.description });
               rec.add(`${id}-HREFLANG`, 'SEO', `${locale}${page} canonical + reciprocal hreflang for the same path`, p?.canonical === `${SITE}/${locale}${pathOnly}` && JSON.stringify(p?.hreflang) === JSON.stringify(expectHreflang), { canonical: p?.canonical, hreflang: p?.hreflang });
-              rec.add(`${id}-LANGSWITCH`, 'I18N', `${locale}${page} language switch keeps the page`, (p?.langSwitch ?? []).includes(`/${other}${page}`), p?.langSwitch);
+              rec.add(`${id}-LANGSWITCH`, 'I18N', `${locale}${page} language switch keeps the page`, (p?.langSwitch ?? []).includes(`/${other}${pathOnly}`), p?.langSwitch);
               (titles[page] ??= {})[locale] = p?.title;
             }
           }
