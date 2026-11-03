@@ -77,7 +77,11 @@ export function ServicesIndex({ locale }: { locale: Locale }) {
   return (
     <>
       <InnerHero locale={locale} eyebrow={t.servicesEyebrow} title={<SplitTitle parts={t.servicesH1} locale={locale} />} lead={t.servicesLead} />
-      <section className="v2-section" aria-label={t.servicesEyebrow}><DisciplineCards locale={locale} /></section>
+      {/* Visually hidden h2 so the discipline card titles (h3) do not skip a heading level. */}
+      <section className="v2-section" aria-labelledby="services-index-title">
+        <h2 id="services-index-title" className="sr-only">{t.whatWeDo}</h2>
+        <DisciplineCards locale={locale} />
+      </section>
       <CtaBand locale={locale} message={bookVisitMessage(locale)} />
     </>
   );
