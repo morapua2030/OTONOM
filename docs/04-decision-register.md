@@ -91,7 +91,7 @@ Owner abbreviations:
 
 **Gap note — DR-064–DR-091:** recorded in the owner's private local register (security, hosting and release-operation decisions). They are intentionally not published (see DR-071/DR-074). This is a numbering note, not a decision.
 
-## 3a. Owner decisions recorded 2026-11-03 (DR-092–DR-109)
+## 3a. Owner decisions recorded 2026-11-03 (DR-092–DR-112)
 | ID | Topic | Decision / position | Status | Owner | Evidence required | Impact | Next action | Approved at |
 |---|---|---|---|---|---|---|---|---|
 | DR-092 | AI continuity | Planning with Claude in chat and execution by Claude Code/Codex in Antigravity on `D:\otonom` continue without resetting scope, architecture, brand or release rules. Supersedes DR-061 for this scope | APPROVED (owner) | BO | — | Agent workflow | Keep `docs/ai/` current | Owner chat, recorded 2026-11-03; original date unverified |
@@ -111,12 +111,15 @@ Owner abbreviations:
 | DR-106 | Design v3.1 inner pages and scope | Inner pages follow the owner's Claude Design v3.1. Public address: "Creativa Damanhour, Colleges Complex" / «كريتيفا دمنهور، مجمع الكليات» (footer Contact column and Contact page, single source `lib/contact.ts`). Out of scope for this release: controller specs (no spec table), privacy-page text and real projects (Our work shows the empty state). Design placeholders (sample cards, optional bands, privacy blocks) never ship | APPROVED (owner) | BO | — | Inner pages, footer, contact | D8-C v3 batches | Owner chat 2026-11-03 |
 | DR-107 | Routes outside the design | 308 redirects with the locale kept and the query dropped, removed from nav, footer and sitemap: `/solutions` (+ sub-pages) → `/services`; `/engineering-process` → `/about`; `/build-with-us` → `/start-project`; `/products/compare` → `/products`; `/consultation` → `/contact`; `/business/request-a-proposal` → `/contact`; `/business/partners` → `/business/contractors`; `/technology` (+ sub-pages) → `/products`; `/insights` → `/`; `/support/service` → `/support`; `/legal/privacy` → `/contact`. Gated pages are unchanged. Nothing is removed from Git history. The local synthetic test harness keeps the legacy pages only so existing security suites keep running | APPROVED (owner) | BO | 308 checks on the public profile | Routing | D8-C V7 | Owner chat 2026-11-03 |
 | DR-108 | Privacy page | The privacy page is removed for this release (308 to Contact) and every link to it, including consent links, is removed. The site collects no personal data through forms. Approved privacy text remains a release item for the owner | APPROVED (owner) | BO | — | Footer, drawer, consent text | D8-C V7 | Owner chat 2026-11-03 |
-| DR-109 | Controllers and services pages | The D6 Smart Product Selector is removed from `/products` (kept in Git history); the page is the v2 header plus controller cards. `/services` is a short index with the four discipline cards and the CTA band | APPROVED (owner) | BO | — | `/products`, `/services` | D8-C V3 | Owner chat 2026-11-03 |
+| DR-109 | Controllers and services pages | The D6 Smart Product Selector is removed from `/products` (kept in Git history); the page is the v2 header plus controller cards. **The selector part is superseded by DR-112 (selector restored).** `/services` is a short index with the four discipline cards and the CTA band | APPROVED (owner) | BO | — | `/products`, `/services` | D8-C V3 | Owner chat 2026-11-03 |
+| DR-110 | Simulator calculation facts | 1 channel = 1 line: one lighting line is one channel, and one device (heater, water pump, extractor fan, curtain, garage door or any other device) is one channel. AC is controlled by the IR remote and uses no channel. Controllers can be combined in one home; extra controllers beyond the package are priced at the visit. Above 64 channels the page shows "your project needs an engineer review". Packages, prices and contents are exactly those of `lib/smart-home-packages.ts`; upsell lines are derived from the prices (+8,000 to Plus, +12,000 to Premium). The gas sensor gives a loud alarm and a phone notification on a leak. Routines are shown as examples our team sets up with the customer; lock-based routines are Premium | APPROVED (owner) | BO | Unit tests on the ported rules | `/try`, selector | D8-C v4 V2 | Owner chat 2026-11-03 |
+| DR-111 | "Try your smart home" simulator | Design v4 screen "12 Simulator" ships at `/{locale}/try` with entry points on Home, the Smart Home page, Packages, Controllers, the 16R page, the mobile drawer and the footer. It is a demonstration only: not connected to any device, no form or text input, no network request, no storage or cookies, no analytics; the only outbound action is the visitor's own WhatsApp tap. `?demo=` accepts only the design's preset names. Simulator-only colours are scoped to the page. CSP, intake, commerce, payments, warranty and device control are unchanged | APPROVED (owner) | BO | `sim:browser` suite, axe in every demo state | `/try`, entry points, sitemap | D8-C v4 V3/V4 | Owner chat 2026-11-03 |
+| DR-112 | Smart Product Selector restored | Removing the selector from `/products` was a mistake: it returns directly under the controller cards, restyled to v3 (chips, white cards with navy borders, pills, short Egyptian-Arabic copy), with both modes and the logic in `lib/product-selector.ts` unchanged. The result shows the suggested controller(s), the covering package(s) without prices, one WhatsApp button with a message built only from the choices, the line "This is an initial estimate; the engineer confirms it at the visit" and a link to the simulator. Supersedes the selector part of DR-109 | APPROVED (owner) | BO | Restored selector tests | `/products` | D8-C v4 V1 | Owner chat 2026-11-03 |
 
 ## 4. Status summary
 | Status | Count | Decisions |
 |---|---|---|
-| APPROVED (incl. "in principle") | 45 | DR-001–006, 008–012, 015, 017, 021, 023, 025, 027–029, 035, 038, 039, 040, 055, 060, 061, 063, 092–109 |
+| APPROVED (incl. "in principle") | 48 | DR-001–006, 008–012, 015, 017, 021, 023, 025, 027–029, 035, 038, 039, 040, 055, 060, 061, 063, 092–112 |
 | CONFIRMED_BY_USER | 9 | DR-013, 014, 018, 019, 020, 026, 030, 031, 033 |
 | PROPOSED | 13 | DR-007, 037, 041 (owner-preferred), 045, 046, 047, 048, 049, 050, 051, 052, 053, 058 |
 | OPEN | 5 | DR-016, 036, 042, 044, 057 |
@@ -124,9 +127,11 @@ Owner abbreviations:
 | DEFERRED | 2 | DR-022, 034 |
 | VERIFIED_BY_AGENT | 1 | DR-056 |
 
-Total: 81 published decisions (DR-001–063 and DR-092–109; updated 2026-11-03). DR-064–091 are private and not counted here.
+Total: 84 published decisions (DR-001–063 and DR-092–112; updated 2026-11-03). DR-064–091 are private and not counted here.
 
 ## Change log
+2.6-draft, 2026-11-03: DR-110–DR-112 added (simulator calculation facts, the simulator at `/try`, Smart Product Selector restored; DR-109 selector part superseded).
+
 2.5-draft, 2026-11-03: DR-106–DR-109 added (design v3.1 inner pages and scope, legacy-route redirects, privacy page removal, controllers/services pages).
 
 2.4-draft, 2026-11-03: DR-105 added (owner-confirmed rights to the five brochure component images).

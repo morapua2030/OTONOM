@@ -4,16 +4,17 @@ Every route below is rendered for both `/ar` (RTL) and `/en` (LTR). The design l
 
 | Experience | Routes | Primary implementation | Design coverage |
 |---|---|---|---|
-| Home | `/` | `HomeMix` (`components/home-mix.tsx`) | Home (mix), DR-100: 16R hero, 16R spotlight + 4R/6R cards, package items, package cards (Choose → WhatsApp), four disciplines → service pages, entry chips, steps, Alexa band, business band |
+| Home | `/` | `HomeMix` (`components/home-mix.tsx`) | Home (mix), DR-100: 16R hero (See packages · Try your smart home · Start your project), 16R spotlight + 4R/6R cards, package items, package cards (Choose → WhatsApp), four disciplines → service pages, entry chips, steps, Alexa band, business band |
 | Services index | `/services` | `ServicesIndex` (`components/v3-pages.tsx`) | Owner decision (DR-109): inner hero, the four discipline cards from Home, navy CTA band |
 | Service pages | `/services/iot-embedded`, `/services/software-engineering`, `/services/custom-engineering` | `ServiceV3` | v3.1 "05 Service": hero with circuit visual (Talk → WhatsApp, Start → `/start-project?service=<slug>`), icon cards, "Where do you start?" chips → WhatsApp, steps, FAQ accordion (`FaqAccordion`), CTA band |
-| Smart home | `/services/smart-home-automation` | `SmartHomeLanding` | v3.1 "01 Home": 16R hero, package items, package cards (Choose → Contact), steps, controller cards, Alexa band |
+| Smart home | `/services/smart-home-automation` | `SmartHomeLanding` | v3.1 "01 Home": 16R hero (with the v4 simulator button), package items, package cards (Choose → Contact), steps, controller cards, Alexa band |
 | Company | `/about` | `CompanyV3` | v3.1 "07 Company": how we operate, the four disciplines, CTA band |
 | Business | `/business/developers`, `/business/contractors` | `BusinessV3` | v3.1 "10 Business": offer cards, steps, Call and WhatsApp |
 | Portfolio | `/projects`, `/projects/[published-slug]` | `WorkEmptyV3` while 0 entries; `PortfolioOverview` / project detail otherwise | v3.1 "08 Our work" empty state (DR-098, DR-106); the existing explorer renders if entries are ever published |
-| Products | `/products`, `/products/4r`, `/products/6r`, `/products/16r` | `ControllerRows` (`components/products.tsx`), `ProductV3` | v2 Controllers header and one row card per controller; v3.1 "06 Product" without a spec table (specs out of scope, DR-106). The Smart Product Selector is not rendered (DR-109) |
+| Products | `/products`, `/products/4r`, `/products/6r`, `/products/16r` | `ControllerRows` (`components/products.tsx`), `ProductV3` | v2 Controllers header and one row card per controller; v3.1 "06 Product" without a spec table (specs out of scope, DR-106). The Smart Product Selector (`SmartProductSelector`, logic `lib/product-selector.ts`, message `lib/selector-message.ts`) is back directly under the controller cards, restyled to v3 (DR-112): channel and room modes, suggested controller(s), covering packages without prices, one WhatsApp button, the estimate line and a link to `/try`. The Controllers header and the 16R page link to the simulator |
 | Start a project | `/start-project` | `StartProject` (`components/StartProject.tsx`), `lib/start-message.ts` | v3.1 "09 Start a project": three chip groups (`aria-pressed`, toggle off), live message, one WhatsApp button; `?service=` / `?package=` preselect the field from an allow-list; no form, input or storage |
-| Packages | `/smart-home/packages` | `SmartHomePackages`, `PackageTiles`, `PackageComparison` | v2 Packages: cards with photo tiles and ×N badges, Choose → `/contact?package=<id>`, comparison table in a labelled scroll region, `#package-{id}` anchors |
+| Try your smart home | `/try` (`?demo=` allow-list) | `Simulator` (`components/simulator/`, client, loaded on this route only), `lib/simulator/{rules,copy,plan,demo}.ts` | v4 "12 Simulator" (DR-110, DR-111): four stages with scroll-tracking pills, home presets, room cards, sticky panel / mobile bottom bar and sheet, lock switch, package tiles, upsell and compare, floor plan with day/night and device effects, 24-hour timeline, Alexa commands, nine routines with Premium gating, gas alert, plan summary, WhatsApp plan message (≤ 900 characters), copy plan, CTA band. Demo only: no form or text input, no network, storage, cookies or analytics |
+| Packages | `/smart-home/packages` | `SmartHomePackages`, `PackageTiles`, `PackageComparison` | v2 Packages: cards with photo tiles and ×N badges, Choose → `/contact?package=<id>`, comparison table in a labelled scroll region, `#package-{id}` anchors; v4 banner above the comparison linking to `/try` |
 | Contact | `/contact` | dedicated route + `ContactBooking` (`lib/contact.ts`) | v2 Contact (DR-101): package chips, Call and WhatsApp cards with the message preview, the public address (DR-106); no form or storage |
 | Support | `/support` | `SupportV3` | v3.1 "Support": last updated, the support line, a warranty-disabled note (feature gate), tips, CTA band |
 | Gated customer surfaces | `/account`, `/shop`, `/cart`, `/checkout`, `/support/warranty` | gated informational pages | Unchanged gates: no public commerce, payment, account/device operation or warranty activation |
@@ -40,10 +41,10 @@ The proxy answers `GET`/`HEAD` with a 308. The locale is kept and the query and 
 
 ## Shared pieces
 
-- **Language switch:** `LangSwitch` builds its link with `localeSwitchHref()` (`lib/locale-switch.ts`). It keeps only allow-listed, validated state: the portfolio query on `/projects`, `package` and `service` on `/start-project`, and a `#package-{id}` anchor on `/smart-home/packages`.
+- **Language switch:** `LangSwitch` builds its link with `localeSwitchHref()` (`lib/locale-switch.ts`). It keeps only allow-listed, validated state: the portfolio query on `/projects`, `package` and `service` on `/start-project`, an allow-listed `demo` preset on `/try`, and a `#package-{id}` anchor on `/smart-home/packages`.
 - **Shared components:**
-  - `SiteHeader`: wordmark; nav Home · Smart Home · Controllers · Packages · Services ▾ · Our work · Contact; drawer below 1000px; Book a visit.
-  - `SiteFooter`: three link columns, then a Contact column (phone, address, WhatsApp, Contact, Support), then logo, language link and ©.
+  - `SiteHeader`: wordmark; nav Home · Smart Home · Controllers · Packages · Services ▾ · Our work · Contact; drawer below 1000px (adds "Try your smart home" after Packages, v4); Book a visit.
+  - `SiteFooter`: three link columns (Smart home column includes "Try your smart home", v4), then a Contact column (phone, address, WhatsApp, Contact, Support), then logo, language link and ©.
   - v3 building blocks (`components/v3.tsx`): `InnerHero`, `SplitTitle`, `Circuit`, `Icon`, `IconCards`, `StepCards`, `CtaBand`.
   - Also: `BrandLogo`, `Swash`/`SwashText`, buttons, cards and empty states.
 - **Copy:** verbatim from the design in `lib/site-copy.ts` and `lib/site-copy-inner.ts`. Contact details come from `lib/contact.ts` only.

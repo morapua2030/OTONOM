@@ -1,6 +1,6 @@
-# OTONOM Web Design System — v2 + v3.1 inner pages
+# OTONOM Web Design System — v2 + v3.1 inner pages + v4 simulator
 
-This design system replaces the Hybrid 03 page styling (DR-099). The v3.1 inner pages (DR-106..DR-109) extend it with the same tokens. The logo and brand asset files are unchanged: the locked Hybrid 03 artwork in `app/web/public/brand/otonom/` is used byte-for-byte. Source of the look: the owner-approved Claude Design v2 reference, kept privately as design data.
+This design system replaces the Hybrid 03 page styling (DR-099). The v3.1 inner pages (DR-106..DR-109) and the v4 simulator (DR-110..DR-112) extend it with the same tokens. The logo and brand asset files are unchanged: the locked Hybrid 03 artwork in `app/web/public/brand/otonom/` is used byte-for-byte. Source of the look: the owner-approved Claude Design v2 reference, kept privately as design data.
 
 ## Implementation
 
@@ -20,6 +20,8 @@ This design system replaces the Hybrid 03 page styling (DR-099). The v3.1 inner 
   | v3.1 pages: service, smart home, services index, company, product, Our work, business, support | `components/v3-pages.tsx` |
   | FAQ accordion | `components/FaqAccordion.tsx` |
   | Start a project (chips → WhatsApp message) | `components/StartProject.tsx`, `lib/start-message.ts` |
+  | Smart Product Selector (v3 restyle, DR-112) | `components/SmartProductSelector.tsx`, `lib/product-selector.ts`, `lib/selector-message.ts` |
+  | Simulator "Try your smart home" (v4, `/try` only) | `components/simulator/Simulator.tsx`, `icons.tsx`, `simulator.css`; `lib/simulator/rules.ts`, `copy.ts`, `plan.ts`, `demo.ts` |
 
 - The contact channel has a single source: `lib/contact.ts` (DR-101). It holds the number, `tel:`, `wa.me`, the reference message texts and the public address (DR-106). There is no form, storage or analytics.
 - The v3.1 copy is verbatim from the design: `lib/site-copy.ts` (design constants, AR/EN) and `lib/site-copy-inner.ts` (inner-page strings). Design placeholders (sample projects, optional spec rows, privacy text) are not shipped; a unit test fails if one appears.
@@ -88,6 +90,26 @@ This design system replaces the Hybrid 03 page styling (DR-099). The v3.1 inner 
   - Home "Choose" opens WhatsApp; Packages "Choose" goes to `/contact?package=<id>`.
 - **Comparison table:** white, navy border, 44px thumbnails, ✓ / "—" / ×N. The "—" has the accessible name "Not in this package". The total row is ice. It scrolls horizontally on mobile, with the heading outside the scroll region.
 - **Item visuals:** the 16R uses genuine OTONOM product photography; the five brochure component photos (owner-confirmed rights, DR-105) are WebP files in `public/products/items/` with all metadata removed and no edits, explicit width/height and lazy loading below the fold. Alexa is referred to descriptively; no Amazon/Alexa logos or badges are used.
+
+## Simulator (design v4 "12 Simulator", DR-110/DR-111)
+
+- **Scope:** `/{locale}/try` only. The client component and its stylesheet (`components/simulator/simulator.css`, every selector under `.sim`) load on this route only; other pages get plain links to it.
+- **Simulator-only tokens** (scoped to `.sim`, never used elsewhere):
+
+  | Token | Value | Use |
+  |---|---|---|
+  | `--sim-warm-1` | `#FFF1CF` | lit room by day |
+  | `--sim-warm-2` | `#FFE3A3` | lit room at night |
+  | `--sim-warm-3` | `#FFD98A` | light button on, sun orb |
+  | `--sim-heater` | `#FFC08A` | heater on |
+  | `--sim-night-tile` | `#1B3350` | dark room at night, moon orb |
+  | `--sim-gas` / `--sim-gas-soft` | `#C62828` / `#FDE2E2` | gas alert border/text and fill |
+  | locked text | `#3D5266` (on light blue), `#5A6B7E` (on white), `#B8DDF3` (at night) | Premium-only markers and routine steps; replaces the design's 50% opacity, which failed contrast |
+
+- **Components:** stage pills (`aria-current="step"`, follow the scroll), home cards (`aria-pressed`, inline SVG art), room cards (lines stepper 0–16, AC `role="switch"`, device chips ≤ 4 per type, remove with a per-room name), "+ room" type chips (≤ 12 rooms), side panel (`aria-live` total, capacity bar, controllers, lock switch, package with photo tiles, upsell, compare) which becomes a fixed bottom bar with an expandable sheet below 1000px, floor plan (room tiles with `aria-pressed` light/AC/device buttons, curtain and garage strips, AC pulse, fan spin, heater/pump glow), day/night group, 24-hour timeline (play ≈ 20 s, range input with `aria-valuetext`), Alexa command chips with a speech bubble, nine routine cards (trigger, step dots, Try it, heart with `aria-pressed`), Premium upsell with "Add the smart lock", gas alert (`role="alert"`), plan summary, WhatsApp plan link, copy plan (Clipboard API, falls back to a selection copy without a text field), navy CTA band with the plan message.
+- **Rules:** no form and no text input (the time-of-day range is the only input), no network request, no storage or cookies, no analytics; external links use `rel="noopener noreferrer"`. `prefers-reduced-motion` turns off every keyframe and transition under `.sim`. Targets are ≥ 44 px (device ± buttons 36 × 44, as in the design). Latin digits; Arabic strings go through `<Bidi>`.
+- **Entry points:** Home (mix) hero next to "See packages", Smart Home hero, a banner above the package comparison (`.sim-entry-banner`), under the Controllers heading, the 16R page, the mobile drawer and the footer's Smart home column.
+- **Smart Product Selector (DR-112):** restyled to v3 inside `.v3-selector`: mode chips, preset chips, white cards with navy borders, room rows with steppers, covering packages as ice pills without prices, a primary WhatsApp button, the estimate line in `#0B70B7` and the simulator link.
 
 ## Accessibility and bidi rules
 
