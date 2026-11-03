@@ -51,3 +51,34 @@ export function protectedAdminOrigin(env: NodeJS.ProcessEnv = process.env): stri
 /** First path segment shaped like a language code (e.g. /xx, /fr-fr/...) that is not one of the site locales. */
 const UNKNOWN_LOCALE = /^\/(?!(?:ar|en)(?:\/|$))[a-z]{2}(?:-[a-z]{2})?(?:\/|$)/i;
 export const isUnknownLocalePath = (pathname: string) => UNKNOWN_LOCALE.test(pathname);
+
+/**
+ * Design v3.1 route decisions (owner, 2026-11-03, DR-107): legacy pages that are not in the design answer with a
+ * 308 to the nearest new page; the locale is kept and the query dropped. The only exception is the local synthetic
+ * test harness (OTONOM_TEST_PAGES=1, not Vercel, not preview-locked), where the legacy pages stay reachable so the
+ * existing security suites (stored-XSS on CMS pages, RFQ backend journeys, claims gate) keep running unchanged.
+ */
+const LEGACY_ROUTES: ReadonlyArray<readonly [RegExp, string]> = [
+  [/^\/solutions(?:\/.*)?$/, '/services'],
+  [/^\/engineering-process\/?$/, '/about'],
+  [/^\/build-with-us\/?$/, '/start-project'],
+  [/^\/products\/compare\/?$/, '/products'],
+  [/^\/consultation\/?$/, '/contact'],
+  [/^\/business\/request-a-proposal\/?$/, '/contact'],
+  [/^\/business\/partners\/?$/, '/business/contractors'],
+  [/^\/technology(?:\/.*)?$/, '/products'],
+  [/^\/insights\/?$/, ''],
+  [/^\/support\/service\/?$/, '/support'],
+  [/^\/legal\/privacy\/?$/, '/contact'],
+];
+
+export const legacyRouteHarness = (env: NodeJS.ProcessEnv = process.env) =>
+  env.OTONOM_TEST_PAGES === '1' && env.VERCEL !== '1' && env.OTONOM_FORCE_PREVIEW !== '1';
+
+/** Target path (locale kept, no query) for a legacy public route, or null. */
+export function legacyRouteRedirect(pathname: string, env: NodeJS.ProcessEnv = process.env): string | null {
+  const match = /^\/(ar|en)(\/.*)?$/.exec(pathname);
+  if (!match || !match[2] || legacyRouteHarness(env)) return null;
+  const target = LEGACY_ROUTES.find(([pattern]) => pattern.test(match[2]!))?.[1];
+  return target === undefined ? null : `/${match[1]}${target}`;
+}

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { contentSecurityPolicy } from './lib/csp.ts';
-import { adminPathRequiresSessionCookie, isAdministrativePath, isPrivatePublicRoute, isUnknownLocalePath, protectedAdminOrigin, publicMarketingOnly } from './lib/deployment.ts';
+import { adminPathRequiresSessionCookie, isAdministrativePath, isPrivatePublicRoute, isUnknownLocalePath, legacyRouteRedirect, protectedAdminOrigin, publicMarketingOnly } from './lib/deployment.ts';
 
 function secured(response: NextResponse, policy: string) {
   response.headers.set('Content-Security-Policy', policy);
@@ -49,6 +49,16 @@ export function proxy(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('content-security-policy', policy);
   requestHeaders.set('x-nonce', nonce);
+
+  // Legacy routes outside design v3.1 (DR-107): permanent 308 to the nearest page, locale kept, query dropped.
+  const legacyTarget = (request.method === 'GET' || request.method === 'HEAD') ? legacyRouteRedirect(request.nextUrl.pathname) : null;
+  if (legacyTarget) {
+    const destination = request.nextUrl.clone();
+    destination.pathname = legacyTarget;
+    destination.search = '';
+    destination.hash = '';
+    return secured(NextResponse.redirect(destination, 308), policy);
+  }
 
   // An unknown two-letter locale (e.g. /xx, /fr/about) renders the branded Arabic 404 inside the site shell
   // instead of the framework's unbranded page. The status stays 404 (the catch-all route calls notFound()).

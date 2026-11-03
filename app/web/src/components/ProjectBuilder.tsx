@@ -218,7 +218,7 @@ export function ProjectBuilder({ locale, intakeEnabled }: { locale: Locale; inta
               <form className="builder-contact" onSubmit={submit}>
                 <p>{L('لن نطلب ملفات في هذه المرحلة.', 'No files are requested at this stage.')}</p>
                 <div className="builder-fields"><label>{L('الاسم', 'Name')}<input name="fullName" required minLength={2} autoComplete="name" /></label><label>{L('البريد الإلكتروني', 'Email')}<input name="email" type="email" autoComplete="email" dir="ltr" /></label><label>{L('الهاتف', 'Phone')}<input name="phone" type="tel" autoComplete="tel" dir="ltr" /></label></div>
-                <label className="consent-row"><input type="checkbox" name="consentProcessing" required /> <span>{L('أوافق على معالجة بيانات هذا الطلب وفق ', 'I consent to processing this request under the ')}<a href={`/${locale}/legal/privacy`}>{L('سياسة الخصوصية', 'privacy policy')}</a>.</span></label>
+                <label className="consent-row"><input type="checkbox" name="consentProcessing" required /> <span>{L('أوافق على معالجة بيانات هذا الطلب وفق ', 'I consent to processing this request under the ')}{L('سياسة الخصوصية', 'privacy policy')}.</span></label>
                 {submitState.status === 'error' && <p role="alert" className="err">{submitState.message}</p>}
                 <button className="btn" disabled={submitState.status === 'busy'}>{submitState.status === 'busy' ? L('جاري الإرسال…', 'Sending…') : L('إرسال طلب المشروع', 'Send project request')}</button>
               </form>

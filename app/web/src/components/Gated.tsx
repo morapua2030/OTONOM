@@ -30,7 +30,7 @@ export async function GatedPage({ locale, feature }: { locale: Locale; feature: 
               </li>
             ))}
           </ul>
-          <p><a className="btn secondary" href={`/${locale}/business/request-a-proposal`}>{d.cta.supply}</a></p>
+          <p><a className="btn secondary" href={`/${locale}/contact`}>{d.cta.supply}</a></p>
         </div>
       )}
       {feature === 'warranty' && (

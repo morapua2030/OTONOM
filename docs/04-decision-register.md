@@ -91,7 +91,7 @@ Owner abbreviations:
 
 **Gap note — DR-064–DR-091:** recorded in the owner's private local register (security, hosting and release-operation decisions). They are intentionally not published (see DR-071/DR-074). This is a numbering note, not a decision.
 
-## 3a. Owner decisions recorded 2026-11-03 (DR-092–DR-105)
+## 3a. Owner decisions recorded 2026-11-03 (DR-092–DR-109)
 | ID | Topic | Decision / position | Status | Owner | Evidence required | Impact | Next action | Approved at |
 |---|---|---|---|---|---|---|---|---|
 | DR-092 | AI continuity | Planning with Claude in chat and execution by Claude Code/Codex in Antigravity on `D:\otonom` continue without resetting scope, architecture, brand or release rules. Supersedes DR-061 for this scope | APPROVED (owner) | BO | — | Agent workflow | Keep `docs/ai/` current | Owner chat, recorded 2026-11-03; original date unverified |
@@ -108,11 +108,15 @@ Owner abbreviations:
 | DR-103 | 16R display name | The package item is displayed as "16R Smart Controller" everywhere; the brochure name "R16" is the same product (DR-094) | APPROVED (owner) | BO | — | Package data and copy | D8-C data batch | Owner chat 2026-11-03 |
 | DR-104 | Fonts | Inter (English body), DM Serif Display (English headings) and IBM Plex Sans Arabic (Arabic), self-hosted with no runtime request to a font provider and no CSP change | APPROVED (owner) | BO | Build output serves fonts from the site origin | Typography | D8-C C1 | Owner chat 2026-11-03 |
 | DR-105 | Brochure and component imagery | Owner confirmed rights to all five component images, including the Alexa device image, under owner responsibility (2026-11-03). They are published as WebP with all metadata removed and no edits; Alexa is referred to descriptively only, with no Amazon/Alexa logos or badges | APPROVED (owner) | BO | — | Home and packages imagery | D8-C photo batch | Owner chat 2026-11-03 |
+| DR-106 | Design v3.1 inner pages and scope | Inner pages follow the owner's Claude Design v3.1. Public address: "Creativa Damanhour, Colleges Complex" / «كريتيفا دمنهور، مجمع الكليات» (footer Contact column and Contact page, single source `lib/contact.ts`). Out of scope for this release: controller specs (no spec table), privacy-page text and real projects (Our work shows the empty state). Design placeholders (sample cards, optional bands, privacy blocks) never ship | APPROVED (owner) | BO | — | Inner pages, footer, contact | D8-C v3 batches | Owner chat 2026-11-03 |
+| DR-107 | Routes outside the design | 308 redirects with the locale kept and the query dropped, removed from nav, footer and sitemap: `/solutions` (+ sub-pages) → `/services`; `/engineering-process` → `/about`; `/build-with-us` → `/start-project`; `/products/compare` → `/products`; `/consultation` → `/contact`; `/business/request-a-proposal` → `/contact`; `/business/partners` → `/business/contractors`; `/technology` (+ sub-pages) → `/products`; `/insights` → `/`; `/support/service` → `/support`; `/legal/privacy` → `/contact`. Gated pages are unchanged. Nothing is removed from Git history. The local synthetic test harness keeps the legacy pages only so existing security suites keep running | APPROVED (owner) | BO | 308 checks on the public profile | Routing | D8-C V7 | Owner chat 2026-11-03 |
+| DR-108 | Privacy page | The privacy page is removed for this release (308 to Contact) and every link to it, including consent links, is removed. The site collects no personal data through forms. Approved privacy text remains a release item for the owner | APPROVED (owner) | BO | — | Footer, drawer, consent text | D8-C V7 | Owner chat 2026-11-03 |
+| DR-109 | Controllers and services pages | The D6 Smart Product Selector is removed from `/products` (kept in Git history); the page is the v2 header plus controller cards. `/services` is a short index with the four discipline cards and the CTA band | APPROVED (owner) | BO | — | `/products`, `/services` | D8-C V3 | Owner chat 2026-11-03 |
 
 ## 4. Status summary
 | Status | Count | Decisions |
 |---|---|---|
-| APPROVED (incl. "in principle") | 41 | DR-001–006, 008–012, 015, 017, 021, 023, 025, 027–029, 035, 038, 039, 040, 055, 060, 061, 063, 092–105 |
+| APPROVED (incl. "in principle") | 45 | DR-001–006, 008–012, 015, 017, 021, 023, 025, 027–029, 035, 038, 039, 040, 055, 060, 061, 063, 092–109 |
 | CONFIRMED_BY_USER | 9 | DR-013, 014, 018, 019, 020, 026, 030, 031, 033 |
 | PROPOSED | 13 | DR-007, 037, 041 (owner-preferred), 045, 046, 047, 048, 049, 050, 051, 052, 053, 058 |
 | OPEN | 5 | DR-016, 036, 042, 044, 057 |
@@ -120,9 +124,11 @@ Owner abbreviations:
 | DEFERRED | 2 | DR-022, 034 |
 | VERIFIED_BY_AGENT | 1 | DR-056 |
 
-Total: 77 published decisions (DR-001–063 and DR-092–105; updated 2026-11-03). DR-064–091 are private and not counted here.
+Total: 81 published decisions (DR-001–063 and DR-092–109; updated 2026-11-03). DR-064–091 are private and not counted here.
 
 ## Change log
+2.5-draft, 2026-11-03: DR-106–DR-109 added (design v3.1 inner pages and scope, legacy-route redirects, privacy page removal, controllers/services pages).
+
 2.4-draft, 2026-11-03: DR-105 added (owner-confirmed rights to the five brochure component images).
 
 2.3-draft, 2026-11-03: DR-099–DR-104 added from owner chat (design v2, home, contact channel, confirmed package claims, 16R display name, fonts). DR-099 supersedes only the Hybrid 03 page styling in DR-093.

@@ -317,7 +317,7 @@ export function RfqForm({ locale, kind }: { locale: Locale; kind: Kind }) {
         <span>
           <input type="checkbox" {...fp('consentProcessing')} style={{ width: 'auto' }} />{' '}
           {L('أوافق على معالجة بياناتي للرد على طلبي وفقًا لـ', 'I agree to the processing of my data to answer this request per the')}{' '}
-          <a href={`/${locale}/legal/privacy`}>{L('سياسة الخصوصية', 'privacy policy')}</a> *
+          {L('سياسة الخصوصية', 'privacy policy')} *
         </span>
         {e('consentProcessing')}
       </label>
