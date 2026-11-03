@@ -1,36 +1,48 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { t, type Locale } from '@/lib/i18n.ts';
-import { wave } from '@/lib/wave1.ts';
 import { Bidi } from './bidi.tsx';
 import { LangSwitch } from './LangSwitch.tsx';
 import { ServiceNavMenu } from './ServiceNavMenu.tsx';
 import { SiteNavLink } from './SiteNavLink.tsx';
 import { BrandLogo } from './BrandLogo.tsx';
 import { EscapableDetails } from './EscapableDetails.tsx';
-import { bookVisitMessage, EXTERNAL_LINK, PHONE_DISPLAY, telHref, whatsappHref } from '@/lib/contact.ts';
+import { ADDRESS, bookVisitMessage, EXTERNAL_LINK, PHONE_DISPLAY, telHref, whatsappHref } from '@/lib/contact.ts';
+import { SITE_COPY } from '@/lib/site-copy.ts';
 
 const label = (locale: Locale, ar: string, en: string) => (locale === 'ar' ? ar : en);
 
-/** Design v2 primary navigation (DR-099/100). Services keeps its <details> menu (all five service links). */
+/** Design v3.1 navigation (DR-099/106): Home · Smart Home · Controllers · Packages · Services ▾ · Our work · Contact. */
+function serviceItems(locale: Locale) {
+  const n = SITE_COPY[locale];
+  return [
+    { title: n.svc.iot.name, href: '/services/iot-embedded' },
+    { title: n.svc.soft.name, href: '/services/software-engineering' },
+    { title: n.svc.custom.name, href: '/services/custom-engineering' },
+    { title: n.nav.smartAuto, href: '/services/smart-home-automation' },
+  ];
+}
+
 function NavLinks({ locale, drawer = false }: { locale: Locale; drawer?: boolean }) {
-  const d = wave(locale);
+  const n = SITE_COPY[locale].nav;
   const L = (p: string) => `/${locale}${p}`;
   return (
     <>
-      <SiteNavLink href={L('')} label={label(locale, 'الرئيسية', 'Home')} exact />
-      <ServiceNavMenu locale={locale} label={d.nav.services} items={d.services} />
-      <SiteNavLink href={L('/products')} label={label(locale, 'الكنترولرات', 'Controllers')} />
-      <SiteNavLink href={L('/smart-home/packages')} label={label(locale, 'الباقات', 'Packages')} />
-      <SiteNavLink href={L('/projects')} label={d.nav.work} />
-      <SiteNavLink href={L('/contact')} label={label(locale, 'تواصل معنا', 'Contact')} />
+      <SiteNavLink href={L('')} label={n.home} exact />
+      <SiteNavLink href={L('/services/smart-home-automation')} label={n.smart} exact />
+      <SiteNavLink href={L('/products')} label={n.ctrl} />
+      <SiteNavLink href={L('/smart-home/packages')} label={n.pk} />
+      <ServiceNavMenu locale={locale} label={n.svc} items={serviceItems(locale)} />
+      <SiteNavLink href={L('/projects')} label={n.work} />
+      <SiteNavLink href={L('/contact')} label={n.contact} />
       {drawer ? (
         <>
-          <SiteNavLink href={L('/solutions')} label={d.nav.solutions} />
-          <SiteNavLink href={L('/about')} label={d.nav.company} />
-          <SiteNavLink href={L('/engineering-process')} label={label(locale, 'العملية الهندسية', 'Engineering process')} />
-          <SiteNavLink href={L('/start-project')} label={label(locale, 'أداة بناء المشروع', 'Project Builder')} />
-          <SiteNavLink href={L('/support')} label={label(locale, 'الدعم', 'Support')} />
+          <span className="drawer-rule" aria-hidden="true" />
+          <SiteNavLink href={L('/about')} label={n.about} />
+          <SiteNavLink href={L('/business/developers')} label={n.dev} />
+          <SiteNavLink href={L('/business/contractors')} label={n.contr} />
+          <SiteNavLink href={L('/start-project')} label={n.start} />
+          <SiteNavLink href={L('/support')} label={n.support} />
         </>
       ) : null}
     </>
@@ -76,48 +88,40 @@ export function SiteHeader({ locale }: { locale: Locale }) {
   );
 }
 
-export function SiteFooter({ locale, publicRelease = false }: { locale: Locale; publicRelease?: boolean }) {
-  const d = t(locale);
-  const w = wave(locale);
+export function SiteFooter({ locale }: { locale: Locale; publicRelease?: boolean }) {
+  const c = SITE_COPY[locale];
   const L = (p: string) => `/${locale}${p}`;
+  const columns: Array<{ title: string; links: Array<[string, string]> }> = [
+    { title: c.foot.c1, links: [[c.nav.smart, '/services/smart-home-automation'], [c.nav.ctrl, '/products'], [c.nav.pk, '/smart-home/packages'], ['16R', '/products/16r'], ['4R', '/products/4r'], ['6R', '/products/6r']] },
+    { title: c.foot.c2, links: serviceItems(locale).map((item) => [item.title, item.href] as [string, string]) },
+    { title: c.foot.c3, links: [[c.nav.about, '/about'], [c.nav.work, '/projects'], [c.nav.dev, '/business/developers'], [c.nav.contr, '/business/contractors'], [c.nav.start, '/start-project']] },
+  ];
   return (
     <footer className="footer">
-      <div className="wrap footer-top">
-        <Link className="brand footer-brand" href={L('')} aria-label={label(locale, 'OTONOM — الصفحة الرئيسية', 'OTONOM — home')}>
-          <BrandLogo className="brand-logo brand-logo-footer" variant="primary-dark" decorative />
-        </Link>
-        <div className="footer-contact">
-          <a href={telHref()} dir="ltr" className="footer-phone">{PHONE_DISPLAY}</a>
-          <a href={whatsappHref(bookVisitMessage(locale))} {...EXTERNAL_LINK}>{label(locale, 'واتساب', 'WhatsApp')}</a>
-          <LanguageLink locale={locale} />
-        </div>
-      </div>
       <div className="wrap footer-grid">
-        <nav aria-label={label(locale, 'الصفحات الرئيسية', 'Main pages')}>
-          <Link href={L('')}>{label(locale, 'الرئيسية', 'Home')}</Link>
-          <Link href={L('/products')}>{label(locale, 'الكنترولرات', 'Controllers')}</Link>
-          <Link href={L('/smart-home/packages')}>{label(locale, 'الباقات', 'Packages')}</Link>
-          <Link href={L('/contact')}>{label(locale, 'تواصل معنا', 'Contact')}</Link>
-          <Link href={L('/projects')}>{w.nav.work}</Link>
-        </nav>
-        <nav aria-label={label(locale, 'الخدمات', 'Services')}>
-          <Link href={L('/services')}>{w.nav.services}</Link>
-          {w.services.map((item) => <Link href={L(item.href)} key={item.href}>{item.title}</Link>)}
-        </nav>
-        <nav aria-label={label(locale, 'الشركة والدعم', 'Company and support')}>
-          <Link href={L('/solutions')}>{w.nav.solutions}</Link>
-          <Link href={L('/about')}>{w.nav.company}</Link>
-          <Link href={L('/engineering-process')}>{label(locale, 'العملية الهندسية', 'Engineering process')}</Link>
-          <Link href={L('/build-with-us')}>{w.nav.build}</Link>
-          <Link href={L('/start-project')}>{label(locale, 'أداة بناء المشروع', 'Project Builder')}</Link>
-          <Link href={L('/support')}>{d.nav.support}</Link>
-          <Link href={L('/legal/privacy')}>{d.footer.legal}</Link>
-          {!publicRelease && <Link href={L('/preview')}>{d.footer.preview}</Link>}
+        {columns.map((column) => (
+          <nav aria-label={column.title} key={column.title}>
+            <strong>{column.title}</strong>
+            {column.links.map(([text, href]) => <Link href={L(href)} key={href}>{/^\d+R$/.test(text) ? <bdi dir="ltr">{text}</bdi> : text}</Link>)}
+          </nav>
+        ))}
+        <nav aria-label={c.foot.c4} className="footer-contact-col">
+          <strong>{c.foot.c4}</strong>
+          <a href={telHref()} className="footer-phone"><bdi dir="ltr">{PHONE_DISPLAY}</bdi></a>
+          <p className="footer-address"><Bidi text={ADDRESS[locale]} locale={locale} /></p>
+          <a href={whatsappHref(bookVisitMessage(locale))} {...EXTERNAL_LINK}>{c.foot.wa}</a>
+          <Link href={L('/contact')}>{c.nav.contact}</Link>
+          <Link href={L('/support')}>{c.nav.support}</Link>
         </nav>
       </div>
       <div className="wrap footer-bottom">
-        <span dir="ltr" className="footer-copy">© 2026 OTONOM</span>
-        <span>{publicRelease ? label(locale, 'موقع معلومات عام · التجارة والضمان الإلكتروني غير مفعّلين', 'Public information site · commerce and online warranty are disabled') : label(locale, 'معاينة محمية · لا بيع عام', 'Protected preview · no public selling')}</span>
+        <Link className="brand footer-brand" href={L('')} aria-label={label(locale, 'OTONOM — الصفحة الرئيسية', 'OTONOM — home')}>
+          <BrandLogo className="brand-logo brand-logo-footer" variant="primary-dark" decorative />
+        </Link>
+        <div className="footer-bottom-end">
+          <LanguageLink locale={locale} />
+          <span dir="ltr" className="footer-copy">© 2026 OTONOM</span>
+        </div>
       </div>
     </footer>
   );

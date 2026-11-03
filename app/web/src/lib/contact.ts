@@ -12,6 +12,9 @@ const WHATSAPP_NUMBER = '201090721847';
 /** wa.me links are capped so a long builder brief never produces an unwieldy URL. */
 export const WHATSAPP_MESSAGE_MAX = 1500;
 
+/** Public address (owner decision, DR-106): footer Contact column and the Contact page. */
+export const ADDRESS = { ar: 'كريتيفا دمنهور، مجمع الكليات', en: 'Creativa Damanhour, Colleges Complex' } as const;
+
 export const telHref = () => `tel:${PHONE_E164}`;
 
 export function whatsappHref(message: string): string {
@@ -50,3 +53,6 @@ export const contractorMessage = (locale: Locale) =>
 
 /** Shared attributes for every external WhatsApp link: new tab, no opener, no referrer data passed on. */
 export const EXTERNAL_LINK = { target: '_blank', rel: 'noopener noreferrer' } as const;
+
+/** Design v3.1 `talk` message ("…I'd like to know more about {x}."), used by service and product pages. */
+export const talkMessage = (locale: Locale, subject: string) => disciplineMessage(locale, subject);

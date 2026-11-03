@@ -1,0 +1,51 @@
+// Inline strings of the design v3.1 screens (section titles, buttons, notes), verbatim from the reference markup.
+// The structured copy (services, products, values, start chips, business) lives in site-copy.ts.
+
+export const INNER = {
+  en: {
+    svcTalk: 'Talk to us about your project', svcStart: 'Start your project',
+    whatWeDo: 'What we do', whereStart: 'Where are you starting?', howWeWork: 'How we work', questions: 'Questions',
+    ctrlEyebrow: 'OTONOM Controllers', bookVisit: 'Book a visit', seePackages: 'See packages', otherCtrl: 'Other controllers',
+    companyEyebrow: 'Company', companyH1: ['An ', 'Egyptian', ' engineering company connecting devices and software.'],
+    companyLead: 'OTONOM designs and installs smart homes with the 16R controller, and builds IoT and software solutions for people and businesses.',
+    howWeOperate: 'How we operate', ourDisciplines: 'Our disciplines', learnMore: 'Learn more',
+    workEyebrow: 'Our work', workH1: ['Behind every project, an ', 'engineering', ' story.'],
+    workEmpty: 'We’re preparing our first project stories. Until they’re up, look at our products or tell us about your project.', controllers: 'Controllers',
+    startEyebrow: 'Start your project', startH1: ['Start your ', 'project', ''], startLead: 'Pick from the options below and the message writes itself.',
+    message: 'Message', sendWa: 'Send on WhatsApp', startNote: 'Your answers aren’t saved by us. The message is sent from your own WhatsApp.',
+    bizEyebrow: 'For businesses', callUs: 'Call us', whatWeOffer: 'What we offer', howItGoes: 'How it goes',
+    lastUpdated: 'Last updated: 3 November 2026', supportLine: 'Support runs through the contact channel agreed in your project.', beforeContact: 'Before you contact us',
+    ready: 'Ready to start?', servicesEyebrow: 'Services', servicesH1: ['More than ', 'smart home', ''], servicesLead: 'OTONOM works across four engineering disciplines.',
+    smart: {
+      eyebrow: 'OTONOM Smart Home · 2026', h1: ['Your home, ', 'switched on.', ''],
+      lead: 'Lighting, locks, climate and safety sensors on one OTONOM controller, installed by our team and ready for Amazon Alexa.',
+      howItWorks: 'How it works', explore: 'Explore controllers', meet: ['Meet the ', 'controllers', ''], allControllers: 'All controllers', smartController: 'Smart controller',
+      alexaTitle: 'Every package works with Amazon Alexa.',
+      alexaBody: 'Alexa, an IR remote and a gas sensor come in all three packages, alongside the electrical panel and wiring.',
+      steps: [['Book a visit', 'Send us your details and the package you’re interested in.'], ['Pick your package', 'Premium, Plus or Essential, based on what your home needs.'], ['We install', 'Our team fits the controller, panel and wiring.'], ['Control it', 'Run your home by voice with Amazon Alexa or with the IR remote.']],
+    },
+  },
+  ar: {
+    svcTalk: 'كلّمنا عن مشروعك', svcStart: 'ابدأ مشروعك',
+    whatWeDo: 'بنعمل إيه', whereStart: 'بتبدأ منين؟', howWeWork: 'إزاي بنشتغل', questions: 'أسئلة متكررة',
+    ctrlEyebrow: 'كنترولرات OTONOM', bookVisit: 'احجز زيارة', seePackages: 'عرض الباقات', otherCtrl: 'الكنترولرات التانية',
+    companyEyebrow: 'الشركة', companyH1: ['شركة هندسية ', 'مصرية', ' بتربط الأجهزة بالبرمجيات.'],
+    companyLead: 'OTONOM بتصمّم وتركّب المنزل الذكي بكنترولر 16R، وبتطوّر حلول إنترنت الأشياء والبرمجيات للأفراد والشركات.',
+    howWeOperate: 'بنشتغل إزاي', ourDisciplines: 'تخصصاتنا', learnMore: 'اعرف أكتر',
+    workEyebrow: 'أعمالنا', workH1: ['وراء كل مشروع، حكاية ', 'هندسية', ''],
+    workEmpty: 'بنجهّز أول قصص مشاريعنا. لحد ما تنزل، اتفرّج على منتجاتنا أو كلّمنا عن مشروعك.', controllers: 'الكنترولرات',
+    startEyebrow: 'ابدأ مشروعك', startH1: ['ابدأ ', 'مشروعك', ''], startLead: 'اختار من الاختيارات تحت، والرسالة هتتكتب لوحدها.',
+    message: 'الرسالة', sendWa: 'ابعت على واتساب', startNote: 'إجاباتك ما بتتحفظش عندنا، الرسالة بتتبعت من واتساب بتاعك.',
+    bizEyebrow: 'للشركات', callUs: 'كلّمنا', whatWeOffer: 'بنقدّم إيه', howItGoes: 'إزاي بنمشي',
+    lastUpdated: 'آخر تحديث: 3 نوفمبر 2026', supportLine: 'الدعم بيكون من خلال قناة التواصل اللي اتفقنا عليها في مشروعك.', beforeContact: 'قبل ما تكلّمنا',
+    ready: 'جاهز نبدأ؟', servicesEyebrow: 'الخدمات', servicesH1: ['أكتر من ', 'منزل ذكي', ''], servicesLead: 'OTONOM بتشتغل في أربع تخصصات هندسية.',
+    smart: {
+      eyebrow: 'OTONOM Smart Home · 2026', h1: ['بيتك، شغّال ', 'بذكاء.', ''],
+      lead: 'الإضاءة والأقفال والتكييف وحساسات الأمان على كنترولر OTONOM واحد، يركّبه فريقنا وجاهز للعمل مع Amazon Alexa.',
+      howItWorks: 'إزاي بنشتغل', explore: 'استكشف الكنترولرات', meet: ['تعرّف على ', 'الكنترولرات', ''], allControllers: 'كل الكنترولرات', smartController: 'كنترولر ذكي',
+      alexaTitle: 'كل الباقات تعمل مع Amazon Alexa.',
+      alexaBody: 'تشمل الباقات الثلاث Alexa وريموت IR وحساس غاز، بالإضافة إلى لوحة الكهرباء والأسلاك.',
+      steps: [['احجز زيارة', 'ابعت لنا بياناتك والباقة اللي مهتم بيها.'], ['اختار باقتك', 'Premium أو Plus أو Essential حسب احتياج بيتك.'], ['بنركّب', 'فريقنا بيركّب الكنترولر ولوحة الكهرباء والأسلاك.'], ['اتحكّم', 'شغّل بيتك بصوتك مع Amazon Alexa أو بريموت IR.']],
+    },
+  },
+} as const;

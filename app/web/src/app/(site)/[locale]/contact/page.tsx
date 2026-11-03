@@ -4,6 +4,7 @@ import { isLocale, type Locale } from '@/lib/i18n.ts';
 import { pageMetadata } from '@/lib/seo.ts';
 import { smartHomePackage } from '@/lib/smart-home-packages.ts';
 import { ContactBooking } from '@/components/ContactBooking.tsx';
+import { ADDRESS } from '@/lib/contact.ts';
 import { SwashText } from '@/components/v2.tsx';
 import { Bidi } from '@/components/bidi.tsx';
 
@@ -37,6 +38,7 @@ export default async function ContactPage({ params, searchParams }: P) {
           <span className="v2-eyebrow">{copy.eyebrow}</span>
           <h1><SwashText text={copy.title} word={copy.swash} locale={locale} /></h1>
           <p className="v2-lead"><Bidi text={copy.body} locale={locale} /></p>
+          <p className="v3-address" data-testid="contact-address"><Bidi text={ADDRESS[locale]} locale={locale} /></p>
         </div>
         <ContactBooking locale={locale} initialPackage={initialPackage} />
       </section>
