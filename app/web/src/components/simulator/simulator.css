@@ -1,6 +1,7 @@
 /* Design v4 "12 Simulator" (/try only). Loaded with the simulator client component, so no other page ships it.
    Simulator-only state colours (DR-111): warm #FFF1CF / #FFE3A3 / #FFD98A, heater #FFC08A, night tile #1B3350,
-   gas #C62828 / #FDE2E2. Everything else uses the v2 tokens. Small text is #0B70B7, targets are >= 44px. */
+   gas #C62828 / #FDE2E2. Everything else uses the v2 tokens. Locked (Premium-only) items are dimmed with a muted
+   colour (>= 4.5:1) instead of the design's 50% opacity, which failed WCAG contrast. Small text is #0B70B7, targets are >= 44px. */
 .sim {
   --sim-warm-1: #fff1cf;
   --sim-warm-2: #ffe3a3;
@@ -132,7 +133,8 @@ html[lang='en'] .sim-room-name { font-family: var(--font-english); font-weight: 
 .sim-marks { position: relative; height: 52px; margin: 8px 10px 0; }
 .sim-mark { position: absolute; top: 0; display: flex; align-items: center; gap: 6px; white-space: nowrap; font-size: 13px; font-weight: 600; }
 .sim-mark[data-row='2'] { top: 28px; }
-.sim-mark[data-locked='true'] { opacity: .5; }
+.sim-mark[data-locked='true'] { color: #3d5266; }
+.sim-house[data-night='true'] .sim-mark[data-locked='true'] { color: var(--v2-lightblue); }
 .sim-mark-time { font-weight: 700; }
 .sim-mark-badge { background: var(--v2-ice); border: 1px solid var(--v2-navy); border-radius: 9999px; padding: 0 8px; font-size: 11px; font-weight: 700; color: var(--v2-navy); }
 .sim-range { width: 100%; margin: 0; height: 44px; accent-color: var(--v2-sky); cursor: pointer; }
@@ -183,7 +185,8 @@ html[lang='en'] .sim-routine-head h4 { font-family: var(--font-display-en); font
 .sim-trig { line-height: 1.6; }
 .sim-acts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .sim-act { display: flex; align-items: center; gap: 10px; font-size: 15px; line-height: 1.5; }
-.sim-act[data-locked='true'] { opacity: .5; }
+.sim-act[data-locked='true'] { color: #5a6b7e; }
+.sim-act[data-locked='true'] .sim-dot { border-color: #8a97a8; }
 .sim-act-text { flex: 1; }
 .sim-dot { width: 12px; height: 12px; flex: none; border-radius: 50%; border: 1px solid var(--v2-navy); background: #fff; transition: background .3s ease; }
 .sim-act[data-done='true'] .sim-dot { background: var(--v2-sky); }
