@@ -42,6 +42,8 @@ async function main() {
         await page.reducedMotion();
         await page.goto(`/${locale}/projects`);
         await page.waitHydrated('#project-search');
+        // Lazy images load when a visitor reaches them; bring the section into view before checking them.
+        await page.eval(`document.querySelector('.pf-product')?.scrollIntoView({ block: 'start', behavior: 'instant' })`);
         await page.waitFor(`[...document.querySelectorAll('.pf-product img')].every((image) => image.complete && image.naturalWidth > 0)`, 20_000, 'portfolio product images');
         const facts = await page.eval<any>(`({ h1: document.querySelectorAll('main h1').length, cards: document.querySelectorAll('[data-project]').length, overflow: document.documentElement.scrollWidth > innerWidth, lang: document.documentElement.lang, dir: document.documentElement.dir, images: [...document.querySelectorAll('.pf-product img')].every(i=>i.complete&&i.naturalWidth>0), active: document.querySelector('.nav-desktop a[href="/${locale}/projects"]')?.getAttribute('aria-current') })`);
         add(`${locale}@${width}:page`, facts.h1 === 1 && facts.cards === 0 && facts.lang === locale && facts.dir === (locale === 'ar' ? 'rtl' : 'ltr'), facts);
