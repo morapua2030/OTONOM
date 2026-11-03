@@ -22,7 +22,7 @@ Do not treat any open item as agreed. Ask only about the items relevant to the t
 | 16 | Production database plan: no migrations expected; read-only identity and migration re-check (G04) | `PROPOSED` (D8-D) | G04/G15 | BO and ENG |
 | 17 | Performance budgets for the release (proposal in `RELEASE_CHECKLIST.md`) | `PROPOSED` (D8-D) | Post-release acceptance | BO |
 | 18 | Monitoring minimum (proposal: scheduled GitHub Actions page check, no new vendor) | `PROPOSED` (D8-D) | Post-release watch | BO |
-| 19 | Privacy page text and whether to publish one verified contact channel | `PROPOSED` (D8-D) | Public release content | BO and LEG |
+| 19 | Privacy page text (still open). Contact channel: phone/WhatsApp `RESOLVED` by DR-101; address and social links still not provided | `PARTIAL` | Public release content | BO and LEG |
 | 20 | Legacy `public/brand/otonom-logo.png` (unused, still served): keep or retire | `PROPOSED` (D8-D) | Asset hygiene | BO |
 
 ## Resolved
@@ -31,3 +31,4 @@ Do not treat any open item as agreed. Ask only about the items relevant to the t
 |---|---|
 | R16 in the package brochure vs the OTONOM 16R controller | `RESOLVED` — DR-094: R16 is the 16R controller |
 | How D6 commits reach review | `RESOLVED` — DR-096: fast-forward onto PR #16 after the pre-push audit and full QA; running it is S4 |
+| Visual direction, home page, contact channel, package claims, 16R display name, fonts | `RESOLVED` — DR-099–DR-104 (owner chat 2026-11-03); implementation is D8-C |

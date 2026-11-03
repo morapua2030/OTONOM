@@ -91,7 +91,7 @@ Owner abbreviations:
 
 **Gap note — DR-064–DR-091:** recorded in the owner's private local register (security, hosting and release-operation decisions). They are intentionally not published (see DR-071/DR-074). This is a numbering note, not a decision.
 
-## 3a. Owner decisions recorded 2026-11-03
+## 3a. Owner decisions recorded 2026-11-03 (DR-092–DR-104)
 | ID | Topic | Decision / position | Status | Owner | Evidence required | Impact | Next action | Approved at |
 |---|---|---|---|---|---|---|---|---|
 | DR-092 | AI continuity | Planning with Claude in chat and execution by Claude Code/Codex in Antigravity on `D:\otonom` continue without resetting scope, architecture, brand or release rules. Supersedes DR-061 for this scope | APPROVED (owner) | BO | — | Agent workflow | Keep `docs/ai/` current | Owner chat, recorded 2026-11-03; original date unverified |
@@ -101,11 +101,17 @@ Owner abbreviations:
 | DR-096 | PR strategy | D6 commits are added to PR #16 (one combined review PR) by fast-forward only, after the pre-push audit and full QA. No rebase or force | APPROVED (owner) | BO | Pre-push audit + full QA | Git / PR | S3 then S4 | Owner chat, recorded 2026-11-03; original date unverified |
 | DR-097 | Product truthfulness | Public product copy uses confirmed facts only (names, channel counts, genuine images, package composition). Technical specs stay "awaiting approval" until the owner or engineering supply verified data | APPROVED (owner) | BO | Datasheets / engineering data | Product copy | Owner supplies verified specs (S5) | Owner chat, recorded 2026-11-03; original date unverified |
 | DR-098 | D4 case-study content | Deferred. The portfolio framework stays live with zero entries until materials and written client permissions exist | APPROVED (owner) | BO | Materials + written client permission | Portfolio | None until materials exist | Owner chat, recorded 2026-11-03; original date unverified |
+| DR-099 | Visual design v2 | The owner's Claude Design v2 look (tokens, typography, components) becomes the site-wide UI style. The Hybrid 03 logo and brand asset files are unchanged and used byte-for-byte. Existing routes and features are preserved (option A). Supersedes the Hybrid 03 page styling in DR-093 only; the DR-093 release freeze is unchanged | APPROVED (owner) | BO | Team-lead review of the v2 Preview; `validate_brand.py` PASS | All public pages | D8-C plan, then batches C1–C8 | Owner chat 2026-11-03 |
+| DR-100 | Home page | Home is "Home (mix)": engineering company and smart home together, smart home first, with the 16R controller as the hero product | APPROVED (owner) | BO | — | `/` in both locales | D8-C C2 | Owner chat 2026-11-03 |
+| DR-101 | Public contact channel | Phone/WhatsApp +20 109 072 1847 is published on the site. "Book a visit" opens WhatsApp with a prefilled message. There is no web form, no backend and no storage for these links | APPROVED (owner) | BO | — | Header, footer, home, contact, packages | D8-C C1/C5 (`lib/contact.ts`) | Owner chat 2026-11-03 |
+| DR-102 | Package and product claims | Owner-confirmed facts: every package includes Amazon Alexa and voice control works with the controllers; the controllers control lighting, AC and devices; OTONOM installs; installation is included in the package price. Specs beyond channel counts stay "awaiting approval" (DR-097) | APPROVED (owner) | BO | — | Home, packages, controllers copy | D8-C C2–C4 | Owner chat 2026-11-03 |
+| DR-103 | 16R display name | The package item is displayed as "16R Smart Controller" everywhere; the brochure name "R16" is the same product (DR-094) | APPROVED (owner) | BO | — | Package data and copy | D8-C data batch | Owner chat 2026-11-03 |
+| DR-104 | Fonts | Inter (English body), DM Serif Display (English headings) and IBM Plex Sans Arabic (Arabic), self-hosted with no runtime request to a font provider and no CSP change | APPROVED (owner) | BO | Build output serves fonts from the site origin | Typography | D8-C C1 | Owner chat 2026-11-03 |
 
 ## 4. Status summary
 | Status | Count | Decisions |
 |---|---|---|
-| APPROVED (incl. "in principle") | 34 | DR-001–006, 008–012, 015, 017, 021, 023, 025, 027–029, 035, 038, 039, 040, 055, 060, 061, 063, 092–098 |
+| APPROVED (incl. "in principle") | 40 | DR-001–006, 008–012, 015, 017, 021, 023, 025, 027–029, 035, 038, 039, 040, 055, 060, 061, 063, 092–104 |
 | CONFIRMED_BY_USER | 9 | DR-013, 014, 018, 019, 020, 026, 030, 031, 033 |
 | PROPOSED | 13 | DR-007, 037, 041 (owner-preferred), 045, 046, 047, 048, 049, 050, 051, 052, 053, 058 |
 | OPEN | 5 | DR-016, 036, 042, 044, 057 |
@@ -113,9 +119,11 @@ Owner abbreviations:
 | DEFERRED | 2 | DR-022, 034 |
 | VERIFIED_BY_AGENT | 1 | DR-056 |
 
-Total: 70 published decisions (DR-001–063 and DR-092–098; updated 2026-11-03). DR-064–091 are private and not counted here.
+Total: 76 published decisions (DR-001–063 and DR-092–104; updated 2026-11-03). DR-064–091 are private and not counted here.
 
 ## Change log
+2.3-draft, 2026-11-03: DR-099–DR-104 added from owner chat (design v2, home, contact channel, confirmed package claims, 16R display name, fonts). DR-099 supersedes only the Hybrid 03 page styling in DR-093.
+
 2.2-draft, 2026-11-03: DR-092–DR-098 added from owner chat (recorded 2026-11-03). Gap note added for the private DR-064–DR-091. Earlier entries are unchanged.
 
 2.1-draft, 2026-10-24: DR-063 added from explicit owner approval; no named technical approver is recorded or invented.
