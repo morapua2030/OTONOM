@@ -62,7 +62,7 @@ export function PackageComparison({ locale }: { locale: Locale }) {
     <>
       <h3 className="package-compare-title">{caption}</h3>
       <p className="package-compare-hint" aria-hidden="true">{tx(locale, 'اسحب الجدول لعرض باقي الباقات', 'Swipe the table to see all packages')}</p>
-      <div className="package-compare-scroll" role="region" aria-label={caption} tabIndex={0} data-testid="package-comparison">
+      <div className="package-compare-scroll table-scroll" role="region" aria-label={caption} tabIndex={0} data-testid="package-comparison">
         <table className="data package-compare">
           <caption className="sr-only">{caption}</caption>
           <thead>
