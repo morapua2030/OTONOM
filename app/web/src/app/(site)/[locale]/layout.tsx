@@ -7,7 +7,7 @@ import '../v2.css';
 import { fontVariables } from '../fonts.ts';
 import { dirOf, isLocale, t } from '@/lib/i18n.ts';
 import { SiteHeader, SiteFooter } from '@/components/site.tsx';
-import { Bidi, ltrIsolate } from '@/components/bidi.tsx';
+import { Bidi } from '@/components/bidi.tsx';
 import { publicMarketingOnly } from '@/lib/deployment.ts';
 import { SITE_URL } from '@/lib/server.ts';
 
@@ -17,7 +17,8 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   return {
     // Absolute canonical, hreflang and social URLs on the configured site origin (D8-A carry-over).
     metadataBase: new URL(SITE_URL),
-    title: { default: 'OTONOM', template: locale === 'ar' ? `%s — ${ltrIsolate('OTONOM')}` : '%s — OTONOM' },
+    // Plain text: document titles and meta text carry no bidi control characters (D8-C v5); isolation is for the body.
+    title: { default: 'OTONOM', template: '%s — OTONOM' },
     robots: { index: publicRelease, follow: publicRelease },
     icons: { icon: '/brand/otonom/assets/icons/favicon.ico', apple: '/brand/otonom/assets/icons/app-icon-concept-navy-1024.png' },
     other: { 'content-language': locale },
