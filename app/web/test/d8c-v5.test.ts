@@ -5,7 +5,6 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { metaText, pageMetadata } from '../src/lib/seo.ts';
 import { NOT_FOUND_TITLE, notFoundTitle } from '../src/lib/not-found.ts';
-import { PRELOAD_FONT } from '../src/lib/fonts.ts';
 import { contentSecurityPolicy } from '../src/lib/csp.ts';
 
 const read = (path: string) => readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');
@@ -61,7 +60,7 @@ test('footer language link says "English" / "عربي" as in the design; the hea
   assert.match(site, /<div className="header-actions">[\s\S]*?<LanguageLink locale=\{locale\} \/>/);
 });
 
-test('font files: woff2 only, names carry their own SHA-256 prefix; English preloads its LCP heading face, Arabic nothing', () => {
+test('font files: woff2 only, names carry their own SHA-256 prefix, every file declared; no font preload (measured)', () => {
   const dir = new URL('../public/fonts/', import.meta.url);
   const files = readdirSync(dir);
   assert.ok(files.length === 10 && files.every((f) => f.endsWith('.woff2')), files.join(','));
@@ -71,15 +70,10 @@ test('font files: woff2 only, names carry their own SHA-256 prefix; English prel
   }
   const css = read('app/(site)/fonts.css');
   for (const f of files) assert.ok(css.includes(`url('/fonts/${f}')`), `${f} is declared`);
-  // Decision by measurement (owner rule 2026-11-04): English LCP is the DM Serif Display H1; preloading the Arabic H1
-  // face made Arabic LCP worse, so Arabic pages preload nothing.
-  assert.deepEqual(Object.keys(PRELOAD_FONT), ['en']);
-  assert.match(PRELOAD_FONT.en ?? '', /^\/fonts\/dm-serif-display-latin-400\.[0-9a-f]{10}\.woff2$/);
-  assert.ok(css.includes(`src: url('${PRELOAD_FONT.en}') format('woff2')`), 'the preload URL is the @font-face src');
-  assert.ok(existsSync(new URL(`../public${PRELOAD_FONT.en}`, import.meta.url)));
+  // Owner rule 2026-11-04: the LCP-face preload was measured against the v4 baseline and reverted (English LCP not
+  // reliably better); the subset files and the immutable caching stay.
   const layout = read('app/(site)/[locale]/layout.tsx');
-  assert.equal((layout.match(/rel="preload"/g) ?? []).length, 1, 'at most one font preload per page');
-  assert.match(layout, /\{PRELOAD_FONT\[locale\] \? <link rel="preload" href=\{PRELOAD_FONT\[locale\]\} as="font" type="font\/woff2" crossOrigin="anonymous" \/> : null\}/);
+  assert.doesNotMatch(layout, /rel="preload"|as="font"/);
   assert.doesNotMatch(layout, /next\/font/);
   assert.match(layout, /import '\.\.\/fonts\.css';/);
 });
