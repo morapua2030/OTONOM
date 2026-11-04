@@ -60,7 +60,7 @@ test('host role: only the exact admin host is "admin"; everything else, includin
   assert.equal(hostRole(ADMIN_HOST, { ...PROD, OTONOM_ADMIN_URL: '' }), 'public');
 });
 
-test('public host: marketing pages only; /admin and /staff go to the admin host; /api and private pages 404 except the two public endpoints', () => {
+test('public host: marketing pages only; /admin and /staff go to the admin host; /api and private pages 404 except the allow-listed endpoints', () => {
   assert.deepEqual(decide('GET', '/ar', PUBLIC_HOST), { kind: 'pass', noindex: false });
   assert.deepEqual(decide('GET', '/en/try', PUBLIC_HOST), { kind: 'pass', noindex: false });
   assert.deepEqual(decide('GET', '/admin/collections/leads', PUBLIC_HOST, PROD, '?x=1'), { kind: 'redirect', to: 'https://otonom-admin.vercel.app/admin/collections/leads?x=1', status: 307 });
@@ -76,7 +76,9 @@ test('public host: marketing pages only; /admin and /staff go to the admin host;
   }
   assert.equal(isPublicHostEndpoint('POST', '/api/e'), true);
   assert.equal(isPublicHostEndpoint('GET', '/api/e'), false);
-  assert.deepEqual(PUBLIC_HOST_ENDPOINTS.map((e) => `${e.method} ${e.path}`), ['POST /api/e', 'POST /api/booking']);
+  assert.deepEqual(PUBLIC_HOST_ENDPOINTS.map((e) => `${e.method} ${e.path}`), ['POST /api/e', 'POST /api/booking', 'GET /api/cron/daily']);
+  assert.deepEqual(decide('GET', '/api/cron/daily', PUBLIC_HOST), { kind: 'pass', noindex: true });
+  assert.deepEqual(decide('POST', '/api/cron/daily', PUBLIC_HOST), { kind: 'not-found' });
 });
 
 test('admin host: staff, admin, API and static files are served with noindex; public pages redirect to /admin', () => {
