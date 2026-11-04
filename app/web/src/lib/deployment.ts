@@ -67,11 +67,13 @@ export function hostRole(host: string | null | undefined, env: NodeJS.ProcessEnv
 
 /**
  * The only application endpoints the public host serves in marketing-only mode (owner, 2026-11-04): the privacy-first
- * metrics counter and the booking request. Exact method + path; everything else under /api stays closed there.
+ * metrics counter and the booking request, plus the scheduled job that Vercel Cron calls on the production URL (it
+ * answers 401 without the CRON_SECRET bearer token). Exact method + path; everything else under /api stays closed.
  */
-export const PUBLIC_HOST_ENDPOINTS: ReadonlyArray<{ method: 'POST'; path: string }> = [
+export const PUBLIC_HOST_ENDPOINTS: ReadonlyArray<{ method: 'POST' | 'GET'; path: string }> = [
   { method: 'POST', path: '/api/e' },
   { method: 'POST', path: '/api/booking' },
+  { method: 'GET', path: '/api/cron/daily' },
 ];
 export const isPublicHostEndpoint = (method: string, pathname: string) =>
   PUBLIC_HOST_ENDPOINTS.some((e) => e.method === method && e.path === pathname);

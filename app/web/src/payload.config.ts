@@ -6,6 +6,7 @@ import { collections } from './collections/index.ts';
 import { Settings } from './globals/Settings.ts';
 import { siteContentGlobals } from './collections/SiteContent.ts';
 import { endpoints } from './endpoints/index.ts';
+import { finalReleaseEndpoints } from './endpoints/final-release.ts';
 import { cmsConnString, payloadSecret, SITE_URL, trustedCsrfOrigins } from './lib/server.ts';
 import { protectedAdminOrigin, publicMarketingOnly } from './lib/deployment.ts';
 
@@ -40,7 +41,7 @@ export default buildConfig({
   },
   collections,
   globals: [Settings, ...siteContentGlobals],
-  endpoints,
+  endpoints: [...endpoints, ...finalReleaseEndpoints],
   // expected business-rule refusals are not server faults (see lib/errors.ts BusinessRuleError)
   // custom error name (not in Payload's ErrorName union) — matched at runtime by err.name in logError
   loggingLevels: { BusinessRuleError: 'info' } as Record<string, 'info'>,
