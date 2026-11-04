@@ -8,7 +8,7 @@ import '../v2.css';
 import { dirOf, isLocale, t } from '@/lib/i18n.ts';
 import { SiteHeader, SiteFooter } from '@/components/site.tsx';
 import { Bidi } from '@/components/bidi.tsx';
-import { PRIMARY_FONT } from '@/lib/fonts.ts';
+import { PRELOAD_FONT } from '@/lib/fonts.ts';
 import { publicMarketingOnly } from '@/lib/deployment.ts';
 import { SITE_URL } from '@/lib/server.ts';
 
@@ -34,8 +34,8 @@ export default async function LocaleLayout({ children, params }: { children: Rea
   return (
     <html lang={locale} dir={dirOf(locale)}>
       <body>
-        {/* Only this locale's body face is preloaded (same URL as its @font-face src in fonts.css); React hoists it into <head>. */}
-        <link rel="preload" href={PRIMARY_FONT[locale]} as="font" type="font/woff2" crossOrigin="anonymous" />
+        {/* At most one font preload: the English LCP heading face (lib/fonts.ts); React hoists it into <head>. */}
+        {PRELOAD_FONT[locale] ? <link rel="preload" href={PRELOAD_FONT[locale]} as="font" type="font/woff2" crossOrigin="anonymous" /> : null}
         <a href="#main" className="skip">
           {locale === 'ar' ? 'انتقل إلى المحتوى' : 'Skip to content'}
         </a>

@@ -6,7 +6,7 @@
  * src/fonts/README.md). Family names, stacks and the metric-matched fallback faces are the ones next/font generated
  * before, so the rendering is unchanged. No unicode-range descriptor: with one, Chrome wrapped an Arabic paragraph
  * (text-wrap: pretty) differently, and browsers already download only the faces a page uses.
- * The primary face of each locale is preloaded by the locale layout (lib/fonts.ts).
+ * English pages preload their LCP heading face (DM Serif Display); Arabic pages preload nothing (lib/fonts.ts).
  */
 @font-face {
   font-family: 'inter';
