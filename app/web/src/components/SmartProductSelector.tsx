@@ -18,8 +18,8 @@ import {
   totalCircuits,
   type RoomType,
 } from '@/lib/product-selector.ts';
-import { packageText, SMART_HOME_PACKAGES } from '@/lib/smart-home-packages.ts';
-import { EXTERNAL_LINK, whatsappHref } from '@/lib/contact.ts';
+import { packageText, SMART_HOME_PACKAGES, type SmartHomePackage } from '@/lib/smart-home-packages.ts';
+import { BUILTIN_CONTACT, EXTERNAL_LINK, whatsappHref } from '@/lib/contact.ts';
 import { selectorMessage, selectorModel } from '@/lib/selector-message.ts';
 import { Bidi } from './bidi.tsx';
 
@@ -29,14 +29,14 @@ const CHANNEL_MIN = 1;
 const CHANNEL_MAX = 48;
 const CHANNEL_PRESETS = [4, 6, 16, 32, 48] as const;
 /** Largest package capacity (2 × 16R = 32): above it no single package covers the need. */
-const MAX_PACKAGE_CHANNELS = Math.max(...SMART_HOME_PACKAGES.map(packageChannelCapacity));
+const maxPackageChannels = (packages: readonly SmartHomePackage[]) => Math.max(...packages.map(packageChannelCapacity));
 
 type Mode = 'channels' | 'rooms';
 type RoomRow = { id: number; type: RoomType; circuits: number };
 
 /** Covering packages: names, controller quantities and capacities all come from the registries (no prices here). */
-function PackageGuidance({ locale, total }: { locale: Locale; total: number }) {
-  const packages = packagesCovering(total);
+function PackageGuidance({ locale, total, list }: { locale: Locale; total: number; list: readonly SmartHomePackage[] }) {
+  const packages = packagesCovering(total, list);
   if (packages.length === 0) return null;
   return (
     <section className="selector-packages" aria-labelledby="selector-packages-title" data-testid="selector-packages">
@@ -59,7 +59,8 @@ function PackageGuidance({ locale, total }: { locale: Locale; total: number }) {
 }
 
 /** Design v3 restyle of the D6 Smart Product Selector (DR-112): chips, white cards with navy borders, pills. Logic unchanged. */
-export function SmartProductSelector({ locale }: { locale: Locale }) {
+export function SmartProductSelector({ locale, packages: list = SMART_HOME_PACKAGES, contact = BUILTIN_CONTACT }: { locale: Locale; packages?: readonly SmartHomePackage[]; contact?: { whatsappE164: string } }) {
+  const MAX_PACKAGE_CHANNELS = maxPackageChannels(list);
   const [mode, setMode] = useState<Mode>('channels');
   const [channels, setChannels] = useState(4);
   const [rooms, setRooms] = useState<RoomRow[]>([{ id: 1, type: 'living', circuits: 1 }]);
@@ -76,7 +77,7 @@ export function SmartProductSelector({ locale }: { locale: Locale }) {
   const roomNames = roomControlNames(rooms, locale);
   const total = mode === 'channels' ? channels : roomTotal;
   const product = recommendController(total);
-  const packages = packagesCovering(total);
+  const packages = packagesCovering(total, list);
   const atRoomLimit = rooms.length >= MAX_ROOMS;
   const message = selectorMessage(locale, { channels: total, rooms: mode === 'rooms' ? rooms.length : null, model: selectorModel(locale, total) });
 
@@ -183,8 +184,8 @@ export function SmartProductSelector({ locale }: { locale: Locale }) {
             </div>
           </div>
         )}
-        <PackageGuidance locale={locale} total={total} />
-        <a className="btn selector-whatsapp" href={whatsappHref(message)} {...EXTERNAL_LINK} data-testid="selector-whatsapp">{tx(locale, 'ابعت على واتساب', 'Send on WhatsApp')}</a>
+        <PackageGuidance locale={locale} total={total} list={list} />
+        <a className="btn selector-whatsapp" href={whatsappHref(message, contact.whatsappE164)} {...EXTERNAL_LINK} data-testid="selector-whatsapp">{tx(locale, 'ابعت على واتساب', 'Send on WhatsApp')}</a>
         <p className="selector-caveat">{tx(locale, 'ده تقدير مبدئي، والمهندس بيأكد في الزيارة.', 'This is an initial estimate; the engineer confirms it at the visit.')}</p>
         <a className="selector-sim-link" href={`/${locale}/try`} data-testid="selector-sim-link">{tx(locale, 'جرّب بيتك الذكي ←', 'Try your smart home →')}</a>
       </div>

@@ -7,6 +7,7 @@ import { SwashText } from '@/components/v2.tsx';
 import { PRODUCT_REVIEW_NOTICE, localProductText } from '@/lib/products.ts';
 import { Bidi, isolateText } from '@/components/bidi.tsx';
 import { SmartProductSelector } from '@/components/SmartProductSelector.tsx';
+import { loadSiteContent } from '@/lib/site-content.ts';
 import { SIM_ENTRY } from '@/lib/simulator/copy.ts';
 
 export const dynamic = 'force-dynamic';
@@ -27,6 +28,7 @@ export default async function ProductsPage({ params }: P) {
   const { locale: value } = await params;
   if (!isLocale(value)) notFound();
   const locale = value as Locale;
+  const content = await loadSiteContent();
   return (
     <>
       <section className="v2-page-head products-intro">
@@ -44,7 +46,7 @@ export default async function ProductsPage({ params }: P) {
           <span className="v2-eyebrow">{locale === 'ar' ? 'اختار الكنترولر' : 'Pick a controller'}</span>
           <h2 id="product-selector-title">{locale === 'ar' ? 'محتاج كام قناة؟' : 'How many channels do you need?'}</h2>
         </div>
-        <SmartProductSelector locale={locale} />
+        <SmartProductSelector locale={locale} packages={content.packages} contact={{ whatsappE164: content.contact.whatsappE164 }} />
       </section>
     </>
   );
