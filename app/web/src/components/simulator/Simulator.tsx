@@ -80,6 +80,7 @@ export function Simulator({ locale, demo, content }: { locale: Locale; demo: Sim
   const boot = useRef<ReturnType<typeof initialState> | null>(null);
   if (!boot.current) boot.current = initialState(demo);
   const [s, setS] = useState<State>(boot.current.state);
+  const [teamOpen, setTeamOpen] = useState(false);
   const live = useRef(s);
   live.current = s;
   const nid = useRef(boot.current.nextId);
@@ -513,13 +514,17 @@ export function Simulator({ locale, demo, content }: { locale: Locale; demo: Sim
               )}
               <a className="btn sim-full sim-send" href={wa} {...EXTERNAL_LINK} data-testid="sim-whatsapp" onClick={() => simMetric('plan_sent')}>{B(U.sendWa)}</a>
               <button type="button" className="btn secondary sim-full" onClick={copyPlan} data-testid="sim-copy"><span aria-live="polite">{B(s.copied ? S.copied : S.copy)}</span></button>
+              {content?.booking ? (
+                <button type="button" className="btn secondary sim-full sim-team" aria-expanded={teamOpen} aria-controls="sim-team-panel" onClick={() => setTeamOpen((o) => !o)} data-testid="sim-team">{B(U.sendTeam)}</button>
+              ) : null}
               <p className="sim-small sim-estimate">{B(U.estimate)}</p>
             </div>
           </div>
         )}
-        {content?.booking && s.home ? (
-          <div className="sim-booking">
-            <BookingForm locale={locale} token={content.booking.token} packages={content.booking.packages} initialPackage={rc.eng ? 'unsure' : rc.pkg.toLowerCase()} source="simulator" plan={plan.text.slice(0, 900)} contact={content.contact ?? BUILTIN_CONTACT} privacyHref={content.booking.privacyHref} />
+        {content?.booking && has ? (
+          <div className="sim-booking" id="sim-team-panel" hidden={!teamOpen} data-testid="sim-booking">
+            <h3 id="sim-team-title" className="sim-booking-title">{B(U.sendTeam)}</h3>
+            <BookingForm locale={locale} token={content.booking.token} packages={content.booking.packages} initialPackage={rc.eng ? 'unsure' : rc.pkg.toLowerCase()} source="simulator" plan={plan.text.slice(0, 900)} contact={content.contact ?? BUILTIN_CONTACT} privacyHref={content.booking.privacyHref} labelledBy="sim-team-title" />
           </div>
         ) : null}
       </section>

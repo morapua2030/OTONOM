@@ -35,7 +35,7 @@ export type SimCopy = {
     dayNight: string; day: string; night: string; tapIcons: string; dayInHome: string; timeOfDay: string;
     gasTitle: string; gasAlarm: string; gasPhone: string; gasAck: string; demoOnly: string; alexaTry: string;
     routinesH: string; routinesSub: string; addLock: string;
-    homeType: string; roomsH: string; totalCh: string; extraCtrl: string; likedH: string; noLiked: string; sendWa: string; estimate: string;
+    homeType: string; roomsH: string; totalCh: string; extraCtrl: string; likedH: string; noLiked: string; sendWa: string; sendTeam: string; estimate: string;
     ready: string; bookVisit: string; callUs: string;
   };
 };
@@ -92,7 +92,7 @@ const AR: SimCopy = {
     dayNight: 'نهار ولا ليل', day: 'نهار', night: 'ليل', tapIcons: 'دوس على الأيقونات جوه كل أوضة.', dayInHome: 'يوم في بيتك', timeOfDay: 'وقت اليوم',
     gasTitle: 'OTONOM: تنبيه غاز في المطبخ', gasAlarm: 'إنذار عالي', gasPhone: 'إشعار على الموبايل', gasAck: 'تمام، اتعامل', demoOnly: 'ده عرض توضيحي، مش متوصل بأجهزة حقيقية.', alexaTry: 'جرّب أوامر Alexa',
     routinesH: 'روتينات تريّحك', routinesSub: 'أمثلة لروتينات بيظبطها فريقنا معاك', addLock: 'أضف القفل الذكي',
-    homeType: 'نوع البيت', roomsH: 'الأوض', totalCh: 'إجمالي القنوات', extraCtrl: 'كنترولرات إضافية', likedH: 'الروتينات اللي عجبتك', noLiked: 'دوس على القلب في أي روتين علشان يتضاف هنا.', sendWa: 'ابعت خطتك على واتساب', estimate: 'ده تقدير مبدئي، والمهندس بيأكد كل حاجة في الزيارة. التركيب مشمول في سعر الباقة.',
+    homeType: 'نوع البيت', roomsH: 'الأوض', totalCh: 'إجمالي القنوات', extraCtrl: 'كنترولرات إضافية', likedH: 'الروتينات اللي عجبتك', noLiked: 'دوس على القلب في أي روتين علشان يتضاف هنا.', sendWa: 'ابعت خطتك على واتساب', sendTeam: 'ابعت خطتك للفريق', estimate: 'ده تقدير مبدئي، والمهندس بيأكد كل حاجة في الزيارة. التركيب مشمول في سعر الباقة.',
     ready: 'جاهز نبدأ؟', bookVisit: 'احجز زيارة', callUs: 'كلّمنا',
   },
 };
@@ -149,7 +149,7 @@ const EN: SimCopy = {
     dayNight: 'Day or night', day: 'Day', night: 'Night', tapIcons: 'Tap the icons inside each room.', dayInHome: 'A day in your home', timeOfDay: 'Time of day',
     gasTitle: 'OTONOM: Gas alert in the kitchen', gasAlarm: 'Loud alarm', gasPhone: 'Phone notification', gasAck: 'OK, handled', demoOnly: 'This is a demo. It isn’t connected to real devices.', alexaTry: 'Try Alexa commands',
     routinesH: 'Routines that make life easier', routinesSub: 'Examples of routines our team sets up with you', addLock: 'Add the smart lock',
-    homeType: 'Home type', roomsH: 'Rooms', totalCh: 'Total channels', extraCtrl: 'Extra controllers', likedH: 'Routines you liked', noLiked: 'Tap the heart on any routine to add it here.', sendWa: 'Send your plan on WhatsApp', estimate: 'This is an initial estimate. The engineer confirms everything at the visit. Installation is included in the package price.',
+    homeType: 'Home type', roomsH: 'Rooms', totalCh: 'Total channels', extraCtrl: 'Extra controllers', likedH: 'Routines you liked', noLiked: 'Tap the heart on any routine to add it here.', sendWa: 'Send your plan on WhatsApp', sendTeam: 'Send your plan to the team', estimate: 'This is an initial estimate. The engineer confirms everything at the visit. Installation is included in the package price.',
     ready: 'Ready to start?', bookVisit: 'Book a visit', callUs: 'Call us',
   },
 };

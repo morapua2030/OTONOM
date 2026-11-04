@@ -52,6 +52,12 @@ export function bookVisitMessage(locale: Locale, packageId?: SmartHomePackageId 
   return tx(locale, `أهلًا OTONOM، عايز أحجز زيارة لباقة ${key}.`, `Hi OTONOM, I'd like to book a visit for the ${key} package.`);
 }
 
+/** After a booking request was sent from the site: the visitor can follow up on WhatsApp with the request number. */
+export function bookingFollowUpMessage(locale: Locale, ref?: string | null): string {
+  if (!ref) return tx(locale, 'أهلًا OTONOM، لسه باعت طلب حجز زيارة من الموقع.', 'Hi OTONOM, I just sent a visit request on the website.');
+  return tx(locale, `أهلًا OTONOM، لسه باعت طلب حجز زيارة من الموقع، رقم الطلب ${ref}.`, `Hi OTONOM, I just sent a visit request on the website, request number ${ref}.`);
+}
+
 export const disciplineMessage = (locale: Locale, title: string) =>
   tx(locale, `أهلًا OTONOM، عايز أعرف أكتر عن ${title}.`, `Hi OTONOM, I'd like to know more about ${title}.`);
 

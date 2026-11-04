@@ -591,12 +591,13 @@ export interface Lead {
   ref: string;
   name: string;
   phone: string;
-  area: string;
   package: 'premium' | 'plus' | 'essential' | 'unsure';
-  preferredTime?: string | null;
+  /**
+   * Optional note the visitor added (up to 500 characters)
+   */
   message?: string | null;
   /**
-   * Simulator plan the visitor chose to attach (text only)
+   * Simulator plan sent with the request (text only, attached automatically from the simulator)
    */
   plan?: string | null;
   source: 'contact' | 'simulator';
@@ -1152,9 +1153,7 @@ export interface LeadsSelect<T extends boolean = true> {
   ref?: T;
   name?: T;
   phone?: T;
-  area?: T;
   package?: T;
-  preferredTime?: T;
   message?: T;
   plan?: T;
   source?: T;

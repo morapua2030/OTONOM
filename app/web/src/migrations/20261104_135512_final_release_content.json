@@ -7069,24 +7069,12 @@
           "primaryKey": false,
           "notNull": true
         },
-        "area": {
-          "name": "area",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
         "package": {
           "name": "package",
           "type": "enum_leads_package",
           "typeSchema": "cms",
           "primaryKey": false,
           "notNull": true
-        },
-        "preferred_time": {
-          "name": "preferred_time",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
         },
         "message": {
           "name": "message",
@@ -7438,24 +7426,12 @@
           "primaryKey": false,
           "notNull": true
         },
-        "version_area": {
-          "name": "version_area",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
         "version_package": {
           "name": "version_package",
           "type": "enum__leads_v_version_package",
           "typeSchema": "cms",
           "primaryKey": false,
           "notNull": true
-        },
-        "version_preferred_time": {
-          "name": "version_preferred_time",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
         },
         "version_message": {
           "name": "version_message",

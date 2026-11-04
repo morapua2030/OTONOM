@@ -61,11 +61,18 @@ const PKG: Record<string, string> = { premium: 'Premium', plus: 'Plus', essentia
 const page = (title: string, body: string) =>
   `<!doctype html><html lang="ar" dir="rtl"><body style="font-family:Arial,sans-serif;color:#0b1f35"><main style="max-width:600px;margin:auto;padding:24px"><h1 style="color:#0066cc;font-size:22px">OTONOM</h1><h2 style="font-size:18px">${escapeHtml(title)}</h2>${body}</main></body></html>`;
 
-/** New-lead alert: name, phone, package, area and the admin link only. The subject carries only the reference. */
-export function leadAlertEmail(lead: { ref: string; name: string; phone: string; package: string; area: string; id: string | number }, adminOrigin: string) {
+const SOURCE: Record<string, string> = { contact: 'صفحة التواصل / Contact page', simulator: 'المحاكي / Simulator' };
+
+/**
+ * New-lead alert: name, phone, package, where it came from and the admin link only (the note and the plan stay in the
+ * admin; the e-mail only says whether there is one). The subject carries only the reference.
+ */
+export function leadAlertEmail(lead: { ref: string; name: string; phone: string; package: string; source: string; hasNote?: boolean; hasPlan?: boolean; id: string | number }, adminOrigin: string) {
   const link = `${adminOrigin}/admin/collections/leads/${encodeURIComponent(String(lead.id))}`;
   const subject = `طلب حجز جديد ${lead.ref} — New booking request`;
-  const rows: Array<[string, string]> = [['الاسم / Name', lead.name], ['الموبايل / Mobile', lead.phone], ['الباقة / Package', PKG[lead.package] ?? lead.package], ['المنطقة / Area', lead.area]];
+  const rows: Array<[string, string]> = [['الاسم / Name', lead.name], ['الموبايل / Mobile', lead.phone], ['الباقة / Package', PKG[lead.package] ?? lead.package], ['المصدر / Source', SOURCE[lead.source] ?? lead.source]];
+  const extra = [lead.hasNote ? 'ملاحظة / note' : '', lead.hasPlan ? 'خطة المحاكي / simulator plan' : ''].filter(Boolean);
+  if (extra.length) rows.push(['مرفق / Attached', `${extra.join(' + ')} — في لوحة الإدارة / in the admin`]);
   const text = `${subject}\n\n${rows.map(([k, v]) => `${k}: ${v}`).join('\n')}\n\n${link}`;
   const html = page(subject, `<table style="border-collapse:collapse">${rows.map(([k, v]) => `<tr><td style="padding:4px 8px;color:#5a6b7e">${escapeHtml(k)}</td><td style="padding:4px 8px" dir="auto">${escapeHtml(v)}</td></tr>`).join('')}</table><p><a href="${escapeHtml(link)}">افتح الطلب في لوحة الإدارة — Open in the admin</a></p>`);
   return { subject, text, html };

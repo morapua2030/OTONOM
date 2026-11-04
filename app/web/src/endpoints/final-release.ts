@@ -87,7 +87,7 @@ export const finalReleaseEndpoints: Endpoint[] = [
           req,
           context: { system: true },
           data: {
-            ref, name: i.name, phone: i.phone, area: i.area, package: i.package, preferredTime: i.preferredTime, message: i.message, plan: i.plan,
+            ref, name: i.name, phone: i.phone, package: i.package, message: i.message, plan: i.plan,
             source: i.source, locale: i.locale, consent: { given: true, at: now, privacyVersion: settings.privacyVersion },
             status: 'NEW', lastActivityAt: now, idempotencyKey: i.idempotencyKey,
           } as any,
@@ -99,7 +99,7 @@ export const finalReleaseEndpoints: Endpoint[] = [
       }
       await auditRow(req, 'lead.created', 'lead', created.id, undefined, { ref, source: i.source, package: i.package });
       const to = leadsNotifyTo();
-      if (to) await sendMail({ to, idempotencyKey: `otonom-lead-${ref}`, ...leadAlertEmail({ ref, id: created.id, name: i.name, phone: i.phone, package: i.package, area: i.area }, adminOrigin()) }, to).catch(() => undefined);
+      if (to) await sendMail({ to, idempotencyKey: `otonom-lead-${ref}`, ...leadAlertEmail({ ref, id: created.id, name: i.name, phone: i.phone, package: i.package, source: i.source, hasNote: !!i.message, hasPlan: !!i.plan }, adminOrigin()) }, to).catch(() => undefined);
       else console.warn('[notify] lead alert skipped: OTONOM_LEADS_NOTIFY_TO not set');
       return jsonRes(201, { ref });
     },
@@ -151,8 +151,8 @@ export const finalReleaseEndpoints: Endpoint[] = [
       const g = guard(req, 'leads.export');
       if (g) return g;
       const r = await req.payload.find({ collection: 'leads' as any, overrideAccess: true, depth: 0, limit: 5000, pagination: false, sort: '-createdAt', req } as any);
-      const head = ['ref', 'createdAt', 'status', 'name', 'phone', 'area', 'package', 'preferredTime', 'message', 'source', 'locale', 'consentAt', 'privacyVersion', 'assignee', 'lastActivityAt'];
-      const rows = (r.docs as any[]).map((d) => [d.ref, d.createdAt, d.status, d.name, d.phone, d.area, d.package, d.preferredTime, d.message, d.source, d.locale, d.consent?.at, d.consent?.privacyVersion, typeof d.assignee === 'object' ? d.assignee?.id : d.assignee, d.lastActivityAt]);
+      const head = ['ref', 'createdAt', 'status', 'name', 'phone', 'package', 'note', 'plan', 'source', 'locale', 'consentAt', 'privacyVersion', 'assignee', 'lastActivityAt'];
+      const rows = (r.docs as any[]).map((d) => [d.ref, d.createdAt, d.status, d.name, d.phone, d.package, d.message, d.plan, d.source, d.locale, d.consent?.at, d.consent?.privacyVersion, typeof d.assignee === 'object' ? d.assignee?.id : d.assignee, d.lastActivityAt]);
       await auditRow(req, 'lead.export', 'lead', 'all', undefined, { rows: rows.length });
       const csv = '﻿' + [head, ...rows].map((row) => row.map(csvCell).join(',')).join('\r\n');
       return new Response(csv, { status: 200, headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="otonom-leads-${cairoDay()}.csv"`, ...noStore } });

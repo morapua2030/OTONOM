@@ -1,6 +1,4 @@
-import { normalisePhone } from './rfq-validate.ts';
-
-/** Booking-request vocabulary (final release, owner 2026-11-04). */
+/** Booking-request vocabulary (final release, owner 2026-11-04; form simplified by the owner the same day). */
 export const LEAD_PACKAGES = ['premium', 'plus', 'essential', 'unsure'] as const;
 export type LeadPackage = (typeof LEAD_PACKAGES)[number];
 export const LEAD_SOURCES = ['contact', 'simulator'] as const;
@@ -15,7 +13,11 @@ export const LEAD_STATUSES = [
 ] as const;
 export type LeadStatus = (typeof LEAD_STATUSES)[number]['value'];
 
-export const LEAD_LIMITS = { name: 80, area: 80, preferredTime: 80, message: 500, plan: 900 } as const;
+/**
+ * The simplified form (owner, 2026-11-04): name (2–60), Egyptian mobile, package, consent, an optional note (≤ 500)
+ * and, from the simulator only, the plan text attached automatically (≤ 900). Area and preferred time were removed.
+ */
+export const LEAD_LIMITS = { nameMin: 2, name: 60, message: 500, plan: 900 } as const;
 /** Minimum time between showing the form and submitting it; faster submissions are treated as bots. */
 export const LEAD_MIN_FILL_MS = 3000;
 /** A form older than this is stale (the visitor reloads); also bounds the timing token. */
@@ -24,9 +26,7 @@ export const LEAD_MAX_FILL_MS = 6 * 60 * 60 * 1000;
 export type LeadInput = {
   name: string;
   phone: string;
-  area: string;
   package: LeadPackage;
-  preferredTime: string | null;
   message: string | null;
   plan: string | null;
   source: LeadSource;
@@ -37,37 +37,43 @@ export type LeadInput = {
 export type LeadErrors = Partial<Record<keyof LeadInput | 'form', string>>;
 
 const CONTROL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f‪-‮⁦-⁩]/g;
-const text = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(CONTROL, '').trim() : '');
+const text = (v: unknown) => (typeof v === 'string' ? v.replace(CONTROL, '').replace(/\s+/g, (s) => (s.includes('\n') ? s : ' ')).trim() : '');
+/** Counts user-perceived characters (an Arabic letter or an emoji is one), so the limits match what people see. */
+const chars = (s: string) => [...s].length;
 
-/** Egyptian mobile only: 010 / 011 / 012 / 015 + 8 digits (Arabic-Indic digits accepted), stored as +20… */
+/**
+ * Egyptian mobile only: 010 / 011 / 012 / 015 + 8 digits. Accepts the forms people actually type and normalises them:
+ * spaces, dashes, dots or brackets; Arabic-Indic or Persian digits; a +20 / 0020 / 20 prefix or none. Stored as +20….
+ */
 export function egyptianMobile(raw: unknown): string | null {
-  if (typeof raw !== 'string') return null;
-  const e164 = normalisePhone(raw);
-  return e164 && /^\+201[0125]\d{8}$/.test(e164) ? e164 : null;
+  if (typeof raw !== 'string' || raw.length > 40) return null;
+  const digits = raw
+    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+    .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06f0))
+    .replace(/[\s‎‏\-–.()]/g, '');
+  const m = /^(?:(?:\+|00)?20)?0?(1[0125]\d{8})$/.exec(digits);
+  return m ? `+20${m[1]}` : null;
 }
 
 /**
  * Server-side validation of a booking request. Rejects (never truncates) over-long fields, requires consent, an
- * Egyptian mobile and an allow-listed package; strips control and bidi-override characters from free text.
+ * Egyptian mobile and an allow-listed package; strips control and bidi-override characters from free text. Unknown
+ * fields (for example the removed area / preferred time) are ignored; a plan is kept only for simulator requests.
  */
 export function validateLead(body: Record<string, unknown>): { ok: true; value: LeadInput } | { ok: false; errors: LeadErrors } {
   const errors: LeadErrors = {};
-  const name = text(body.name, LEAD_LIMITS.name);
-  const area = text(body.area, LEAD_LIMITS.area);
-  const preferredTime = text(body.preferredTime, LEAD_LIMITS.preferredTime);
-  const message = text(body.message, LEAD_LIMITS.message);
-  const plan = text(body.plan, LEAD_LIMITS.plan);
-  if (name.length < 2) errors.name = 'REQUIRED';
-  else if (name.length > LEAD_LIMITS.name) errors.name = 'TOO_LONG';
+  const name = text(body.name).replace(/\s+/g, ' ');
+  const message = text(body.message);
+  const plan = typeof body.plan === 'string' ? body.plan.replace(CONTROL, '').trim() : '';
+  if (!name) errors.name = 'REQUIRED';
+  else if (chars(name) < LEAD_LIMITS.nameMin) errors.name = 'TOO_SHORT';
+  else if (chars(name) > LEAD_LIMITS.name) errors.name = 'TOO_LONG';
   const phone = egyptianMobile(body.phone);
-  if (!phone) errors.phone = 'EGYPTIAN_MOBILE';
-  if (area.length < 2) errors.area = 'REQUIRED';
-  else if (area.length > LEAD_LIMITS.area) errors.area = 'TOO_LONG';
+  if (!phone) errors.phone = typeof body.phone === 'string' && body.phone.trim() ? 'EGYPTIAN_MOBILE' : 'REQUIRED';
   const pkg = typeof body.package === 'string' && (LEAD_PACKAGES as readonly string[]).includes(body.package) ? (body.package as LeadPackage) : null;
   if (!pkg) errors.package = 'REQUIRED';
-  if (preferredTime.length > LEAD_LIMITS.preferredTime) errors.preferredTime = 'TOO_LONG';
-  if (message.length > LEAD_LIMITS.message) errors.message = 'TOO_LONG';
-  if (plan.length > LEAD_LIMITS.plan) errors.plan = 'TOO_LONG';
+  if (chars(message) > LEAD_LIMITS.message) errors.message = 'TOO_LONG';
+  if (chars(plan) > LEAD_LIMITS.plan) errors.plan = 'TOO_LONG';
   const source = typeof body.source === 'string' && (LEAD_SOURCES as readonly string[]).includes(body.source) ? (body.source as LeadSource) : null;
   if (!source) errors.source = 'INVALID';
   const locale = body.locale === 'en' ? 'en' : body.locale === 'ar' ? 'ar' : null;
@@ -78,7 +84,7 @@ export function validateLead(body: Record<string, unknown>): { ok: true; value: 
   if (Object.keys(errors).length) return { ok: false, errors };
   return {
     ok: true,
-    value: { name, phone: phone!, area, package: pkg!, preferredTime: preferredTime || null, message: message || null, plan: plan || null, source: source!, locale: locale!, consent: true, idempotencyKey: idempotencyKey! },
+    value: { name, phone: phone!, package: pkg!, message: message || null, plan: source === 'simulator' && plan ? plan : null, source: source!, locale: locale!, consent: true, idempotencyKey: idempotencyKey! },
   };
 }
 

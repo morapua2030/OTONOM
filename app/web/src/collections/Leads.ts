@@ -3,7 +3,7 @@ import { can } from '@otonom/domain';
 import { exposeDomainErrorCodes } from '../lib/errors.ts';
 import { mfaOk, nobody, perm } from '../lib/access.ts';
 import { auditRow } from '../lib/audit.ts';
-import { LEAD_PACKAGES, LEAD_SOURCES, LEAD_STATUSES } from '../lib/leads.ts';
+import { LEAD_LIMITS, LEAD_PACKAGES, LEAD_SOURCES, LEAD_STATUSES } from '../lib/leads.ts';
 
 const ownerField: FieldAccess = ({ req }) => !!req.user && mfaOk(req.user as any) && can((req.user as any).role, 'leads.export');
 const noClientWrite: FieldAccess = () => false;
@@ -17,7 +17,7 @@ const noClientWrite: FieldAccess = () => false;
 export const Leads: CollectionConfig = {
   slug: 'leads',
   labels: { singular: 'Booking request', plural: 'Booking requests' },
-  admin: { group: 'Sales', useAsTitle: 'ref', defaultColumns: ['ref', 'name', 'package', 'area', 'status', 'assignee', 'createdAt'], listSearchableFields: ['ref', 'name', 'phone', 'area'] },
+  admin: { group: 'Sales', useAsTitle: 'ref', defaultColumns: ['ref', 'name', 'phone', 'package', 'source', 'status', 'assignee', 'createdAt'], listSearchableFields: ['ref', 'name', 'phone'] },
   versions: { maxPerDoc: 100 },
   access: {
     read: perm('leads.read'),
@@ -28,13 +28,11 @@ export const Leads: CollectionConfig = {
   },
   fields: [
     { name: 'ref', type: 'text', required: true, unique: true, index: true, access: { update: noClientWrite } },
-    { name: 'name', type: 'text', required: true, maxLength: 80, access: { update: ownerField } },
-    { name: 'phone', type: 'text', required: true, index: true, access: { update: ownerField } },
-    { name: 'area', type: 'text', required: true, maxLength: 80, access: { update: ownerField } },
+    { name: 'name', type: 'text', required: true, minLength: LEAD_LIMITS.nameMin, maxLength: LEAD_LIMITS.name, access: { update: ownerField } },
+    { name: 'phone', type: 'text', required: true, index: true, access: { update: ownerField }, admin: { description: 'Egyptian mobile, stored as +20…' } },
     { name: 'package', type: 'select', required: true, options: [...LEAD_PACKAGES], access: { update: ownerField } },
-    { name: 'preferredTime', type: 'text', maxLength: 80, access: { update: ownerField } },
-    { name: 'message', type: 'textarea', maxLength: 500, access: { update: ownerField } },
-    { name: 'plan', type: 'textarea', maxLength: 900, access: { update: ownerField }, admin: { description: 'Simulator plan the visitor chose to attach (text only)' } },
+    { name: 'message', label: 'Note', type: 'textarea', maxLength: LEAD_LIMITS.message, access: { update: ownerField }, admin: { description: 'Optional note the visitor added (up to 500 characters)' } },
+    { name: 'plan', type: 'textarea', maxLength: LEAD_LIMITS.plan, access: { update: ownerField }, admin: { description: 'Simulator plan sent with the request (text only, attached automatically from the simulator)' } },
     { name: 'source', type: 'select', required: true, options: [...LEAD_SOURCES], access: { update: noClientWrite } },
     { name: 'locale', type: 'select', required: true, options: ['ar', 'en'], access: { update: noClientWrite } },
     {
