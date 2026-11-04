@@ -29,14 +29,8 @@ echo $$ > "$LOCK"
 : > "$OUT/steps.tsv"
 rm -f "$OUT"/*.log "$OUT/summary.json" "$OUT"/otonom_e2e_*.dump
 for s in acceptance surface journey cms portal security csp-edge e2e visual; do rm -f "$APP/tests/results/$s-latest.json"; done
-step() { # name, command...
-  local name=$1; shift
-  local t0=$(date +%s)
-  ( "$@" ) > "$OUT/$name.log" 2>&1
-  local rc=$?
-  echo -e "$name\t$rc\t$(( $(date +%s) - t0 ))" >> "$OUT/steps.tsv"
-  echo "[$name] exit=$rc ($(( $(date +%s) - t0 ))s)"
-}
+# step() and run_all_verdict() are shared with the exit-code self-test (src/run-all-exit.test.ts).
+. "$SCRIPT_DIR/run-all-lib.sh"
 stop_server() { powershell.exe -NoProfile -Command "\$c = Get-NetTCPConnection -LocalPort 3301 -State Listen -ErrorAction SilentlyContinue; if (\$c) { Stop-Process -Id \$c.OwningProcess -Force }" > /dev/null 2>&1 || true; }
 archive_evidence() {
   mkdir -p "$ARCHIVE"
@@ -59,6 +53,7 @@ trap cleanup EXIT INT TERM
 cd "$APP/packages/domain" && step domain pnpm test
 cd "$APP/web" && step web-unit node --import tsx --test test/*.test.ts
 cd "$APP/tests" && step release-gate pnpm run test:release-gate
+cd "$APP/tests" && step run-all-selftest pnpm run test:run-all-exit
 stop_server
 cd "$APP/web" && step build npx --no-install next build
 # Clone the known synthetic development database into a unique disposable target. All HTTP/browser suites and
@@ -86,6 +81,7 @@ for i in $(seq 1 90); do c=$(curl -s -o /dev/null -w "%{http_code}" http://127.0
 echo "server ready=$c"
 cd "$APP/tests"
 for s in acceptance surface journey cms portal security csp-edge e2e visual; do step "$s" npx --no-install tsx "src/$s.ts"; done
+inject_selftest_failure
 stop_server
 node -e "
 const fs=require('fs'),path=require('path');
@@ -95,10 +91,15 @@ const count=(f)=>{const t=fs.readFileSync(path.join(out,f+'.log'),'utf8');const 
 const suites={};
 suites.domain=count('domain');suites['web-unit']=count('web-unit');
 const exitOf=Object.fromEntries(steps.map(x=>[x.name,x.exit]));
-suites['release-gate']=count('release-gate');
+suites['release-gate']=count('release-gate');suites['run-all-selftest']=count('run-all-selftest');
 for (const s of ['acceptance','surface','journey','cms','portal','security','csp-edge','e2e','visual']){try{const j=JSON.parse(fs.readFileSync(path.join(out,'..',s+'-latest.json'),'utf8'));suites[s]={tests:j.total,pass:j.total-j.failed,fail:j.failed,exit:exitOf[s],at:j.at};}catch(e){suites[s]={tests:0,pass:0,fail:1,exit:exitOf[s],error:'NO FRESH RESULT (suite crashed or did not run)'};}}
 const total=Object.values(suites).reduce((a,s)=>({tests:a.tests+(s.tests||0),pass:a.pass+(s.pass||0),fail:a.fail+(s.fail||0)}),{tests:0,pass:0,fail:0});
 const summary={at:new Date().toISOString(),environment:'local Windows, 127.0.0.1, synthetic data',database:'$E2E_DB (disposable clone of otonom_dev; dropped after run)',steps,suites,total};
 fs.writeFileSync(path.join(out,'summary.json'),JSON.stringify(summary,null,2));
 console.log(JSON.stringify(total), JSON.stringify(steps.map(s=>s.name+':'+s.exit)));
 "
+# Release gate: the exit code is non-zero when any step failed, the summary counts a failure, or a suite has no
+# fresh result (steps.tsv and summary.json above keep their format). The early exits stay: 3 = another run is
+# active, 2 = the disposable-database migration failed.
+run_all_verdict
+exit $?

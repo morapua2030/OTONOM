@@ -20,7 +20,8 @@
     "e2e": "tsx src/e2e.ts",
     "release:verify": "tsx src/release-gate.ts",
     "release:promote": "tsx src/release-promote.ts",
-    "test:release-gate": "tsx --test src/release-gate.test.ts"
+    "test:release-gate": "tsx --test src/release-gate.test.ts",
+    "test:run-all-exit": "tsx --test src/run-all-exit.test.ts"
   },
   "dependencies": {
     "@otonom/domain": "workspace:*",
