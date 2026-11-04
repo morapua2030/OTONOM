@@ -25,14 +25,15 @@ const rec = new Recorder();
 
 /**
  * D8-C v5: text shown outside the page (document title, meta description, Open Graph and Twitter text) is read from
- * the raw HTML <head>: it must carry no bidi control characters (LRM/RLM, embeddings, isolates) and no double or
- * edge spaces (document.title would hide both, so the raw HTML is checked).
+ * the raw HTML: it must carry no bidi control characters (LRM/RLM, embeddings, isolates) and no double or edge spaces
+ * (document.title would hide both, so the raw HTML is checked). Next 16 may stream metadata after </head> (React hoists it
+ * on the client), so the whole document is read; inline-SVG <title> elements are not document titles and are skipped.
  */
 const BIDI_CONTROL = /[‎‏‪-‮⁦-⁩]/;
 const decodeHtml = (s: string) => s.replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16))).replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d))).replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 async function headTexts(url: string): Promise<{ status: number; titles: string[]; texts: Array<[string, string]> }> {
   const res = await fetch(url, { redirect: 'manual' });
-  const head = (await res.text()).split('</head>')[0] ?? '';
+  const head = (await res.text()).replace(/<svg[\s\S]*?<\/svg>/g, '');
   const titles = [...head.matchAll(/<title>([^<]*)<\/title>/g)].map((m) => decodeHtml(m[1]));
   const texts: Array<[string, string]> = titles.map((t) => ['title', t]);
   for (const m of head.matchAll(/<meta ([^>]*)>/g)) {
