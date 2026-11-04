@@ -48,7 +48,11 @@ cleanup() {
   archive_evidence
   rm -f "$LOCK"
 }
-trap cleanup EXIT INT TERM
+# INT/TERM end the run (130/143); the EXIT trap then cleans up once. A cleanup-only INT/TERM trap used to let the
+# script carry on after the lock was removed.
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 cd "$APP/packages/domain" && step domain pnpm test
 cd "$APP/web" && step web-unit node --import tsx --test test/*.test.ts
