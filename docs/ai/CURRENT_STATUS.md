@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Checked at (Cairo) | 2026-11-04 (D8-C v5) |
+| Checked at (Cairo) | 2026-11-04 (final release, admin integration) |
 | Repository | `morapua2030/OTONOM` (public) |
 | Local branch / code head | `codex/d6-products-smarthome-20261102`. Up to `624b70b2` (D8-C v4) is in PR #16. The D8-C v5 commits (`d9c75bd7` onward) are pushed only if their full verification on one SHA passes (owner pre-authorization 2026-11-04). |
 | `origin/main` | `b6181212` (contains D5); `git ls-remote`, checked now |
@@ -11,7 +11,7 @@
 | Protected Preview | Preview of `624b70b2` (D8-C v4): READY, Preview target, Vercel Authentication on; the owner creates its Shareable Link. Earlier Previews (including `0dabf70a`) are preserved. URLs, IDs and links are kept in private evidence. |
 | Brand Guardian | `validate_brand.py --project app/web` PASS on the D8-A candidate (2026-11-03, 0 legacy references) |
 | Release gates | Production is frozen (DR-093); canonical unchanged (`/en` 200, D5/D6 routes 404). There is no G01–G16 verdict for any D6 candidate. |
-| Latest owner decisions | DR-092..DR-113, recorded 2026-11-03 and 2026-11-04 |
+| Latest owner decisions | DR-092..DR-114, recorded 2026-11-03 and 2026-11-04 |
 
 ## Phase status
 
@@ -26,12 +26,37 @@
 | D8-C design v2 (Claude Design, option A) | `PREVIEW` | 2026-11-03: DR-099..DR-105; Home (mix), v2 packages, controllers and contact, inner template, self-hosted fonts, published phone/WhatsApp (no form), brochure photos, D8-A carry-overs. PR #16 head `1a7a1b9a` and its protected Preview; its background full chain was stopped on the owner's instruction because v3 supersedes it |
 | D8-C v3 inner pages (Claude Design v3.1) | `PREVIEW` | 2026-11-03: DR-106..DR-109; header, drawer, footer and address; service template, smart-home landing, services index, company, support, business, product, Our work (empty state) and Start a project (chips → one WhatsApp message); `/products` without the selector; 308 redirects for routes outside the design; privacy page removed. Verification on this head: private evidence `execution/evidence/d8c-v3-2026-11-03/` |
 | D8-C v4 simulator + restored selector (Claude Design v4) | `PREVIEW` | 2026-11-03: DR-110..DR-112; "Try your smart home" at `/try` (four stages, demo only, `?demo=` allow-list) with entry points on Home, Smart Home, Packages, Controllers, 16R, drawer and footer; the Smart Product Selector is back on `/products`, restyled to v3. Pushed to PR #16 on «ارفع» (head `624b70b2`) with its protected Preview. Verification: private evidence `execution/evidence/d8c-v4-2026-11-03/` |
+| Final release: admin integration (DR-114) | `IMPLEMENTED` (local; release on S2 only) | 2026-11-04. **Hosts:** public site marketing-only; admin on its own host. **Admin-managed content:** packages, controllers, contact, announcement, routines, rules, FAQs, privacy text; seeded with today's values. **Booking requests:** shown only when the OWNER has approved the privacy text AND enabled intake. **Also:** privacy-first metrics, Resend alerts and digests, staff invitations, SALES role. **Verification:** `final-release`, `hosts` and `final-shots` suites; private evidence in `execution/evidence/final-2026-11-04/` |
 | D8-C v5 polish + release-gate hardening | `IMPLEMENTED` | 2026-11-04: DR-113; run-all exit code (self-tested), plain-text titles/meta, localized 404 title, footer "English" / "عربي", lighter Arabic fonts (same look; font preload measured and reverted). Verification and push status: private evidence `execution/evidence/d8c-v5-2026-11-04/` |
 | D6 products and smart home | `PREVIEW` | Commits below are in PR #16 and the protected Preview of `025d382b`; full local QA on `16c2b42a` plus d4 on `025d382b` |
 | D7 customer account, devices, service, warranty | `PARTIAL` | Local backend foundations only; no customer UI; not authorized live |
 | D8-A full-site audit + objective fixes | `IMPLEMENTED (local only)` | 2026-11-03: 21 objective findings fixed in `b181dab3`..`51069f26`; after-run has 0 axe violations, 0 broken links/anchors, 0 console errors; 18 design/content items listed for D8-C |
 | D8-D release dry-run | `IMPLEMENTED (local only)` | 2026-11-03: delta from live Production has no migrations and no new env names; gate dry-run `PROMOTION_ALLOWED=false` as expected; plan in `RELEASE_CHECKLIST.md`, decisions 13–20 in `OPEN_APPROVALS.md`. Live Production is `noindex` with robots disallow-all because marketing-only mode is off |
 | D8-B/E review and release | `PLANNED` | D8-B needs the owner's Shareable Link; D8-C after team-lead feedback; D8-E only on owner gates |
+
+## Final release: admin integration (2026-11-04, DR-114)
+
+| SHA | Change |
+|---|---|
+| `1ea413d0` | One Production deployment, two hosts (public site, admin) |
+| `528bda09` | Test: routing matrix for both hosts |
+| `b37c6b66` | Admin-managed content, booking requests, roles; Payload migration and seed |
+| `64399b44` | API: booking requests, metrics, daily jobs, lead export, staff invitations |
+| `36bfe6e1` | Test: allow-list includes the daily-job path |
+| `66c4443f` | Site reads admin content; gated booking form, privacy page, announcement bar, metrics |
+| `84dab3eb` | Test expectations follow admin-managed content |
+| `2decad76` / `61a3e90a` | Selector reads admin packages and contact number (+ test) |
+| `fff6b14c` | Admin: sales & metrics view, OWNER staff invitations, invite page |
+| `fae4b199` | Drafts validated; 6 s first read, 15 s fallback window |
+| `6dc8e2d7` | Test: `final-release` HTTP suite; run-all migrates and seeds its clone |
+| `886b41e1` | Test: unit tests of the final-release logic |
+| `58a50dac` | Docs: release checklist, domain move, uptime check, DR-114 |
+| `bd2627b1` | Test: privacy gating, published-only content, both-host suite |
+| `04a20dcf` | `robots.txt` follows the running mode |
+| `1e29ff52` | Test: both-host suite scoped to the proxy layer |
+| `df5d92f4` | Test: `final-shots` screenshots and checks |
+
+The docs commit that records this table follows these commits. The `/try` metrics are paused until the owner decides how they fit the simulator's no-network rule.
 
 ## D8-C v5 (2026-11-04)
 

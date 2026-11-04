@@ -20,6 +20,18 @@ Every route below is rendered for both `/ar` (RTL) and `/en` (LTR). The design l
 | Gated customer surfaces | `/account`, `/shop`, `/cart`, `/checkout`, `/support/warranty` | gated informational pages | Unchanged gates: no public commerce, payment, account/device operation or warranty activation |
 | Preview-only content | `/preview`, `/preview/bidi-samples` | preview page and bidi samples | Remains non-production/private according to the existing deployment gate |
 
+## Final release additions (DR-114)
+
+| Area | Route | Components | Notes |
+|---|---|---|---|
+| Privacy | `/legal/privacy` | `app/(site)/[locale]/legal/privacy/page.tsx`, `lib/privacy-draft.ts` | Admin text, headings and paragraphs only; redirects to `/contact` until the OWNER approves it. Footer link and sitemap entry only when approved |
+| Booking form | `/contact`, `/try` stage 4 | `BookingForm` (client), `lib/leads.ts`, `lib/booking-token.ts` | Rendered only when the privacy text is approved AND intake is enabled; posts to `POST /api/booking` |
+| Announcement | every page | `[locale]/layout.tsx` (`.announce-bar`) | Admin global; off by default |
+| Metrics | every page except `/try` (paused) | `MetricsBeacon` (client) → `POST /api/e` | Only `{event, route, locale}`; DNT/GPC respected |
+| Staff invite | `/staff/invite` (admin host) | `StaffInviteAccept` | One-time token in the URL fragment |
+| Admin | `/admin/sales`, Users → invite (OWNER) | `SalesView`, `InviteStaff` | Leads cards, metrics, OWNER CSV export |
+| API | `POST /api/booking`, `POST /api/e`, `GET /api/cron/daily`, `GET /api/metrics/summary`, `GET /api/leads-export`, `POST /api/staff/invite(/accept)` | `endpoints/final-release.ts` | Public host serves only the first three (allow-list); the rest are staff-only on the admin host |
+
 ## Retired routes (308, DR-107)
 
 The proxy answers `GET`/`HEAD` with a 308. The locale is kept and the query and hash are dropped. None of these routes are in the nav, the footer or the sitemap.

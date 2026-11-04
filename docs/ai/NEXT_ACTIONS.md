@@ -1,48 +1,45 @@
 # OTONOM — Next actions
 
-D8-C v3 (DR-106..DR-109) and D8-C v4 (the simulator at `/try` and the restored Smart Product Selector, DR-110..DR-112)
-are in PR #16 (draft), each with its own protected Preview. D8-C v5 (DR-113: release-gate exit code, plain-text titles,
-localized 404 title, footer language name, lighter fonts) is committed on top of v4. It is pushed to PR #16 with one
-protected Preview only if its full verification on one SHA passes (owner pre-authorization, 2026-11-04); otherwise it
-stays local and the failures are reported.
+The final version (DR-114) is built on top of D8-C v5:
+- one Production deployment serving two hosts (marketing-only public site and the admin host);
+- admin-managed content;
+- booking requests behind the privacy approval and the intake switch;
+- privacy-first metrics, Resend e-mail and staff invitations.
 
-## Next three steps
+It goes to Production only with the owner's exact phrase «أوافق على إطلاق النسخة <SHA> على البرودكشن» (S2), after fresh G01–G16 evidence on that SHA.
 
-1. **Owner share link:** after a v5 push, the owner creates the Shareable Link for the new protected Preview
-   (DR-095). Nobody else creates or changes share links, and Vercel Authentication stays on.
-2. **Team-lead review → GATE-C3** («التصميم معتمد»). Feedback lands as new commits on PR #16 under the same gates.
-3. **D8-D dry run, GATE-R, then D8-E**, all on owner gates (see "Still open" below).
+## Next steps
+
+1. **S1 (owner and Attia), in parallel:**
+   - admin domain;
+   - Production environment names (`RELEASE_CHECKLIST.md` §3);
+   - Resend account and DNS records for `otonomiot.com`;
+   - Hobby vs Pro decision before S2.
+2. **Full chain on the final SHA**, then pre-push audit, fast-forward push to PR #16, one protected Preview and a smoke test there.
+3. **S2:** the owner sends the release phrase. Then, in order:
+   - merge PR #16 into `main`;
+   - verified Production backup;
+   - migrations and seed (owner-run, `RELEASE_CHECKLIST.md` §2);
+   - promote;
+   - smoke-test both hosts (G16).
+4. **After release (owner):**
+   - first OWNER sign-in with MFA;
+   - approve the privacy text;
+   - enable booking requests;
+   - invite the team.
 
 ## Still open (public summary)
 
-- **Admin panel not yet connected to the site.** Site contact goes to the founder's WhatsApp number as a temporary
-  measure (DR-101); routing contacts through the admin panel is a later step that needs its own approval.
-- **Vercel plan decision before Production:** the hosting plan must be decided by the owner before any Production
-  release.
-- **Short privacy notice recommended:** the privacy page was removed (DR-108). A short, approved privacy notice is
-  recommended before public launch; no privacy text is generated without owner and legal approval.
-- **Stale local test database clone:** one disposable `otonom_test_browser_*` clone from a stopped local test run is
-  still on the local test cluster. The owner drops it; scripts only drop the clones they create.
-- **D8-D release dry run:** repeat the dry run on the D8-C candidate (no migrations, no new env names, gate verdict
-  `PROMOTION_ALLOWED=false` until GATE-R).
-- **GATE-R:** the owner's release gate (G01–G16 verdict on the exact candidate) before any Production step.
-- **D8-E release:** only after GATE-R and the owner's explicit approval; Production stays frozen until then (DR-093).
-- Owner decisions 13–20 (`OPEN_APPROVALS.md`).
-
-## Done in D8-C v5 (no longer open)
-
-- `run-all.sh` now exits non-zero when any step fails, the summary counts a failure, or a suite has no fresh result;
-  a self-test (`pnpm --filter @otonom/tests test:run-all-exit`) runs as its own run-all step.
-- Font weight: Arabic font files subset to the Arabic block and cached as immutable; same look (pixel comparison of
-  52 reference screenshots). A font preload was measured and reverted (owner rule: no page's LCP more than 50 ms worse).
-
-## Follow-ups (not in this batch)
-
-- Retired legacy renderers (`corporate.tsx`, `ServiceExplorer.tsx`, the builder and the legacy `[...slug]` branches)
-  stay in Git for the harness-only security suites. Removing them needs those suites moved to v3 pages first.
+- **Simulator metrics:** paused on `/try` until the owner decides how they fit the simulator's no-network rule. Options: one precise exception for `POST /api/e`, or no metrics on `/try`.
+- **Vercel plan:** Hobby (non-commercial use) or Pro, decided by the owner before Production.
+- **Daily job timing:** the job runs at 07:00 UTC, which is 09:00 Cairo in winter and 10:00 during Egypt's summer time.
+- **Lead SLA:** response-time target not yet set (`OPEN_APPROVALS.md` item 6).
+- **Stale local test database clone** from a stopped local run: the owner drops it.
+- **GATE-R:** revoke old Shareable Links and retire the temporary reviewer account (owner, private).
+- Owner decisions still open in `OPEN_APPROVALS.md`.
 
 ## In parallel, from the owner
 
-- Verified specs for 4R, 6R and 16R (DR-097; out of scope for v3, DR-106).
+- Verified specs for 4R, 6R and 16R (DR-097).
 - Package inclusions and exclusions (open approval 4).
-- Social links (not provided; the footer has none).
+- Social links: now editable in the admin; empty links stay hidden.
