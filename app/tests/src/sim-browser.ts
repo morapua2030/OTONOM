@@ -62,6 +62,10 @@ async function main() {
     await run.goto('/ar/try');
     await run.waitHydrated('.sim-home[data-home="apt"]');
     const cookie0 = await run.eval<string>('document.cookie');
+    // The browser fetches the site icon by itself shortly after load (CDP type "Other"). Let that happen before the
+    // interaction window opens (up to 3 s), so the window holds only requests caused by the interaction; a favicon or
+    // any other request inside the window still fails the check below.
+    for (let i = 0; i < 30 && !run.requests.some((r) => r.url.endsWith('/favicon.ico')); i++) await new Promise((r) => setTimeout(r, 100));
     const req0 = run.requests.length;
     await run.click('.sim-home[data-home="apt"]');
     await run.waitFor(`document.querySelectorAll('[data-testid="sim-room"]').length === 6`);
