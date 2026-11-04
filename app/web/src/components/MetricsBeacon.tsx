@@ -6,10 +6,11 @@ import { useEffect } from 'react';
  * Privacy-first site metrics (final release, owner 2026-11-04): sends only { e: event, r: route, l: locale } to the
  * same-origin /api/e with navigator.sendBeacon. No cookie, storage, identifier or third party; nothing is sent when the
  * browser asks for no tracking (Do Not Track / Global Privacy Control).
- * Not active on /try until the owner decides how simulator metrics fit the simulator's no-network rule.
+ * On /try (owner decision 2026-11-04) the simulator raises `otonom:metric` page events; only the five simulator event
+ * names below are accepted, and each becomes the same single same-origin beacon.
  */
-const PAUSED = /^\/(?:ar|en)\/try(?:\/|$)/;
 const PACKAGE_EVENTS = new Set(['package_premium', 'package_plus', 'package_essential']);
+const SIM_EVENTS = new Set(['sim_start', 'sim_stage_2', 'sim_stage_3', 'sim_stage_4', 'plan_sent']);
 
 function route(pathname: string): { r: string; l: 'ar' | 'en' } | null {
   const m = pathname.match(/^\/(ar|en)((?:\/[a-z0-9-]{1,40}){0,4})\/?$/);
@@ -23,7 +24,7 @@ function optedOut(): boolean {
 
 function send(e: string, pathname: string) {
   const where = route(pathname);
-  if (!where || PAUSED.test(pathname) || optedOut() || typeof navigator.sendBeacon !== 'function') return;
+  if (!where || optedOut() || typeof navigator.sendBeacon !== 'function') return;
   navigator.sendBeacon('/api/e', new Blob([JSON.stringify({ e, r: where.r, l: where.l })], { type: 'application/json' }));
 }
 
@@ -42,8 +43,16 @@ export function MetricsBeacon() {
       if (href.startsWith('https://wa.me/')) send('whatsapp_click', location.pathname);
       else if (href.startsWith('tel:')) send('call_click', location.pathname);
     };
+    const onSim = (event: Event) => {
+      const e = (event as CustomEvent<{ e?: unknown }>).detail?.e;
+      if (typeof e === 'string' && SIM_EVENTS.has(e)) send(e, location.pathname);
+    };
     document.addEventListener('click', onClick, { capture: true });
-    return () => document.removeEventListener('click', onClick, { capture: true });
+    window.addEventListener('otonom:metric', onSim);
+    return () => {
+      document.removeEventListener('click', onClick, { capture: true });
+      window.removeEventListener('otonom:metric', onSim);
+    };
   }, []);
   return null;
 }

@@ -28,6 +28,13 @@ type State = SimCoreState & UiState;
 type Patch = Partial<State> | ((prev: State) => Partial<State> | null);
 
 const UI0: UiState = { dayOn: false, cmp: false, add: false, sheet: false, copied: false, stageA: 1 };
+/**
+ * Simulator metrics (owner decision 2026-11-04): the simulator itself never talks to the network. It only raises a page
+ * event with an allow-listed event name; the site-wide MetricsBeacon turns it into one same-origin beacon to /api/e
+ * (event, route, locale; nothing that identifies the visitor).
+ */
+type SimMetric = 'sim_start' | 'sim_stage_2' | 'sim_stage_3' | 'sim_stage_4' | 'plan_sent';
+const simMetric = (e: SimMetric) => window.dispatchEvent(new CustomEvent('otonom:metric', { detail: { e } }));
 /** Device "on" colours (design `DCOL`), lights and AC. Simulator-only colours (DR-111). */
 const DCOL: Record<DevKey, string> = { heater: '#FFC08A', pump: '#91CEF0', fan: '#B8DDF3', curtain: '#B8DDF3', garage: '#B8DDF3', other: '#18A3E0' };
 const DANIM: Partial<Record<DevKey, string>> = { fan: 'sim-spin', heater: 'sim-glow', pump: 'sim-glow' };
@@ -92,12 +99,16 @@ export function Simulator({ locale, demo, content }: { locale: Locale; demo: Sim
   }, []);
   const stopAll = () => { stopTimers(); set({ dayOn: false }); };
 
+  const started = useRef(false);
+  const reached = useRef(new Set<number>());
   // Stage pills follow the scroll position; timers stop when the page unmounts.
   useEffect(() => {
     const onScroll = () => {
       let a = 1;
       for (let i = 1; i <= 4; i++) { const el = document.getElementById('sim-s' + i); if (el && el.getBoundingClientRect().top < 220) a = i; }
       if (a !== live.current.stageA) set({ stageA: a });
+      // each stage counts once, and only after the visitor started (a demo link that scrolls to a stage does not count)
+      if (started.current && a >= 2 && !reached.current.has(a)) { reached.current.add(a); simMetric(`sim_stage_${a}` as SimMetric); }
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
@@ -144,6 +155,7 @@ export function Simulator({ locale, demo, content }: { locale: Locale; demo: Sim
   const updRooms = (fn: (rooms: SimRoom[]) => SimRoom[]) => set((x) => ({ rooms: fn(x.rooms) }));
   const mapRoom = (id: number, fn: (r: SimRoom) => SimRoom) => updRooms((rs) => rs.map((r) => (r.id === id ? fn({ ...r, dev: { ...r.dev } }) : r)));
   const pickHome = (h: HomeKey) => {
+    if (!started.current) { started.current = true; simMetric('sim_start'); }
     stopAll();
     set({ home: h, rooms: simMk(nextId, h), on: {}, gas: false, bubble: null, play: null, up: null, dayMode: false, door: false });
     setTimeout(() => scrollToStage('sim-s2'), 80);
@@ -499,7 +511,7 @@ export function Simulator({ locale, demo, content }: { locale: Locale; demo: Sim
               ) : (
                 <div className="sim-plan-pkg"><span className="sim-plan-pkg-label">{B(U.recommended)}</span><span className="sim-plan-pkg-name">{rc.pkg}</span><span className="sim-plan-pkg-price">{B(price)}</span><span className="sim-plan-pkg-note">{B(U.installIncluded)}</span></div>
               )}
-              <a className="btn sim-full sim-send" href={wa} {...EXTERNAL_LINK} data-testid="sim-whatsapp">{B(U.sendWa)}</a>
+              <a className="btn sim-full sim-send" href={wa} {...EXTERNAL_LINK} data-testid="sim-whatsapp" onClick={() => simMetric('plan_sent')}>{B(U.sendWa)}</a>
               <button type="button" className="btn secondary sim-full" onClick={copyPlan} data-testid="sim-copy"><span aria-live="polite">{B(s.copied ? S.copied : S.copy)}</span></button>
               <p className="sim-small sim-estimate">{B(U.estimate)}</p>
             </div>
