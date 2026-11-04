@@ -56,7 +56,7 @@
 | `1e29ff52` | Test: both-host suite scoped to the proxy layer |
 | `df5d92f4` | Test: `final-shots` screenshots and checks |
 
-The docs commit that records this table follows these commits. The `/try` metrics are paused until the owner decides how they fit the simulator's no-network rule.
+The docs commit that records this table follows these commits. Simulator metrics are on (owner decision 2026-11-04). The simulator raises allow-listed page events, and the only request its no-network rule allows during interaction is one same-origin beacon to `/api/e` (`1376c256`, `02f9de1c`).
 
 ## D8-C v5 (2026-11-04)
 

@@ -30,7 +30,6 @@ It goes to Production only with the owner's exact phrase «أوافق على إ�
 
 ## Still open (public summary)
 
-- **Simulator metrics:** paused on `/try` until the owner decides how they fit the simulator's no-network rule. Options: one precise exception for `POST /api/e`, or no metrics on `/try`.
 - **Vercel plan:** Hobby (non-commercial use) or Pro, decided by the owner before Production.
 - **Daily job timing:** the job runs at 07:00 UTC, which is 09:00 Cairo in winter and 10:00 during Egypt's summer time.
 - **Lead SLA:** response-time target not yet set (`OPEN_APPROVALS.md` item 6).

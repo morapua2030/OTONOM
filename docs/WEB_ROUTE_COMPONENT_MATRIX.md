@@ -27,7 +27,7 @@ Every route below is rendered for both `/ar` (RTL) and `/en` (LTR). The design l
 | Privacy | `/legal/privacy` | `app/(site)/[locale]/legal/privacy/page.tsx`, `lib/privacy-draft.ts` | Admin text, headings and paragraphs only; redirects to `/contact` until the OWNER approves it. Footer link and sitemap entry only when approved |
 | Booking form | `/contact`, `/try` stage 4 | `BookingForm` (client), `lib/leads.ts`, `lib/booking-token.ts` | Rendered only when the privacy text is approved AND intake is enabled; posts to `POST /api/booking` |
 | Announcement | every page | `[locale]/layout.tsx` (`.announce-bar`) | Admin global; off by default |
-| Metrics | every page except `/try` (paused) | `MetricsBeacon` (client) → `POST /api/e` | Only `{event, route, locale}`; DNT/GPC respected |
+| Metrics | every page, including `/try` | `MetricsBeacon` (client) → `POST /api/e` | Only `{event, route, locale}`; DNT/GPC respected. On `/try` the simulator raises `otonom:metric` page events (sim_start, sim_stage_2..4, plan_sent); it has no network code itself |
 | Staff invite | `/staff/invite` (admin host) | `StaffInviteAccept` | One-time token in the URL fragment |
 | Admin | `/admin/sales`, Users → invite (OWNER) | `SalesView`, `InviteStaff` | Leads cards, metrics, OWNER CSV export |
 | API | `POST /api/booking`, `POST /api/e`, `GET /api/cron/daily`, `GET /api/metrics/summary`, `GET /api/leads-export`, `POST /api/staff/invite(/accept)` | `endpoints/final-release.ts` | Public host serves only the first three (allow-list); the rest are staff-only on the admin host |
