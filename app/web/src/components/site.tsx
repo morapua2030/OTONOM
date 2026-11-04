@@ -59,8 +59,10 @@ function BookVisitLink({ locale, className }: { locale: Locale; className: strin
   );
 }
 
-function LanguageLink({ locale }: { locale: Locale }) {
-  return <LangSwitch locale={locale} label={label(locale, 'EN', 'عربي')} name={label(locale, 'English', 'العربية')} className="lang-link" />;
+/** Header: the short "EN" / "عربي"; footer: the full language name, as in the design ("English" / "عربي"). */
+function LanguageLink({ locale, place = 'header' }: { locale: Locale; place?: 'header' | 'footer' }) {
+  const text = place === 'footer' ? label(locale, 'English', 'عربي') : label(locale, 'EN', 'عربي');
+  return <LangSwitch locale={locale} label={text} name={label(locale, 'English', 'العربية')} className="lang-link" />;
 }
 
 export function SiteHeader({ locale }: { locale: Locale }) {
@@ -121,7 +123,7 @@ export function SiteFooter({ locale }: { locale: Locale; publicRelease?: boolean
           <BrandLogo className="brand-logo brand-logo-footer" variant="primary-dark" decorative />
         </Link>
         <div className="footer-bottom-end">
-          <LanguageLink locale={locale} />
+          <LanguageLink locale={locale} place="footer" />
           <span dir="ltr" className="footer-copy">© 2026 OTONOM</span>
         </div>
       </div>
