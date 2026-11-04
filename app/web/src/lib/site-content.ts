@@ -250,7 +250,9 @@ export async function loadSiteContent(): Promise<SiteContent> {
   try {
     if (!cachedLoader) {
       const { unstable_cache } = await import('next/cache');
-      cachedLoader = unstable_cache(() => withTimeout(readPublished(), READ_TIMEOUT_MS), ['site-content-v1'], { tags: [SITE_CONTENT_TAG], revalidate: 300 });
+      // The cache key carries the database name, so servers sharing one build but pointing at different databases (test
+      // clones, a restored backup) never read each other's snapshot.
+      cachedLoader = unstable_cache(() => withTimeout(readPublished(), READ_TIMEOUT_MS), ['site-content-v1', `db:${process.env.OTONOM_DB ?? 'default'}`], { tags: [SITE_CONTENT_TAG], revalidate: 300 });
     }
     const content = await cachedLoader();
     setActiveContact({ phoneE164: content.contact.phoneE164, whatsappE164: content.contact.whatsappE164, address: content.contact.address });
