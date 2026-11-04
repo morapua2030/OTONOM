@@ -1,67 +1,80 @@
-# OTONOM — Release checklist (D8-D dry run, 2026-11-03)
+# OTONOM — Release checklist (final release, 2026-11-04)
 
-This was a dry run: nothing was deployed, and no hosting setting was changed. Deployment identities, URLs and values are kept in private evidence only. The release still requires the owner gates in the D8 plan and an explicit owner release command (DR-093).
+The final version goes live as the Production site with the admin integrated (owner instruction 2026-11-04, DR-114).
+Nothing reaches Production without the owner's exact phrase «أوافق على إطلاق النسخة <SHA> على البرودكشن» (S2), which
+also authorizes merging PR #16 into `main`. Deployment identities, URLs, values and evidence stay private.
 
-## Release delta (live Production → candidate)
+## 1. What changes at release
 
-- **Commits:** 20 linear commits. D5 Project Builder and packages, the Hybrid 03 redesign, D6 products/smart home, the D8-A accessibility/i18n/link fixes, and tests/docs.
-- **Database:** no migration files changed. The candidate expects the same 6 CMS and 11 domain migrations recorded for Production at the D4 release. This is re-checked read-only at G04.
-- **Environment:** no environment variable names added or removed.
-- **Dependencies:** `graphql-scalars` 1.22.2 → 2.0.1 (security patch, runtime). `axe-core` 4.14.0 is tests only. Dependency audit is clean.
-- **Routes:** new public pages `/start-project` and `/smart-home/packages` (AR/EN). No new API endpoint and no new write path (the disabled intake endpoint gained a CSRF origin check).
-- **Assets:** the Hybrid 03 brand kit and the 1200×630 social card. The legacy `public/brand/otonom-logo.png` is unused but still served (owner decision).
+- **Hosts:** one Production deployment serves two hosts.
+  - **Public site (canonical URL):** marketing-only. It serves marketing pages plus exactly three endpoints: `POST /api/e`, `POST /api/booking` and `GET /api/cron/daily` (the last is CRON_SECRET only).
+  - **Admin host (`OTONOM_ADMIN_URL`):** `/admin`, `/staff` and `/api`, with `noindex` on everything.
+  - No admin link exists on the public site.
+- **Admin-managed content (Payload):** packages, controllers, contact settings, announcement bar, simulator routines and rules, service FAQs, privacy text, booking switch. Production is seeded with exactly today's values, so nothing visible changes.
+- **Booking requests (leads):** the form appears only after the OWNER approves the privacy text AND enables intake in the admin. Until then the site looks exactly as before (WhatsApp and phone only).
+- **Metrics:** aggregated counts only, with no identifiers.
+- **E-mail (Resend):** new-lead alerts, a daily digest and a Sunday summary.
+- **Staff:** invitations, the SALES role, and CONTENT mapped to EDITOR.
 
-## Gate table (dry run on the protected candidate Preview)
+## 2. Production database (after the verified backup only)
 
-| Gate | Dry-run status | What is missing | Who |
-|---|---|---|---|
-| G01 Source identity | FAIL (expected) | The candidate must be the merged `main` SHA | Agent at merge |
-| G02 Project/environment | FAIL (expected) | A production-staged build of that SHA (not on the public hostname) | Agent, owner authenticated |
-| G03 Deployment readiness | BLOCKED | Stable alias proof for the staged candidate | Agent |
-| G04 Production DB identity | BLOCKED | Read-only identity, migration count, isolation, no synthetic data | Agent (owner auth if needed) |
-| G05 Auth/OWNER | BLOCKED | Real Microsoft Edge OWNER login on the exact deployment or the decided admin origin | **Owner** |
-| G06 RBAC/anonymous | BLOCKED | Anonymous admin/API denial; OWNER routes allowed | Agent + owner |
-| G07 Session persistence | BLOCKED | Session survives refresh | Owner + agent |
-| G08 Server-side logout | BLOCKED | Logout success, exact session revoked, one audit event | Owner + agent |
-| G09 After-logout denial | BLOCKED | Protected surfaces denied after logout | Agent |
-| G10 CSRF | BLOCKED | Approved origins accepted, foreign origin rejected | Agent |
-| G11 CSP/cookies | BLOCKED | Nonce + strict-dynamic, Secure cookies, no-store | Agent |
-| G12 Marketing routes | BLOCKED | Required AR/EN routes return 200 without leaks | Agent |
-| G13 Disabled features | BLOCKED | Commerce, warranty, device and customer processing stay 403/404 | Agent |
-| G14 Security/tooling | PASS on the current candidate | Rerun on the final `main` SHA | Agent |
-| G15 Backups/rollback | BLOCKED | Production DB backup, hash and restore drill; rollback target recorded privately | Agent + owner |
-| G16 Post-promotion smoke | Not applicable before promotion | Runs after promotion | Agent |
+| Order | Migration | Kind | Up | Down |
+|---|---|---|---|---|
+| 1 | Domain `011_staff_email_otp.sql` | if not yet applied | creates the owner e-mail OTP tables | restore from the backup |
+| 2 | Domain `012_site_metrics_invites_jobs.sql` | new | `site_metrics`, `staff_invites`, `job_runs` (append-only grant) | restore from the backup (tables are new and hold no business data) |
+| 3 | Payload `20261104_135512_final_release_content` | new | 26 tables for content and leads, 5 globals, the `SALES` role value, `users.can_publish_content` | `payload migrate:down` (verified on a clone: up → down → up). It fails while any user still has the SALES role: reassign them first |
 
-Verifier result of the dry run: `PROMOTION_ALLOWED=false` (correct for a candidate that is not merged or staged).
+Then run the idempotent seed: `pnpm --filter @otonom/web seed:content`. It publishes the current values, never overwrites admin edits, and leaves the privacy text unapproved and intake off.
 
-## Owner decisions before release
+**Dry run:** done on a disposable clone of the development database: domain migrate, Payload migrate up/down/up, seed twice (second run: everything kept), round trip equal to the built-in content. Evidence is private.
 
-The full list is in `OPEN_APPROVALS.md`, items 13–20:
+**Who runs it:** migrations need the Production database credential, which the agent never handles. The owner (or Attia) runs the commands in a terminal where the Production env is loaded. Exact steps:
+1. Vercel → project → Storage/Neon → create a backup branch or snapshot.
+2. Note its name and time (private).
+3. In the repo `app/` folder, with the Production env exported: `pnpm --filter @otonom/domain migrate`, then `pnpm --filter @otonom/web payload migrate`, then `pnpm --filter @otonom/web seed:content`.
+4. Send the agent the three command outputs, with no values in them.
 
-1. Turn on the marketing-only mode at release. Recommended: only this mode makes the public site indexable and closes API and private routes on the public host. Today every page is `noindex` and robots disallow all.
-2. Where staff/admin is served after that, and how gates G05–G11 are evidenced there.
-3. Confirm in the Vercel UI: uploads disabled, preview-lock flag unset, and the site URL set to the canonical origin. The agent never reads these values.
-   Since design v2 (D8-C), canonical, hreflang and social-card URLs are absolute on `SITE_URL` (`metadataBase`). Production **must** set `OTONOM_SITE_URL` to the canonical domain; otherwise they point to the immutable deployment host.
-4. The Production database plan: no migrations expected; read-only G04 re-check.
-5. Performance budgets. Proposed: ≤ 300 KB per key page, LCP ≤ 2.5 s mobile, CLS ≤ 0.1, zero console errors.
-6. Monitoring minimum. Proposed: a scheduled GitHub Actions page check with no new vendor; any vendor is a separate approval.
-7. **Release blocker:** approved privacy text. Since D8-C v3 the `/legal/privacy` page is removed (308 → `/contact`, DR-108) and nothing links to it; the owner decides where the approved text is published before release. No text is generated. The contact channel (DR-101) and the address (DR-106) are resolved.
-8. The legacy logo file.
+Never copy development users, test data or MFA material into Production.
 
-## Rollback principle
+## 3. Configuration checks (names only; the agent never reads values)
 
-- The current live Production deployment is recorded privately as the known-good target.
-- Use only the official Vercel rollback/promote mechanism.
-- Never delete the failed deployment and never rewrite Git.
-- After a rollback, verify the canonical host serves the recorded deployment and the old route fingerprint (D5/D6 pages 404).
-- Any Production setting changed for the release is reverted by name and state.
+- `OTONOM_PUBLIC_MARKETING_ONLY=1`; `OTONOM_SITE_URL` = canonical origin; `OTONOM_ADMIN_URL` = admin origin; `OTONOM_CSRF_ORIGINS` contains both.
+- `OTONOM_DISABLE_UPLOADS=1`.
+- Unset on Production: `OTONOM_FORCE_PREVIEW`, `OTONOM_TEST_PAGES`, `OTONOM_EMAIL_TEST_MODE`, `OTONOM_ENABLE_SYNTHETIC_*`.
+- E-mail: `OTONOM_EMAIL_PROVIDER=resend`, `RESEND_API_KEY`, `OTONOM_EMAIL_FROM`, `OTONOM_LEADS_NOTIFY_TO`.
+- Daily job: `CRON_SECRET` (at least 32 characters).
+- Expected behaviour:
+  - public pages are indexable; `robots.txt` allows and lists the sitemap;
+  - the sitemap uses the canonical origin;
+  - shop, cart, checkout, account and warranty return 404 on the public host;
+  - the «نسخة معاينة» banner does not render in marketing-only mode.
 
-## Post-release checklist (first 72 hours, manual unless monitoring is approved)
+## 4. Gates G01–G16 (fresh evidence on the exact SHA; `release:verify` must say `PROMOTION_ALLOWED=true`)
 
-- [ ] Twice daily: `/ar`, `/en`, products and packages pages return 200; CSP header present.
-- [ ] Admin behaviour matches the decided origin. Gated pages are 404 or PREVIEW/noindex per mode.
-- [ ] `robots.txt` and `sitemap.xml` match the decided mode, and the sitemap uses the canonical origin.
-- [ ] Daily: hosting logs show no 5xx spikes (owner/admin access).
-- [ ] Social preview cards checked in public validators for `/ar` and `/en`.
-- [ ] Any user report is logged and assessed; roll back on a critical failure.
-- [ ] Review Shareable Links revoked and temporary reviewer access retired (DR-095).
+- G05–G11 are evidenced on the **admin host**. The OWNER signs in with their own e-mail and MFA in Edge; then refresh, logout, denial after logout, CSRF from a foreign origin, and CSP/cookies.
+- G12 (marketing routes) and G13 (disabled features) are evidenced on the **public host**.
+- G04/G15 need the backup and the migration history from section 2.
+- G16 runs after promotion.
+
+## 5. Rollback
+
+1. **Site:** Vercel instant rollback (promote the recorded previous Production deployment). Never delete deployments and never rewrite Git.
+2. **Database:** usually nothing. The new tables are unused by the old build, and the old build ignores the new enum value. If needed, restore the backup branch, or run `payload migrate:down` once (after reassigning any SALES user).
+3. Verify that the canonical host serves the recorded deployment and its route fingerprint.
+4. Revert any Production setting changed for the release, by name and state.
+
+## 6. Monitoring minimum (no new vendor)
+
+`.github/workflows/uptime.yml` checks every 30 minutes:
+- `/ar`, `/en` and `/ar/try` on the public site;
+- the staff sign-in page on the admin host.
+
+It needs the repository variables `OTONOM_PUBLIC_URL` and `OTONOM_ADMIN_URL`, which are origins, not secrets. Failures show in the Actions tab and the e-mail settings of the repository owner.
+
+## 7. After release (owner)
+
+1. Sign in on the admin host, create the OWNER account with your own e-mail and turn on MFA.
+2. Read the privacy text and approve it («اعتماد نص الخصوصية»).
+3. Turn on booking requests.
+4. Invite the team: each person gets their own account; `team@` receives notifications only.
+5. Revoke the old Shareable Links and retire the temporary reviewer account (GATE-R, private).
