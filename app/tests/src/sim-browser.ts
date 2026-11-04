@@ -27,9 +27,26 @@ async function tabTo(page: Page, selector: string, max = 400) {
   }
   return -1;
 }
-/** Requests that are not page assets: anything other than GET, any XHR/Fetch/WebSocket/EventSource/Ping that is not a Next.js RSC page prefetch, or any other host. */
+/**
+ * Owner rule (2026-11-04) for the interaction window — precise, not weaker than before:
+ * FAIL on any fetch / XHR / sendBeacon (Ping) / WebSocket / EventSource request, whatever its origin (Next.js RSC
+ * fetches included), and on ANY cross-origin request. ALLOW only same-origin GET requests for static assets: the site
+ * icon, /_next/static, /_next/image, /brand, /fonts, /products and image or font files. Everything else (a document
+ * navigation, a POST, an unknown same-origin path) fails too.
+ */
+const ORIGIN = new URL(BASE).origin;
+const APP_TRAFFIC_TYPES = ['XHR', 'Fetch', 'WebSocket', 'EventSource', 'Ping'];
+const STATIC_ASSET = /^\/(?:favicon\.ico$|_next\/static\/|_next\/image$|brand\/|fonts\/|products\/)|\.(?:png|jpe?g|webp|avif|gif|svg|ico|woff2?)$/;
+function isAppTraffic(r: { method: string; type: string; url: string }): boolean {
+  let url: URL;
+  try { url = new URL(r.url); } catch { return true; }
+  if (url.origin !== ORIGIN) return true;
+  if (APP_TRAFFIC_TYPES.includes(r.type)) return true;
+  if (r.method !== 'GET') return true;
+  return !STATIC_ASSET.test(url.pathname);
+}
 function nonAssetRequests(page: Page, from: number) {
-  return page.requests.slice(from).filter((r) => r.method !== 'GET' || !r.url.startsWith(BASE) || (['XHR', 'Fetch', 'WebSocket', 'EventSource', 'Ping', 'Other'].includes(r.type) && !r.rsc));
+  return page.requests.slice(from).filter(isAppTraffic);
 }
 const storage = (page: Page) => page.eval<{ local: number; session: number; cookie: string; forms: number; inputs: string[] }>(`({ local: localStorage.length, session: sessionStorage.length, cookie: document.cookie, forms: document.querySelectorAll('form').length, inputs: [...document.querySelectorAll('main input, main textarea, main select, main [contenteditable="true"]')].map((n) => n.tagName + ':' + (n.getAttribute('type') || '')) })`);
 
@@ -62,10 +79,6 @@ async function main() {
     await run.goto('/ar/try');
     await run.waitHydrated('.sim-home[data-home="apt"]');
     const cookie0 = await run.eval<string>('document.cookie');
-    // The browser fetches the site icon by itself shortly after load (CDP type "Other"). Let that happen before the
-    // interaction window opens (up to 3 s), so the window holds only requests caused by the interaction; a favicon or
-    // any other request inside the window still fails the check below.
-    for (let i = 0; i < 30 && !run.requests.some((r) => r.url.endsWith('/favicon.ico')); i++) await new Promise((r) => setTimeout(r, 100));
     const req0 = run.requests.length;
     await run.click('.sim-home[data-home="apt"]');
     await run.waitFor(`document.querySelectorAll('[data-testid="sim-room"]').length === 6`);
@@ -130,6 +143,37 @@ async function main() {
     await run.close();
 
     // ---- 3. Premium gating: a lock routine without Premium shows the upsell; "Add the smart lock" recommends Premium ----
+    // ---- 2b. The network rule itself: classifier self-test and a live negative run (owner rule 2026-11-04) ----
+    const sample = [
+      { method: 'GET', type: 'Other', url: `${ORIGIN}/brand/otonom/assets/icons/favicon.ico`, expect: false },
+      { method: 'GET', type: 'Script', url: `${ORIGIN}/_next/static/chunks/a.js`, expect: false },
+      { method: 'GET', type: 'Font', url: `${ORIGIN}/fonts/inter-latin-wght.3100e775e8.woff2`, expect: false },
+      { method: 'GET', type: 'Image', url: `${ORIGIN}/_next/image`, expect: false },
+      { method: 'GET', type: 'Fetch', url: `${ORIGIN}/ar/try`, expect: true },
+      { method: 'GET', type: 'XHR', url: `${ORIGIN}/api/ready`, expect: true },
+      { method: 'POST', type: 'Ping', url: `${ORIGIN}/api/ready`, expect: true },
+      { method: 'GET', type: 'WebSocket', url: 'ws://127.0.0.1:3301/x', expect: true },
+      { method: 'GET', type: 'EventSource', url: `${ORIGIN}/events`, expect: true },
+      { method: 'GET', type: 'Image', url: 'https://example.com/pixel.png', expect: true },
+      { method: 'GET', type: 'Other', url: 'https://example.com/favicon.ico', expect: true },
+      { method: 'GET', type: 'Document', url: `${ORIGIN}/ar/contact`, expect: true },
+      { method: 'POST', type: 'Other', url: `${ORIGIN}/brand/x.png`, expect: true },
+    ];
+    const misclassified = sample.filter((r) => isAppTraffic(r) !== r.expect);
+    add('try-network-rule-self-test', misclassified.length === 0, misclassified);
+    const neg = await browser.newPage(1440, 1000);
+    await neg.goto('/ar/try');
+    await neg.waitHydrated('.sim-home[data-home="apt"]');
+    const negFrom = neg.requests.length;
+    await neg.click('.sim-home[data-home="apt"]');
+    await neg.eval(`(async () => { try { await fetch('/__sim-network-negative-test', { cache: 'no-store' }); } catch {} return true; })()`);
+    await neg.eval(`navigator.sendBeacon('/__sim-network-negative-beacon', 'x')`);
+    await neg.eval(`(async () => { const img = new Image(); img.src = '/brand/otonom/assets/icons/favicon.ico?neg=1'; await new Promise((r) => { img.onload = img.onerror = r; setTimeout(r, 2000); }); return true; })()`);
+    await sleep(600);
+    const negHits = nonAssetRequests(neg, negFrom);
+    add('try-network-rule-negative-fetch-fails', negHits.some((r) => r.type === 'Fetch' && r.url.endsWith('/__sim-network-negative-test')) && negHits.some((r) => r.type === 'Ping' && r.url.endsWith('/__sim-network-negative-beacon')) && !negHits.some((r) => r.url.endsWith('/favicon.ico')), negHits);
+    await neg.close();
+
     const gate = await browser.newPage(1440, 1000);
     await gate.reducedMotion();
     await gate.goto('/ar/try?demo=apartment');
