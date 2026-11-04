@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# verify-chain.sh <evidence-out> [reference-shots-dir] [lcp-baseline.json]
+# verify-chain.sh <evidence-out> [reference-shots-dir] [lcp-baseline.json]   (paths may be relative to the caller)
 # Full local release verification on the CURRENT commit (one SHA): typecheck, brand gate, dependency audit, run-all,
 # both Production hosts (proxy layer), public + flag browser suites, the D8-A audit (inventory, axe/keyboard browser
 # audit, link crawl, findings must be zero), meta/char scans, JS weight, screenshots (+ pixel diff against the
@@ -12,6 +12,11 @@ set -u
 E="$1"; REF_SHOTS="${2:-}"; BASELINE="${3:-}"
 PY="${OTONOM_PY:-python}"
 mkdir -p "$E"; E="$(cd "$E" && pwd -P)"
+# Resolve the optional inputs against the caller's directory NOW: the chain changes directory below. A given input
+# that does not exist makes its step fail (pixdiff.py and perf-lcp-rule.mjs exit non-zero); it is never skipped.
+abs() { case "$1" in /*|[A-Za-z]:[/\\]*) printf '%s\n' "$1" ;; *) printf '%s\n' "$PWD/$1" ;; esac; }
+[ -n "$REF_SHOTS" ] && REF_SHOTS="$(abs "$REF_SHOTS")"
+[ -n "$BASELINE" ] && BASELINE="$(abs "$BASELINE")"
 m() { command -v cygpath >/dev/null 2>&1 && cygpath -m "$1" || echo "$1"; }
 w() { command -v cygpath >/dev/null 2>&1 && cygpath -w "$1" || echo "$1"; }
 : > "$E/chain-steps.tsv"; : > "$E/chain-skipped.txt"; : > "$E/clone-times.tsv"
@@ -20,6 +25,7 @@ clone_time() { [ -f "$2/clone-seconds.txt" ] && echo -e "$1\t$(cat "$2/clone-cop
 cd "$WT"
 SHA=$(git rev-parse HEAD); echo "$SHA" > "$E/sha.txt"; git status --short > "$E/tree-status.txt"
 echo "sha=$SHA dirty=$(wc -l < "$E/tree-status.txt")"
+echo "reference shots=${REF_SHOTS:-none} lcp baseline=${BASELINE:-none}"
 echo -e "step\tcopy_s\ttotal_s" > "$E/clone-times.tsv"
 
 # 0) static gates
