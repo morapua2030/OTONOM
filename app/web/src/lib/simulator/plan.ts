@@ -20,12 +20,12 @@ export function planRooms(locale: Locale, rooms: readonly SimRoom[], names: read
   });
 }
 
-export function buildPlan(locale: Locale, input: { home: HomeKey | null; rooms: readonly SimRoom[]; lock: boolean; liked: readonly RoutineId[] }): SimPlan {
+export function buildPlan(locale: Locale, input: { home: HomeKey | null; rooms: readonly SimRoom[]; lock: boolean; liked: readonly RoutineId[]; titles?: Partial<Record<RoutineId, string>>; order?: readonly RoutineId[] }): SimPlan {
   const S = SIMD[locale];
   const names = simNames(input.rooms, S.rooms);
   const rc = simRec(input.rooms, input.lock);
   const price = fmtN(PK[rc.pkg].price) + ' ' + S.unit;
-  const liked = RORDER.filter((id) => input.liked.includes(id)).map((id) => S.routines[id].t);
+  const liked = (input.order ?? RORDER).filter((id) => input.liked.includes(id)).map((id) => input.titles?.[id] ?? S.routines[id].t);
   const p: PlanInput = {
     home: input.home ? S.homes[input.home] : '', homeL: input.home ? S.homeL[input.home] : '', n: input.rooms.length, ch: rc.ch, pkg: rc.pkg, price,
     ctrl: rc.ctrlTxt, extras: rc.extrasTxt, rooms: planRooms(locale, input.rooms, names), liked, eng: rc.eng,

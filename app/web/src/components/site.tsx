@@ -7,7 +7,8 @@ import { ServiceNavMenu } from './ServiceNavMenu.tsx';
 import { SiteNavLink } from './SiteNavLink.tsx';
 import { BrandLogo } from './BrandLogo.tsx';
 import { EscapableDetails } from './EscapableDetails.tsx';
-import { ADDRESS, bookVisitMessage, EXTERNAL_LINK, PHONE_DISPLAY, telHref, whatsappHref } from '@/lib/contact.ts';
+import { bookVisitMessage, EXTERNAL_LINK, phoneDisplay, telHref, whatsappHref } from '@/lib/contact.ts';
+import { DEFAULT_SITE_CONTENT, type SiteContent } from '@/lib/site-content.ts';
 import { SITE_COPY } from '@/lib/site-copy.ts';
 import { SIM_ENTRY } from '@/lib/simulator/copy.ts';
 
@@ -92,8 +93,11 @@ export function SiteHeader({ locale }: { locale: Locale }) {
   );
 }
 
-export function SiteFooter({ locale }: { locale: Locale; publicRelease?: boolean }) {
+const SOCIAL_LABELS: Record<string, string> = { facebook: 'Facebook', instagram: 'Instagram', linkedin: 'LinkedIn', youtube: 'YouTube', tiktok: 'TikTok', x: 'X' };
+
+export function SiteFooter({ locale, content = DEFAULT_SITE_CONTENT }: { locale: Locale; publicRelease?: boolean; content?: SiteContent }) {
   const c = SITE_COPY[locale];
+  const contact = content.contact;
   const L = (p: string) => `/${locale}${p}`;
   const columns: Array<{ title: string; links: Array<[string, string]> }> = [
     { title: c.foot.c1, links: [[c.nav.smart, '/services/smart-home-automation'], [c.nav.ctrl, '/products'], [c.nav.pk, '/smart-home/packages'], [SIM_ENTRY[locale].cta, '/try'], ['16R', '/products/16r'], ['4R', '/products/4r'], ['6R', '/products/6r']] },
@@ -111,11 +115,16 @@ export function SiteFooter({ locale }: { locale: Locale; publicRelease?: boolean
         ))}
         <nav aria-label={c.foot.c4} className="footer-contact-col">
           <strong>{c.foot.c4}</strong>
-          <a href={telHref()} className="footer-phone"><bdi dir="ltr">{PHONE_DISPLAY}</bdi></a>
-          <p className="footer-address"><Bidi text={ADDRESS[locale]} locale={locale} /></p>
-          <a href={whatsappHref(bookVisitMessage(locale))} {...EXTERNAL_LINK}>{c.foot.wa}</a>
+          <a href={telHref(contact.phoneE164)} className="footer-phone"><bdi dir="ltr">{phoneDisplay(contact.phoneE164)}</bdi></a>
+          <p className="footer-address"><Bidi text={contact.address[locale]} locale={locale} /></p>
+          <a href={whatsappHref(bookVisitMessage(locale), contact.whatsappE164)} {...EXTERNAL_LINK}>{c.foot.wa}</a>
           <Link href={L('/contact')}>{c.nav.contact}</Link>
           <Link href={L('/support')}>{c.nav.support}</Link>
+          {/* Social links appear only when the admin fills them; the privacy page only once the OWNER approved it. */}
+          {contact.socials.map((social) => (
+            <a href={social.url} {...EXTERNAL_LINK} key={social.network} data-testid={`footer-social-${social.network}`}>{SOCIAL_LABELS[social.network] ?? social.network}</a>
+          ))}
+          {content.privacy.approved ? <Link href={L('/legal/privacy')} data-testid="footer-privacy">{label(locale, 'الخصوصية', 'Privacy')}</Link> : null}
         </nav>
       </div>
       <div className="wrap footer-bottom">

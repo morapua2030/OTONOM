@@ -25,6 +25,15 @@ export const MAX_PER_DEVICE = 4;
 export const CONTROLLER_CHANNELS = { '16R': 16, '6R': 6, '4R': 4 } as const;
 export type ControllerModel = keyof typeof CONTROLLER_CHANNELS;
 
+/**
+ * The facts every calculation reads. They start as the owner facts above and are replaced by the admin-managed values
+ * (sim-rules, controllers, packages) through `applySimContent`, which the simulator calls with the same props on the
+ * server and in the browser. With the built-in values every result is identical to the design's functions.
+ */
+export const SIM_FACTS: { perLine: number; perDevice: number; ac: number; engineerAbove: number; ctrl: Record<ControllerModel, number> } = {
+  perLine: CHANNELS_PER_LINE, perDevice: CHANNELS_PER_DEVICE, ac: AC_CHANNELS, engineerAbove: ENGINEER_REVIEW_ABOVE, ctrl: { ...CONTROLLER_CHANNELS },
+};
+
 export const DEVK = ['heater', 'pump', 'fan', 'curtain', 'garage', 'other'] as const;
 export type DevKey = (typeof DEVK)[number];
 export const RTYPES = ['reception', 'bed', 'kids', 'kitchen', 'bath', 'corridor', 'stairs', 'office', 'garden', 'balcony', 'garage'] as const;
@@ -42,10 +51,10 @@ export type PkgKey = (typeof PKG_KEYS)[number];
 export type PkgFacts = { id: SmartHomePackageId; price: number; cap: number; n16: number; lock: boolean };
 
 const PKG_ID: Record<PkgKey, SmartHomePackageId> = { Essential: 'essential', Plus: 'plus', Premium: 'premium' };
-function facts(key: PkgKey): PkgFacts {
-  const pkg = SMART_HOME_PACKAGES.find((entry) => entry.id === PKG_ID[key]) as SmartHomePackage;
+function facts(key: PkgKey, packages: readonly SmartHomePackage[] = SMART_HOME_PACKAGES): PkgFacts {
+  const pkg = (packages.find((entry) => entry.id === PKG_ID[key]) ?? SMART_HOME_PACKAGES.find((entry) => entry.id === PKG_ID[key])) as SmartHomePackage;
   const n16 = pkg.items.filter((item) => item.model === '16r').reduce((total, item) => total + item.quantity, 0);
-  return { id: pkg.id, price: pkg.priceEgp, cap: n16 * CONTROLLER_CHANNELS['16R'], n16, lock: pkg.items.some((item) => item.key === 'lock') };
+  return { id: pkg.id, price: pkg.priceEgp, cap: n16 * SIM_FACTS.ctrl['16R'], n16, lock: pkg.items.some((item) => item.key === 'lock') };
 }
 /** Design `PK`: Essential 24,000 / 16 ch / 1 × 16R; Plus 32,000 / 32 ch / 2 × 16R; Premium 44,000 / 32 ch / 2 × 16R + lock. */
 export const PK: Record<PkgKey, PkgFacts> = { Essential: facts('Essential'), Plus: facts('Plus'), Premium: facts('Premium') };
@@ -54,7 +63,7 @@ export const UPSELL = {
   toPlus: PK.Plus.price - PK.Essential.price,
   toPlusChannels: PK.Plus.cap - PK.Essential.cap,
   toPremium: PK.Premium.price - PK.Plus.price,
-} as const;
+};
 
 // ---- Presets and routines (design data) ----------------------------------------------------------------------------
 type PresetRow = readonly [RoomTypeKey, number, 0 | 1, Partial<Record<DevKey, number>>];
@@ -93,7 +102,7 @@ export const needsLockAll = (id: RoutineId) => routine(id).lock === 'all';
 export const fmtN = (n: number) => n.toLocaleString('en-US');
 export const simClk = (t: number) => Math.floor(t) + ':' + String(Math.round((t % 1) * 60)).padStart(2, '0');
 /** Channels of one room: lighting lines plus one channel per device. AC adds nothing. */
-export const simCh = (r: Pick<SimRoom, 'lines' | 'dev'>) => r.lines * CHANNELS_PER_LINE + DEVK.reduce((a, k) => a + (r.dev[k] || 0) * CHANNELS_PER_DEVICE, 0);
+export const simCh = (r: Pick<SimRoom, 'lines' | 'dev'> & { ac?: boolean }) => r.lines * SIM_FACTS.perLine + DEVK.reduce((a, k) => a + (r.dev[k] || 0) * SIM_FACTS.perDevice, 0) + (r.ac ? SIM_FACTS.ac : 0);
 
 /** Rooms of a home preset; `nextId` numbers them (the design's `self._nid`), or every id is 0 without it. */
 export function simMk(nextId: (() => number) | null, h: HomeKey): SimRoom[] {
@@ -103,11 +112,36 @@ export const PRESET_META: Record<HomeKey, [number, number]> = Object.fromEntries
   HOMES.map((h) => { const rs = simMk(null, h); return [h, [rs.length, rs.reduce((a, r) => a + simCh(r), 0)]]; }),
 ) as Record<HomeKey, [number, number]>;
 
+/** Admin-managed inputs of the simulator (lib/site-content.ts); absent parts keep the built-in values. */
+export type SimContentInput = {
+  packages?: readonly SmartHomePackage[];
+  simRules?: { acChannels: number; channelsPerDevice: number; engineerReviewAbove: number };
+  controllers?: Partial<Record<'4r' | '6r' | '16r', { channels: number }>>;
+};
+
+/** Applies the admin-managed facts (idempotent; the same input gives the same state on the server and in the browser). */
+export function applySimContent(input: SimContentInput = {}) {
+  SIM_FACTS.perLine = CHANNELS_PER_LINE;
+  SIM_FACTS.perDevice = input.simRules?.channelsPerDevice ?? CHANNELS_PER_DEVICE;
+  SIM_FACTS.ac = input.simRules?.acChannels ?? AC_CHANNELS;
+  SIM_FACTS.engineerAbove = input.simRules?.engineerReviewAbove ?? ENGINEER_REVIEW_ABOVE;
+  SIM_FACTS.ctrl = {
+    '16R': input.controllers?.['16r']?.channels ?? CONTROLLER_CHANNELS['16R'],
+    '6R': input.controllers?.['6r']?.channels ?? CONTROLLER_CHANNELS['6R'],
+    '4R': input.controllers?.['4r']?.channels ?? CONTROLLER_CHANNELS['4R'],
+  };
+  for (const key of PKG_KEYS) Object.assign(PK[key], facts(key, input.packages ?? SMART_HOME_PACKAGES));
+  Object.assign(UPSELL, { toPlus: PK.Plus.price - PK.Essential.price, toPlusChannels: PK.Plus.cap - PK.Essential.cap, toPremium: PK.Premium.price - PK.Plus.price });
+  for (const h of HOMES) { const rs = simMk(null, h); PRESET_META[h] = [rs.length, rs.reduce((a, r) => a + simCh(r), 0)]; }
+}
+
 /** Fewest extra controllers covering `left` channels, then the least waste, then the most 16R. */
 export function simBest(left: number): ControllerModel[] {
   let best: { k: [number, number, number]; l: ControllerModel[] } | null = null;
-  for (let a = 0; a <= 4; a++) for (let b = 0; b <= 9; b++) for (let c = 0; c <= 13; c++) {
-    const tot = 16 * a + 6 * b + 4 * c; if (tot < left) continue;
+  const s16 = SIM_FACTS.ctrl['16R'], s6 = SIM_FACTS.ctrl['6R'], s4 = SIM_FACTS.ctrl['4R'];
+  const reach = (size: number, design: number) => Math.max(design, Math.ceil(SIM_FACTS.engineerAbove / size));
+  for (let a = 0; a <= reach(s16, 4); a++) for (let b = 0; b <= reach(s6, 9); b++) for (let c = 0; c <= reach(s4, 13); c++) {
+    const tot = s16 * a + s6 * b + s4 * c; if (tot < left) continue;
     const k: [number, number, number] = [a + b + c, tot - left, -a];
     if (!best || k[0] < best.k[0] || (k[0] === best.k[0] && (k[1] < best.k[1] || (k[1] === best.k[1] && k[2] < best.k[2])))) best = { k, l: [...Array<ControllerModel>(a).fill('16R'), ...Array<ControllerModel>(b).fill('6R'), ...Array<ControllerModel>(c).fill('4R')] };
   }
@@ -120,9 +154,9 @@ export type SimRecommendation = { ch: number; pkg: PkgKey; cap: number; extras: 
 export function simRec(rooms: readonly Pick<SimRoom, 'lines' | 'dev'>[], lock: boolean): SimRecommendation {
   const ch = rooms.reduce((a, r) => a + simCh(r), 0);
   const pkg: PkgKey = lock ? 'Premium' : ch <= PK.Essential.cap ? 'Essential' : 'Plus';
-  const cap = PK[pkg].cap, left = Math.max(0, ch - cap), eng = ch > ENGINEER_REVIEW_ABOVE;
+  const cap = PK[pkg].cap, left = Math.max(0, ch - cap), eng = ch > SIM_FACTS.engineerAbove;
   const extras = left && !eng ? simBest(left) : [];
-  const extraCap = extras.reduce((a, m) => a + CONTROLLER_CHANNELS[m], 0);
+  const extraCap = extras.reduce((a, m) => a + SIM_FACTS.ctrl[m], 0);
   const cnt = (m: ControllerModel) => extras.filter((x) => x === m).length;
   const n16 = PK[pkg].n16 + cnt('16R');
   const ctrlTxt = [n16 + ' × 16R', ...(['6R', '4R'] as const).filter((m) => cnt(m)).map((m) => (cnt(m) > 1 ? cnt(m) + ' × ' + m : m))].join(' + ');

@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+import { loadSiteContent, type SiteContent } from '@/lib/site-content.ts';
 import { isLocale, t, type Locale } from '@/lib/i18n.ts';
 import { publishedDoc, publishableClaims } from '@/lib/public.ts';
 import { Placeholder, Section } from '@/components/site.tsx';
@@ -55,13 +56,13 @@ const PARENT_CRUMBS: Record<string, 'solutions' | 'technology' | 'support'> = { 
 type P = { params: Promise<{ locale: string; slug: string[] }> };
 
 /** Design v3.1 pages served by this catch-all (they take precedence over the earlier templates on the same paths). */
-function v3Page(locale: Locale, path: string): { title: string; description: string; node: ReactNode } | null {
+function v3Page(locale: Locale, path: string, content?: SiteContent): { title: string; description: string; node: ReactNode } | null {
   const c = SITE_COPY[locale];
   const t = INNER[locale];
   const join = (parts: readonly string[]) => parts.join('').trim();
   if (path === 'services') return { title: c.nav.svc, description: t.servicesLead, node: <ServicesIndex locale={locale} /> };
-  if (isV3ServicePath(path)) { const svc = c.svc[V3_SERVICE_KEYS[path]]; return { title: svc.name, description: svc.lead, node: <ServiceV3 locale={locale} path={path} /> }; }
-  if (path === 'services/smart-home-automation') return { title: c.nav.smart, description: t.smart.lead, node: <SmartHomeLanding locale={locale} /> };
+  if (isV3ServicePath(path)) { const svc = c.svc[V3_SERVICE_KEYS[path]]; return { title: svc.name, description: svc.lead, node: <ServiceV3 locale={locale} path={path} faqs={content?.faqs[V3_SERVICE_KEYS[path]]} /> }; }
+  if (path === 'services/smart-home-automation') return { title: c.nav.smart, description: t.smart.lead, node: <SmartHomeLanding locale={locale} packages={content?.packages} /> };
   if (path === 'about') return { title: join(t.companyH1), description: t.companyLead, node: <CompanyV3 locale={locale} /> };
   if (path === 'support') return { title: c.doc.support.title, description: t.supportLine, node: <SupportV3 locale={locale} /> };
   if (path === 'business/developers') return { title: c.biz.dev.h1, description: c.biz.dev.lead, node: <BusinessV3 locale={locale} kind="dev" /> };
@@ -90,7 +91,7 @@ export default async function MarketingPage({ params }: P) {
   const { locale: l, slug } = await params;
   if (!isLocale(l)) notFound();
   const path = slug.join('/');
-  const v3 = v3Page(l, path);
+  const v3 = v3Page(l, path, await loadSiteContent());
   if (v3) return v3.node;
   const service = servicePage(l, path);
   if (service) {

@@ -11,14 +11,15 @@ import type { Locale } from '@/lib/i18n.ts';
 import { Bidi, isolateText } from '@/components/bidi.tsx';
 import { Swash } from '@/components/v2.tsx';
 import { ItemVisual } from '@/components/package-items.tsx';
-import { EXTERNAL_LINK, telHref, whatsappHref } from '@/lib/contact.ts';
+import { BUILTIN_CONTACT, EXTERNAL_LINK, telHref, whatsappHref } from '@/lib/contact.ts';
+import { BookingForm } from '@/components/BookingForm.tsx';
 import type { PackageItemKey } from '@/lib/smart-home-packages.ts';
 import { SIMD } from '@/lib/simulator/copy.ts';
 import { buildPlan } from '@/lib/simulator/plan.ts';
 import {
-  canAddRoom, clampDevice, clampLines, DEVK, FRESH_STATE, HOMES, MARKS, MAX_ROOMS, PK, PKG_KEYS, PRESET_META, RORDER, routine, RTYPES,
+  applySimContent, canAddRoom, clampDevice, clampLines, DEVK, FRESH_STATE, HOMES, MARKS, MAX_ROOMS, PK, PKG_KEYS, PRESET_META, RORDER, routine, RTYPES,
   simApply, simAt, simClk, simDemoState, simMk, simRec, fmtN,
-  type DevKey, type HomeKey, type Op, type RoutineId, type SimCoreState, type SimDemo, type SimRoom,
+  type DevKey, type HomeKey, type Op, type RoutineId, type SimContentInput, type SimCoreState, type SimDemo, type SimRoom,
 } from '@/lib/simulator/rules.ts';
 import { DICON, HomeArt, RICON, SimIcon } from './icons.tsx';
 
@@ -49,8 +50,22 @@ function initialState(demo: SimDemo | null): { state: State; nextId: number; tar
   return { state: { ...(preset ? preset.state : FRESH_STATE), ...UI0 }, nextId: n, target: preset ? `sim-${preset.target}` : null };
 }
 
-export function Simulator({ locale, demo }: { locale: Locale; demo: SimDemo | null }) {
+/** Admin-managed simulator content (lib/site-content.ts); without it the simulator uses its built-in values. */
+export type SimulatorContent = SimContentInput & {
+  routines?: ReadonlyArray<{ id: RoutineId; title: { ar: string; en: string }; trigger: { ar: string; en: string }; actions: { ar: string[]; en: string[] }; premium: boolean }>;
+  contact?: { phoneE164: string; whatsappE164: string };
+  /** Present only when the OWNER approved the privacy text AND enabled intake: stage 4 then offers «ابعت خطتك للفريق». */
+  booking?: { token: string; privacyHref: string; packages: Array<{ id: string; label: string }> } | null;
+};
+
+export function Simulator({ locale, demo, content }: { locale: Locale; demo: SimDemo | null; content?: SimulatorContent }) {
+  // Same input on the server and in the browser, so the rendered numbers always match (no hydration difference).
+  applySimContent(content ?? {});
   const S = SIMD[locale];
+  const ORDER: readonly RoutineId[] = content?.routines?.length ? content.routines.map((r) => r.id) : RORDER;
+  const adminRoutine = (id: RoutineId) => content?.routines?.find((r) => r.id === id);
+  const RT = (id: RoutineId) => { const r = adminRoutine(id); return r ? { t: r.title[locale], tr: r.trigger[locale], a: r.actions[locale] } : S.routines[id]; };
+  const premiumOnly = (id: RoutineId) => adminRoutine(id)?.premium ?? routine(id).lock === 'all';
   const U = S.ui;
   const B = (text: string | null | undefined) => <Bidi text={text} locale={locale} />;
   const A = (text: string) => isolateText(text, locale);
@@ -106,7 +121,7 @@ export function Simulator({ locale, demo }: { locale: Locale; demo: SimDemo | nu
   const playRoutine = (id: RoutineId, keepBubble = false, lockAdded = false) => {
     const prem = lockAdded || isPrem(live.current);
     const R = routine(id);
-    if (R.lock === 'all' && !prem) { set({ up: id }); return; }
+    if (premiumOnly(id) && !prem) { set({ up: id }); return; }
     stopAll();
     set({ play: id, step: 0, up: null, dayMode: false, ...(keepBubble ? {} : { bubble: null }), ...(id === 'gas' ? {} : { gas: false }) });
     const run = (k: number) => set((y) => (R.lockStep === k && !prem ? { step: k } : { step: k, ...applyOps(y, R.steps[k] ?? []) }));
@@ -137,14 +152,14 @@ export function Simulator({ locale, demo }: { locale: Locale; demo: SimDemo | nu
 
   // ---- derived values (design simVals) ----
   const rooms = s.rooms, has = !!s.home, on = s.on, night = s.night;
-  const plan = buildPlan(locale, { home: s.home, rooms, lock: s.lock, liked: s.liked });
+  const plan = buildPlan(locale, { home: s.home, rooms, lock: s.lock, liked: s.liked, order: ORDER, titles: Object.fromEntries(ORDER.map((id) => [id, RT(id).t])) });
   const { rc, names, price } = plan;
   const prem = rc.pkg === 'Premium';
-  const wa = whatsappHref(plan.msg);
+  const wa = whatsappHref(plan.msg, content?.contact?.whatsappE164);
   const gasIdx = Math.max(0, rooms.findIndex((r) => r.type === 'kitchen'));
   const pct = rc.over ? '100%' : Math.min(100, (rc.ch / rc.cap) * 100) + '%';
   let nowLabel = '';
-  if (s.dayMode) MARKS.forEach((m) => { if (m.t <= s.t && !(routine(m.r).lock === 'all' && !prem)) nowLabel = S.routines[m.r].t; });
+  if (s.dayMode) MARKS.forEach((m) => { if (m.t <= s.t && !(premiumOnly(m.r) && !prem)) nowLabel = RT(m.r).t; });
 
   const copyPlan = () => {
     const txt = plan.text;
@@ -359,10 +374,10 @@ export function Simulator({ locale, demo }: { locale: Locale; demo: SimDemo | nu
                 </div>
                 <div className="sim-marks" aria-hidden="true">
                   {MARKS.map((m, i) => {
-                    const locked = routine(m.r).lock === 'all' && !prem, pos = (m.t / 24) * 100;
+                    const locked = premiumOnly(m.r) && !prem, pos = (m.t / 24) * 100;
                     return (
                       <span key={m.r} className="sim-mark" data-locked={locked ? 'true' : 'false'} data-row={i % 2 ? '2' : '1'} style={{ insetInlineStart: pos + '%', transform: `translateX(${(pos > 85 ? 100 : 50) * S.dir}%)` }}>
-                        <span dir="ltr" className="sim-mark-time">{simClk(m.t)}</span><span>{B(S.routines[m.r].t)}</span>{locked ? <span className="sim-mark-badge">{B(S.inPremium)}</span> : null}
+                        <span dir="ltr" className="sim-mark-time">{simClk(m.t)}</span><span>{B(RT(m.r).t)}</span>{locked ? <span className="sim-mark-badge">{B(S.inPremium)}</span> : null}
                       </span>
                     );
                   })}
@@ -428,8 +443,8 @@ export function Simulator({ locale, demo }: { locale: Locale; demo: SimDemo | nu
             <div className="sim-routines-wrap">
               <div className="sim-routines-head"><h3>{B(U.routinesH)}</h3><span className="sim-small sim-small-15">{B(U.routinesSub)}</span></div>
               <ul className="sim-routines">
-                {RORDER.map((id) => {
-                  const R = routine(id), T = S.routines[id], liked = s.liked.includes(id), isP = s.play === id, running = isP && s.step < R.steps.length;
+                {ORDER.map((id) => {
+                  const R = routine(id), T = RT(id), liked = s.liked.includes(id), isP = s.play === id, running = isP && s.step < R.steps.length;
                   return (
                     <li className="sim-routine" key={id} data-routine={id}>
                       <div className="sim-routine-head">
@@ -438,7 +453,7 @@ export function Simulator({ locale, demo }: { locale: Locale; demo: SimDemo | nu
                           <SimIcon name="heart" size={20} fill={liked ? '#0F2238' : 'none'} />
                         </button>
                       </div>
-                      {id === 'gas' || R.lock ? <span className="sim-badge">{B(id === 'gas' ? S.everyPkg : S.inPremium)}</span> : null}
+                      {id === 'gas' || R.lock || premiumOnly(id) ? <span className="sim-badge">{B(id === 'gas' ? S.everyPkg : S.inPremium)}</span> : null}
                       <span className="sim-small sim-trig">{B(T.tr)}</span>
                       <ul className="sim-acts">
                         {T.a.map((text, j) => {
@@ -490,6 +505,11 @@ export function Simulator({ locale, demo }: { locale: Locale; demo: SimDemo | nu
             </div>
           </div>
         )}
+        {content?.booking && s.home ? (
+          <div className="sim-booking">
+            <BookingForm locale={locale} token={content.booking.token} packages={content.booking.packages} initialPackage={rc.eng ? 'unsure' : rc.pkg.toLowerCase()} source="simulator" plan={plan.text.slice(0, 900)} contact={content.contact ?? BUILTIN_CONTACT} privacyHref={content.booking.privacyHref} />
+          </div>
+        ) : null}
       </section>
 
       <section className="v2-section sim-cta-section" aria-labelledby="cta-band-title">
@@ -497,7 +517,7 @@ export function Simulator({ locale, demo }: { locale: Locale; demo: SimDemo | nu
           <h2 id="cta-band-title">{B(U.ready)}</h2>
           <div className="v2-actions">
             <a className="btn btn-on-dark is-primary" href={wa} {...EXTERNAL_LINK} data-testid="cta-book">{B(U.bookVisit)}</a>
-            <a className="btn btn-on-dark" href={telHref()}>{B(U.callUs)}</a>
+            <a className="btn btn-on-dark" href={telHref(content?.contact?.phoneE164)}>{B(U.callUs)}</a>
           </div>
         </div>
       </section>

@@ -4,7 +4,10 @@ import { isLocale, type Locale } from '@/lib/i18n.ts';
 import { pageMetadata } from '@/lib/seo.ts';
 import { smartHomePackage } from '@/lib/smart-home-packages.ts';
 import { ContactBooking } from '@/components/ContactBooking.tsx';
-import { ADDRESS } from '@/lib/contact.ts';
+import { loadSiteContent } from '@/lib/site-content.ts';
+import { bookingVisible } from '@/lib/leads.ts';
+import { issueBookingToken } from '@/lib/booking-token.ts';
+import { BookingForm } from '@/components/BookingForm.tsx';
 import { SwashText } from '@/components/v2.tsx';
 import { Bidi } from '@/components/bidi.tsx';
 
@@ -22,7 +25,10 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
   return pageMetadata({ locale, path: '/contact', title: COPY[locale].title, description: COPY[locale].body });
 }
 
-/** Design v2 "04 Contact" (DR-101): phone and WhatsApp only; no form, backend or storage. Colloquial Arabic only (one register per page). */
+/**
+ * Design v2 "04 Contact" (DR-101): phone and WhatsApp. The booking form (final release, owner 2026-11-04) is rendered
+ * only when the OWNER approved the privacy text AND enabled intake in the admin; otherwise the page is unchanged.
+ */
 export default async function ContactPage({ params, searchParams }: P) {
   const { locale: value } = await params;
   if (!isLocale(value)) notFound();
@@ -31,6 +37,9 @@ export default async function ContactPage({ params, searchParams }: P) {
   const requested = Array.isArray(query.package) ? query.package[0] : query.package;
   const initialPackage = smartHomePackage(requested)?.id ?? null;
   const copy = COPY[locale];
+  const content = await loadSiteContent();
+  const packages = content.packages.map((entry) => ({ id: entry.id, label: entry.name.en }));
+  const showForm = bookingVisible({ privacyApproved: content.privacy.approved, intakeEnabled: content.intakeEnabled });
   return (
     <>
       <section className="v2-contact">
@@ -38,10 +47,15 @@ export default async function ContactPage({ params, searchParams }: P) {
           <span className="v2-eyebrow">{copy.eyebrow}</span>
           <h1><SwashText text={copy.title} word={copy.swash} locale={locale} /></h1>
           <p className="v2-lead"><Bidi text={copy.body} locale={locale} /></p>
-          <p className="v3-address" data-testid="contact-address"><Bidi text={ADDRESS[locale]} locale={locale} /></p>
+          <p className="v3-address" data-testid="contact-address"><Bidi text={content.contact.address[locale]} locale={locale} /></p>
         </div>
-        <ContactBooking locale={locale} initialPackage={initialPackage} />
+        <ContactBooking locale={locale} initialPackage={initialPackage} contact={content.contact} packages={packages} />
       </section>
+      {showForm ? (
+        <section className="v2-section booking-section" aria-label={locale === 'ar' ? 'احجز زيارة' : 'Book a visit'}>
+          <BookingForm locale={locale} token={issueBookingToken()} packages={packages} initialPackage={initialPackage} source="contact" contact={content.contact} privacyHref={`/${locale}/legal/privacy`} />
+        </section>
+      ) : null}
     </>
   );
 }

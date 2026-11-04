@@ -1,6 +1,7 @@
 /**
  * Simulator copy (design v4 `SIMD` plus the inline strings of the "12 Simulator" markup), verbatim per locale.
- * The upsell and lock lines take their amounts from the package registry (rules.ts `UPSELL`, `PK`).
+ * The upsell and lock lines take their amounts from the package registry (rules.ts `UPSELL`, `PK`); they are getters so
+ * they follow the admin-managed prices applied by `applySimContent`.
  */
 import type { Locale } from '../i18n.ts';
 import { fmtN, PK, UPSELL, type DevKey, type HomeKey, type PkgKey, type RoomTypeKey, type RoutineId } from './rules.ts';
@@ -49,8 +50,8 @@ const AR: SimCopy = {
   lines: (n) => (n === 0 ? 'من غير نور' : n === 1 ? 'خط نور' : n === 2 ? 'خطين نور' : n + (n <= 10 ? ' خطوط نور' : ' خط نور')),
   used: (a, b) => `مستخدم ${a} من ${b}`, extra: (x) => `+ ${x} (السعر في الزيارة)`, extrasVal: 'السعر بيتحدد في الزيارة',
   up: {
-    Essential: `بـ${fmtN(UPSELL.toPlus)} ج.م زيادة تاخد Plus: ${UPSELL.toPlusChannels} قناة زيادة.`,
-    Plus: `بـ${fmtN(UPSELL.toPremium)} ج.م زيادة تاخد Premium: القفل الذكي وروتينات الدخول والخروج.`,
+    get Essential() { return `بـ${fmtN(UPSELL.toPlus)} ج.م زيادة تاخد Plus: ${UPSELL.toPlusChannels} قناة زيادة.`; },
+    get Plus() { return `بـ${fmtN(UPSELL.toPremium)} ج.م زيادة تاخد Premium: القفل الذكي وروتينات الدخول والخروج.`; },
     Premium: 'Premium هي الباقة الأكمل.',
   },
   adds: { Essential: 'كنترولر 16R واحد، Amazon Alexa، ريموت IR، حساس غاز، لوحة كهرباء وأسلاك', Plus: 'كنترولر 16R تاني: 16 قناة زيادة', Premium: 'القفل الذكي وروتينات الدخول والخروج' },
@@ -71,7 +72,7 @@ const AR: SimCopy = {
     gas: { t: 'أمان الغاز', tr: 'لما حساس الغاز يكتشف تسريب', a: ['إنذار عالي', 'إشعار على الموبايل', 'الشفاط يشتغل', 'نور المطبخ يولّع'] },
   },
   inPremium: 'في Premium', everyPkg: 'شغال دايمًا، في كل الباقات', try: 'جرّبه', playing: 'شغّال…', again: 'جرّبه تاني', like: (n) => `عجبني: ${n}`,
-  lockUp: `الروتين ده محتاج القفل الذكي، وهو موجود في باقة Premium (${fmtN(PK.Premium.price)} ج.م).`,
+  get lockUp() { return `الروتين ده محتاج القفل الذكي، وهو موجود في باقة Premium (${fmtN(PK.Premium.price)} ج.م).`; },
   dayPlay: 'شغّل اليوم', dayPause: 'إيقاف', dayAgain: 'من الأول', sheetOpen: 'التفاصيل', sheetClose: 'إخفاء', copy: 'انسخ الخطة', copied: 'اتنسخت',
   msg: (p) => {
     const head = `أهلًا OTONOM، عملت خطة ${p.homeL}: ${p.n} ${AR.roomsW(p.n)}، ${p.ch} ${AR.chW(p.ch)}`;
@@ -106,8 +107,8 @@ const EN: SimCopy = {
   lines: (n) => (n === 0 ? 'no lights' : n === 1 ? '1 light' : n + ' lights'),
   used: (a, b) => `Using ${a} of ${b}`, extra: (x) => `+ ${x} (price set at the visit)`, extrasVal: 'price set at the visit',
   up: {
-    Essential: `${fmtN(UPSELL.toPlus)} EGP more gets you Plus: ${UPSELL.toPlusChannels} more channels.`,
-    Plus: `${fmtN(UPSELL.toPremium)} EGP more gets you Premium: the smart lock and arrive/leave routines.`,
+    get Essential() { return `${fmtN(UPSELL.toPlus)} EGP more gets you Plus: ${UPSELL.toPlusChannels} more channels.`; },
+    get Plus() { return `${fmtN(UPSELL.toPremium)} EGP more gets you Premium: the smart lock and arrive/leave routines.`; },
     Premium: 'Premium is the most complete package.',
   },
   adds: { Essential: 'One 16R controller, Amazon Alexa, IR remote, gas sensor, electrical panel and wires', Plus: 'A second 16R controller: 16 more channels', Premium: 'The smart lock and arrive/leave routines' },
@@ -128,7 +129,7 @@ const EN: SimCopy = {
     gas: { t: 'Gas safety', tr: 'When the gas sensor detects a leak', a: ['Loud alarm', 'Phone notification', 'Extractor fan turns on', 'Kitchen light turns on'] },
   },
   inPremium: 'In Premium', everyPkg: 'Always on, every package', try: 'Try it', playing: 'Playing…', again: 'Try again', like: (n) => `Like: ${n}`,
-  lockUp: `This routine needs the smart lock, which comes with the Premium package (${fmtN(PK.Premium.price)} EGP).`,
+  get lockUp() { return `This routine needs the smart lock, which comes with the Premium package (${fmtN(PK.Premium.price)} EGP).`; },
   dayPlay: 'Play the day', dayPause: 'Pause', dayAgain: 'From the start', sheetOpen: 'Details', sheetClose: 'Hide', copy: 'Copy plan', copied: 'Copied',
   msg: (p) => {
     const head = `Hi OTONOM, I made a plan for ${p.homeL}: ${p.n} ${EN.roomsW(p.n)}, ${p.ch} ${EN.chW(p.ch)}`;

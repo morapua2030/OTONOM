@@ -10,6 +10,8 @@ import { SiteHeader, SiteFooter } from '@/components/site.tsx';
 import { Bidi } from '@/components/bidi.tsx';
 import { publicMarketingOnly } from '@/lib/deployment.ts';
 import { SITE_URL } from '@/lib/server.ts';
+import { loadSiteContent } from '@/lib/site-content.ts';
+import { MetricsBeacon } from '@/components/MetricsBeacon.tsx';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
@@ -30,6 +32,9 @@ export default async function LocaleLayout({ children, params }: { children: Rea
   if (!isLocale(locale)) notFound();
   const d = t(locale);
   const publicRelease = publicMarketingOnly();
+  // Admin-managed content (published only), cached; the built-in values when nothing is published or the DB is down.
+  const content = await loadSiteContent();
+  const announcement = content.announcement;
   return (
     <html lang={locale} dir={dirOf(locale)}>
       <body>
@@ -43,12 +48,20 @@ export default async function LocaleLayout({ children, params }: { children: Rea
             </div>
           </div>
         )}
+        {announcement ? (
+          <div className="announce-bar" role="region" aria-label={locale === 'ar' ? 'إعلان' : 'Announcement'} data-testid="announcement-bar">
+            <div className="wrap">
+              {announcement.link ? <a href={announcement.link}><Bidi text={announcement.text[locale]} locale={locale} /></a> : <Bidi text={announcement.text[locale]} locale={locale} />}
+            </div>
+          </div>
+        ) : null}
         <SiteHeader locale={locale} />
         {/* tabIndex -1: the skip link moves focus into <main>, not only the scroll position */}
         <main id="main" className="wrap" tabIndex={-1}>
           {children}
         </main>
-        <SiteFooter locale={locale} publicRelease={publicRelease} />
+        <SiteFooter locale={locale} publicRelease={publicRelease} content={content} />
+        <MetricsBeacon />
       </body>
     </html>
   );

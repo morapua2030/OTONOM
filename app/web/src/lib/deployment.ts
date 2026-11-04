@@ -131,7 +131,8 @@ const LEGACY_ROUTES: ReadonlyArray<readonly [RegExp, string]> = [
   [/^\/technology(?:\/.*)?$/, '/products'],
   [/^\/insights\/?$/, ''],
   [/^\/support\/service\/?$/, '/support'],
-  [/^\/legal\/privacy\/?$/, '/contact'],
+  // /legal/privacy is no longer a static redirect: the page itself redirects to /contact until the OWNER approves the
+  // privacy text in the admin (final release, supersedes the DR-108 removal).
 ];
 
 export const legacyRouteHarness = (env: NodeJS.ProcessEnv = process.env) =>

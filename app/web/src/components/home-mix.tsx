@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import type { Locale } from '@/lib/i18n.ts';
 import { localProductText, requireProductByModel } from '@/lib/products.ts';
-import { formatPackageAmount, packageCurrency, packageText, SMART_HOME_PACKAGES, type PackageItemKey } from '@/lib/smart-home-packages.ts';
+import { formatPackageAmount, packageCurrency, packageText, SMART_HOME_PACKAGES, type PackageItemKey, type SmartHomePackage } from '@/lib/smart-home-packages.ts';
 import { bookVisitMessage, EXTERNAL_LINK, whatsappHref } from '@/lib/contact.ts';
 import { Bidi } from './bidi.tsx';
 import { SwashText } from './v2.tsx';
@@ -38,8 +38,8 @@ const STEPS = [
 ] as const;
 
 /** "Everything in a package" grid (shared by Home and the smart-home page). */
-export function HomeItemsSection({ locale }: { locale: Locale }) {
-  const itemNames = new Map(SMART_HOME_PACKAGES.flatMap((entry) => entry.items).map((entry) => [entry.key, entry.name]));
+export function HomeItemsSection({ locale, packages = SMART_HOME_PACKAGES }: { locale: Locale; packages?: readonly SmartHomePackage[] }) {
+  const itemNames = new Map(packages.flatMap((entry) => entry.items).map((entry) => [entry.key, entry.name]));
   return (
       <section className="v2-section" aria-labelledby="home-items">
       <div className="v2-section-head">
@@ -59,7 +59,7 @@ export function HomeItemsSection({ locale }: { locale: Locale }) {
 }
 
 /** Package cards; Home opens WhatsApp, the smart-home page preselects the package on Contact (design v2/v3.1). */
-export function HomePackagesSection({ locale, choose }: { locale: Locale; choose: 'whatsapp' | 'contact' }) {
+export function HomePackagesSection({ locale, choose, packages = SMART_HOME_PACKAGES }: { locale: Locale; choose: 'whatsapp' | 'contact'; packages?: readonly SmartHomePackage[] }) {
   const L = (p: string) => `/${locale}${p}`;
   return (
       <section className="v2-section" aria-labelledby="home-packages">
@@ -71,7 +71,7 @@ export function HomePackagesSection({ locale, choose }: { locale: Locale; choose
         <a className="btn secondary" href={L('/smart-home/packages')}>{tx(locale, 'قارن الباقات', 'Compare packages')}</a>
       </div>
       <div className="v2-pkg-grid" data-testid="home-packages">
-        {SMART_HOME_PACKAGES.map((entry, index) => {
+        {packages.map((entry, index) => {
           const name = packageDisplayName(entry, locale);
           return (
             <article className={`v2-pkg-card${entry.badge ? ' is-featured' : ''}`} key={entry.id} data-package={entry.id}>
@@ -89,11 +89,11 @@ export function HomePackagesSection({ locale, choose }: { locale: Locale; choose
                 <span className="v2-pkg-price-value"><bdi dir="ltr">{formatPackageAmount(entry.priceEgp)}</bdi> <span className="v2-pkg-currency">{packageCurrency(locale)}</span></span>
               </div>
               {choose === 'whatsapp' ? (
-                <a className="btn" href={whatsappHref(bookVisitMessage(locale, entry.id))} {...EXTERNAL_LINK} data-testid={`home-choose-${entry.id}`}>
+                <a className="btn" href={whatsappHref(bookVisitMessage(locale, entry.id))} {...EXTERNAL_LINK} data-testid={`home-choose-${entry.id}`} data-metric={`package_${entry.id}`}>
                   <Bidi text={tx(locale, `اختر ${name}`, `Choose ${name}`)} locale={locale} />
                 </a>
               ) : (
-                <a className="btn" href={`/${locale}/contact?package=${entry.id}`}>
+                <a className="btn" href={`/${locale}/contact?package=${entry.id}`} data-metric={`package_${entry.id}`}>
                   <Bidi text={tx(locale, `اختر ${name}`, `Choose ${name}`)} locale={locale} />
                 </a>
               )}
@@ -105,7 +105,7 @@ export function HomePackagesSection({ locale, choose }: { locale: Locale; choose
   );
 }
 
-export function HomeMix({ locale }: { locale: Locale }) {
+export function HomeMix({ locale, packages = SMART_HOME_PACKAGES }: { locale: Locale; packages?: readonly SmartHomePackage[] }) {
   const L = (p: string) => `/${locale}${p}`;
   const r16 = requireProductByModel('16r');
   const minis = (['4r', '6r'] as const).map((model) => requireProductByModel(model));
@@ -155,8 +155,8 @@ export function HomeMix({ locale }: { locale: Locale }) {
         </div>
       </section>
 
-      <HomeItemsSection locale={locale} />
-      <HomePackagesSection locale={locale} choose="whatsapp" />
+      <HomeItemsSection locale={locale} packages={packages} />
+      <HomePackagesSection locale={locale} choose="whatsapp" packages={packages} />
 
       <section className="v2-section" id="start" aria-labelledby="home-start">
         <div className="v2-section-head">

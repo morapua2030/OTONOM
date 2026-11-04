@@ -8,6 +8,7 @@ import { Bidi } from './bidi.tsx';
 import { Circuit, CtaBand, Icon, IconCards, InnerHero, SplitTitle, StepCards } from './v3.tsx';
 import { FaqAccordion } from './FaqAccordion.tsx';
 import { HomeItemsSection, HomePackagesSection } from './home-mix.tsx';
+import type { SmartHomePackage } from '@/lib/smart-home-packages.ts';
 import { ItemVisual } from './package-items.tsx';
 import { SIM_ENTRY } from '@/lib/simulator/copy.ts';
 
@@ -18,7 +19,7 @@ export type V3ServicePath = keyof typeof V3_SERVICE_KEYS;
 export const isV3ServicePath = (path: string): path is V3ServicePath => Object.hasOwn(V3_SERVICE_KEYS, path);
 
 /** Design v3.1 "05 Service" template (IoT, Software, Custom). */
-export function ServiceV3({ locale, path }: { locale: Locale; path: V3ServicePath }) {
+export function ServiceV3({ locale, path, faqs }: { locale: Locale; path: V3ServicePath; faqs?: ReadonlyArray<{ q: { ar: string; en: string }; a: { ar: string; en: string } }> }) {
   const t = INNER[locale];
   const svc = SITE_COPY[locale].svc[V3_SERVICE_KEYS[path]];
   const talk = talkMessage(locale, svc.name);
@@ -43,7 +44,7 @@ export function ServiceV3({ locale, path }: { locale: Locale; path: V3ServicePat
         </div>
       </section>
       <section className="v2-section" aria-labelledby="svc-how"><h2 id="svc-how">{t.howWeWork}</h2><StepCards steps={SITE_COPY[locale].svcSteps} locale={locale} /></section>
-      <section className="v2-section" aria-labelledby="svc-faq"><h2 id="svc-faq">{t.questions}</h2><FaqAccordion items={svc.faq} locale={locale} /></section>
+      <section className="v2-section" aria-labelledby="svc-faq"><h2 id="svc-faq">{t.questions}</h2><FaqAccordion items={faqs ? faqs.map((f) => [f.q[locale], f.a[locale]] as const) : svc.faq} locale={locale} /></section>
       <CtaBand locale={locale} message={talk} />
     </>
   );
@@ -89,7 +90,7 @@ export function ServicesIndex({ locale }: { locale: Locale }) {
 }
 
 /** Design v3.1 "01 Home": the smart-home landing at /services/smart-home-automation. */
-export function SmartHomeLanding({ locale }: { locale: Locale }) {
+export function SmartHomeLanding({ locale, packages }: { locale: Locale; packages?: readonly SmartHomePackage[] }) {
   const s = INNER[locale].smart;
   const t = INNER[locale];
   const r16 = requireProductByModel('16r');
@@ -112,8 +113,8 @@ export function SmartHomeLanding({ locale }: { locale: Locale }) {
           <span className="v2-pill v2-badge-pin"><Bidi text={locale === 'ar' ? 'كنترولر 16R الذكي' : '16R Smart Controller'} locale={locale} /></span>
         </div>
       </section>
-      <HomeItemsSection locale={locale} />
-      <HomePackagesSection locale={locale} choose="contact" />
+      <HomeItemsSection locale={locale} packages={packages} />
+      <HomePackagesSection locale={locale} choose="contact" packages={packages} />
       <section className="v2-section" aria-labelledby="smart-steps"><h2 id="smart-steps">{s.howItWorks}</h2><StepCards steps={s.steps} locale={locale} /></section>
       <section className="v2-section" aria-labelledby="smart-ctrl">
         <div className="v2-section-head-row">

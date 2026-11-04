@@ -57,7 +57,7 @@ function comparisonCell(quantity: number | null, showQuantities: boolean, locale
 }
 
 /** Item-by-package table built only from the registry (design v2 "Compare what's included"). */
-export function PackageComparison({ locale }: { locale: Locale }) {
+export function PackageComparison({ locale, packages = SMART_HOME_PACKAGES }: { locale: Locale; packages?: readonly SmartHomePackage[] }) {
   const caption = tx(locale, 'قارن المكونات', 'Compare what’s included');
   return (
     <>
@@ -69,11 +69,11 @@ export function PackageComparison({ locale }: { locale: Locale }) {
           <thead>
             <tr>
               <th scope="col">{tx(locale, 'المكوّن', 'Item')}</th>
-              {SMART_HOME_PACKAGES.map((entry) => <th scope="col" key={entry.id}>{packageText(entry.name, locale)}</th>)}
+              {packages.map((entry) => <th scope="col" key={entry.id}>{packageText(entry.name, locale)}</th>)}
             </tr>
           </thead>
           <tbody>
-            {packageComparisonRows().map((row) => (
+            {packageComparisonRows(packages).map((row) => (
               <tr key={row.key}>
                 <th scope="row">
                   <span className="package-compare-item">
@@ -85,12 +85,12 @@ export function PackageComparison({ locale }: { locale: Locale }) {
                     )}
                   </span>
                 </th>
-                {SMART_HOME_PACKAGES.map((entry) => <td key={entry.id} data-package={entry.id}>{comparisonCell(row.cells[entry.id], row.showQuantities, locale)}</td>)}
+                {packages.map((entry) => <td key={entry.id} data-package={entry.id}>{comparisonCell(row.cells[entry.id], row.showQuantities, locale)}</td>)}
               </tr>
             ))}
             <tr className="package-compare-price">
               <th scope="row">{tx(locale, 'السعر الإجمالي', 'Total price')}</th>
-              {SMART_HOME_PACKAGES.map((entry) => <td key={entry.id}><bdi dir="ltr">{formatPackageAmount(entry.priceEgp)}</bdi> {packageCurrency(locale)}</td>)}
+              {packages.map((entry) => <td key={entry.id}><bdi dir="ltr">{formatPackageAmount(entry.priceEgp)}</bdi> {packageCurrency(locale)}</td>)}
             </tr>
           </tbody>
         </table>
@@ -100,11 +100,11 @@ export function PackageComparison({ locale }: { locale: Locale }) {
 }
 
 /** Packages page (design v2 "03 Packages"): full-width cards; "Choose" preselects the package on Contact. */
-export function SmartHomePackages({ locale, comparison = false }: { locale: Locale; comparison?: boolean }) {
+export function SmartHomePackages({ locale, comparison = false, packages = SMART_HOME_PACKAGES }: { locale: Locale; comparison?: boolean; packages?: readonly SmartHomePackage[] }) {
   return (
     <>
       <div className="v2-pkg-list" data-testid="smart-home-packages">
-        {SMART_HOME_PACKAGES.map((entry, index) => (
+        {packages.map((entry, index) => (
           <article className={`package-card v2-pkg-card v2-pkg-wide package-${entry.id}${entry.badge ? ' is-featured' : ''}`} id={`package-${entry.id}`} key={entry.id}>
             <div className="v2-pkg-main">
               <div className="v2-pkg-top">
@@ -120,7 +120,7 @@ export function SmartHomePackages({ locale, comparison = false }: { locale: Loca
                   <span className="v2-pkg-price-label">{tx(locale, 'السعر الإجمالي', 'Total price')}</span>
                   <span className="v2-pkg-price-value"><bdi dir="ltr">{formatPackageAmount(entry.priceEgp)}</bdi> <span className="v2-pkg-currency">{packageCurrency(locale)}</span></span>
                 </div>
-                <a className="btn" href={`/${locale}/contact?package=${entry.id}`}>{tx(locale, 'اختر هذه الباقة', 'Choose this package')}</a>
+                <a className="btn" href={`/${locale}/contact?package=${entry.id}`} data-metric={`package_${entry.id}`}>{tx(locale, 'اختر هذه الباقة', 'Choose this package')}</a>
               </div>
             </div>
             <PackageTiles entry={entry} labels locale={locale} />
@@ -133,7 +133,7 @@ export function SmartHomePackages({ locale, comparison = false }: { locale: Loca
           <a className="btn" href={`/${locale}/try`}>{SIM_ENTRY[locale].cta}</a>
         </div>
       ) : null}
-      {comparison ? <section className="v2-section" aria-label={tx(locale, 'قارن المكونات', 'Compare what’s included')}><PackageComparison locale={locale} /><PackageCaveat locale={locale} /></section> : <PackageCaveat locale={locale} />}
+      {comparison ? <section className="v2-section" aria-label={tx(locale, 'قارن المكونات', 'Compare what’s included')}><PackageComparison locale={locale} packages={packages} /><PackageCaveat locale={locale} /></section> : <PackageCaveat locale={locale} />}
     </>
   );
 }

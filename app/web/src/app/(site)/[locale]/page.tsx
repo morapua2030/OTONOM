@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { isLocale, type Locale } from '@/lib/i18n.ts';
 import { pageMetadata, summarise } from '@/lib/seo.ts';
 import { HomeMix, HOME_MIX } from '@/components/home-mix.tsx';
+import { loadSiteContent } from '@/lib/site-content.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,5 +18,6 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
 export default async function Home({ params }: P) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  return <HomeMix locale={locale as Locale} />;
+  const content = await loadSiteContent();
+  return <HomeMix locale={locale as Locale} packages={content.packages} />;
 }

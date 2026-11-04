@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { isLocale, type Locale } from '@/lib/i18n.ts';
 import { pageMetadata } from '@/lib/seo.ts';
 import { SmartHomePackages } from '@/components/SmartHomePackages.tsx';
+import { loadSiteContent } from '@/lib/site-content.ts';
 import { Bidi, isolateText } from '@/components/bidi.tsx';
 import { SwashText } from '@/components/v2.tsx';
 
@@ -26,6 +27,7 @@ export default async function SmartHomePackagesPage({ params }: P) {
   const { locale: value } = await params;
   if (!isLocale(value)) notFound();
   const locale = value as Locale;
+  const content = await loadSiteContent();
   return (
     <>
       <nav className="breadcrumbs" aria-label={locale === 'ar' ? 'مسار الصفحة' : 'Breadcrumb'}>
@@ -40,7 +42,7 @@ export default async function SmartHomePackagesPage({ params }: P) {
       </section>
       <section className="v2-section" aria-labelledby="package-list-title">
         <h2 id="package-list-title" className="sr-only">{isolateText(locale === 'ar' ? 'Premium وPlus وEssential' : 'Premium, Plus and Essential', locale)}</h2>
-        <SmartHomePackages locale={locale} comparison />
+        <SmartHomePackages locale={locale} comparison packages={content.packages} />
       </section>
     </>
   );

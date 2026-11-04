@@ -8,7 +8,7 @@
  * database is unreachable or slow. The result is cached under the `site-content` tag that every publish expires.
  */
 import type { Locale } from './i18n.ts';
-import { ADDRESS, PHONE_E164 } from './contact.ts';
+import { ADDRESS, PHONE_E164, setActiveContact } from './contact.ts';
 import { PRODUCTS, PRODUCT_MODELS, type ProductModel } from './products.ts';
 import { PACKAGE_ITEM_KEYS, SMART_HOME_PACKAGE_IDS, SMART_HOME_PACKAGES, type PackageItemKey, type SmartHomePackage, type SmartHomePackageId } from './smart-home-packages.ts';
 import { SITE_COPY } from './site-copy.ts';
@@ -250,7 +250,9 @@ export async function loadSiteContent(): Promise<SiteContent> {
       const { unstable_cache } = await import('next/cache');
       cachedLoader = unstable_cache(() => withTimeout(readPublished(), READ_TIMEOUT_MS), ['site-content-v1'], { tags: [SITE_CONTENT_TAG], revalidate: 300 });
     }
-    return await cachedLoader();
+    const content = await cachedLoader();
+    setActiveContact({ phoneE164: content.contact.phoneE164, whatsappE164: content.contact.whatsappE164, address: content.contact.address });
+    return content;
   } catch {
     failedAt = Date.now();
     return DEFAULT_SITE_CONTENT;
