@@ -49,6 +49,8 @@ test('the localized 404 has its own title in both locales; the unknown-locale 40
   assert.match(page, /export async function generateMetadata/);
   assert.match(page, /title: \{ absolute: notFoundTitle\(locale\) \}/);
   assert.match(read('components/NotFoundBody.tsx'), /<h1>\{NOT_FOUND_TITLE\[locale\]\}<\/h1>/);
+  // Next 16 hydrates a 404 with the layout's default title; the body re-applies the same plain-text title.
+  assert.match(read('components/NotFoundBody.tsx'), /useEffect\(\(\) => \{\s*document\.title = notFoundTitle\(locale\);\s*\}, \[locale\]\);/);
   assert.notEqual(NOT_FOUND_TITLE.ar, NOT_FOUND_TITLE.en);
 });
 

@@ -357,6 +357,17 @@ async function main() {
     add('d6-anchor-package-plus-below-header', anchorFacts.top >= anchorFacts.headerBottom && anchorFacts.top < anchorFacts.innerHeight, { ...anchorFacts, mode: 'headless' });
     await anchor.screenshot('hybrid03-anchor-ar-390-package-plus.png');
     await anchor.close();
+
+    // D8-C v5 (D8-A seo.404-title): the localized title must survive hydration, as the browser tab shows it.
+    for (const [route, expected] of [['/ar/this-page-does-not-exist', 'الصفحة غير موجودة — OTONOM'], ['/en/products/99r', 'Page not found — OTONOM'], ['/xx/about', 'الصفحة غير موجودة — OTONOM']] as const) {
+      const page = await browser.newPage(1440, 1000);
+      await page.goto(route);
+      await page.waitFor(`document.title === ${JSON.stringify(expected)}`, 8000).catch(() => null);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const facts = await page.eval<any>(`({ title: document.title, titles: document.head.querySelectorAll('title').length, notFound: !!document.querySelector('.not-found') })`);
+      add(`v5-404-title-after-hydration${route}`, facts.title === expected && facts.titles === 1 && facts.notFound, facts);
+      await page.close();
+    }
   } finally {
     browser.close();
   }
