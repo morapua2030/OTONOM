@@ -21,7 +21,7 @@ test('D6 product selector stays preliminary and does not activate commerce or co
   assert.doesNotMatch(selector, /fetch\(|checkout|payment|localStorage|sessionStorage/i);
   assert.match(selector, /products\/\$\{product\.model\}/);
   // The only outbound action is the visitor's own WhatsApp link, built from the choices (no free text, no form).
-  assert.match(selector, /whatsappHref\(message\)\} \{\.\.\.EXTERNAL_LINK\}/);
+  assert.match(selector, /whatsappHref\(message, contact\.whatsappE164\)\} \{\.\.\.EXTERNAL_LINK\}/);
   assert.doesNotMatch(selector, /<form|<textarea|<select|type="(text|number|email|tel)"/);
 });
 
