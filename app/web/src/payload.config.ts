@@ -33,6 +33,7 @@ export default buildConfig({
         serviceDesk: { Component: '/components/admin/ServiceView#ServiceView', path: '/service-desk', exact: true },
         productDrafts: { Component: '/components/admin/ProductDraftsView#ProductDraftsView', path: '/product-drafts', exact: true },
         accountSecurity: { Component: '/components/admin/AccountSecurityView#AccountSecurityView', path: '/account-security', exact: true },
+        sales: { Component: '/components/admin/SalesView#SalesView', path: '/sales', exact: true },
       },
     },
     meta: { titleSuffix: ' — OTONOM' },
