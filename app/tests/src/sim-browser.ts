@@ -33,11 +33,29 @@ async function tabTo(page: Page, selector: string, max = 400) {
  * fetches included), and on ANY cross-origin request. ALLOW only same-origin GET requests for static assets: the site
  * icon, /_next/static, /_next/image, /brand, /fonts, /products and image or font files. Everything else (a document
  * navigation, a POST, an unknown same-origin path) fails too.
+ * Owner decision A (2026-11-04, simulator metrics ON): exactly ONE more thing is allowed — a same-origin
+ * navigator.sendBeacon POST (CDP type Ping) to /api/e whose body is { e, r, l } only, with e from the site's fixed
+ * event list. A beacon to any other path, a fetch()/XHR to /api/e, an unknown event or any extra field still fails.
  */
+const METRIC_EVENTS = ['page_view', 'whatsapp_click', 'call_click', 'package_premium', 'package_plus', 'package_essential', 'sim_start', 'sim_stage_2', 'sim_stage_3', 'sim_stage_4', 'plan_sent'];
+function isMetricBeacon(r: { method: string; type: string; url: string; postData?: string | null }): boolean {
+  let url: URL;
+  try { url = new URL(r.url); } catch { return false; }
+  if (url.origin !== ORIGIN_OF_BASE() || r.type !== 'Ping' || r.method !== 'POST' || url.pathname !== '/api/e' || typeof r.postData !== 'string') return false;
+  try {
+    const body = JSON.parse(r.postData);
+    const keys = Object.keys(body).sort().join(',');
+    return (keys === 'e,l,r' || keys === 'e,r') && METRIC_EVENTS.includes(body.e) && typeof body.r === 'string' && /^\/(ar|en)(\/[a-z0-9-]{1,40}){0,4}$/.test(body.r);
+  } catch {
+    return false;
+  }
+}
+const ORIGIN_OF_BASE = () => new URL(BASE).origin;
 const ORIGIN = new URL(BASE).origin;
 const APP_TRAFFIC_TYPES = ['XHR', 'Fetch', 'WebSocket', 'EventSource', 'Ping'];
 const STATIC_ASSET = /^\/(?:favicon\.ico$|_next\/static\/|_next\/image$|brand\/|fonts\/|products\/)|\.(?:png|jpe?g|webp|avif|gif|svg|ico|woff2?)$/;
-function isAppTraffic(r: { method: string; type: string; url: string }): boolean {
+function isAppTraffic(r: { method: string; type: string; url: string; postData?: string | null }): boolean {
+  if (isMetricBeacon(r)) return false;
   let url: URL;
   try { url = new URL(r.url); } catch { return true; }
   if (url.origin !== ORIGIN) return true;
@@ -137,6 +155,8 @@ async function main() {
     add('try-whatsapp-plan-message', msg.host === 'wa.me' && msg.path === '/201090721847' && msg.text.startsWith('أهلًا OTONOM، عملت خطة لشقة: 11 أوضة') && msg.text.length <= 900 && msg.cta === msg.text && msg.target === '_blank' && /noopener/.test(msg.rel) && JSON.stringify(msg.liked) === '["صباح الخير","أمان الغاز"]', msg);
     add('try-copy-plan', copied === 'اتنسخت', { copied });
     add('try-no-network-during-interaction', network.length === 0, network);
+    const beacons = run.requests.slice(req0).filter(isMetricBeacon).map((r) => { try { return JSON.parse(r.postData ?? '{}').e; } catch { return null; } });
+    add('try-metrics-beacons-only', beacons.includes('sim_start') && beacons.includes('sim_stage_2'), { beacons });
     add('try-no-storage-cookies-forms-inputs', end.local === 0 && end.session === 0 && end.cookie === cookie0 && end.forms === 0 && JSON.stringify(end.inputs) === '["INPUT:range"]', { ...end, cookie0 });
     add('try-interaction-browser-errors', cleanIssues(run.issues).length === 0, cleanIssues(run.issues));
     await run.screenshot('try-ar-1440-after-run.png');
@@ -158,6 +178,12 @@ async function main() {
       { method: 'GET', type: 'Other', url: 'https://example.com/favicon.ico', expect: true },
       { method: 'GET', type: 'Document', url: `${ORIGIN}/ar/contact`, expect: true },
       { method: 'POST', type: 'Other', url: `${ORIGIN}/brand/x.png`, expect: true },
+      { method: 'POST', type: 'Ping', url: `${ORIGIN}/api/e`, postData: '{"e":"sim_start","r":"/ar/try","l":"ar"}', expect: false },
+      { method: 'POST', type: 'Ping', url: `${ORIGIN}/api/e`, postData: '{"e":"drop_table","r":"/ar/try","l":"ar"}', expect: true },
+      { method: 'POST', type: 'Ping', url: `${ORIGIN}/api/e`, postData: '{"e":"sim_start","r":"/ar/try","l":"ar","id":"x"}', expect: true },
+      { method: 'POST', type: 'Ping', url: `${ORIGIN}/api/other`, postData: '{"e":"sim_start","r":"/ar/try","l":"ar"}', expect: true },
+      { method: 'POST', type: 'Fetch', url: `${ORIGIN}/api/e`, postData: '{"e":"sim_start","r":"/ar/try","l":"ar"}', expect: true },
+      { method: 'POST', type: 'Ping', url: 'https://example.com/api/e', postData: '{"e":"sim_start","r":"/ar/try","l":"ar"}', expect: true },
     ];
     const misclassified = sample.filter((r) => isAppTraffic(r) !== r.expect);
     add('try-network-rule-self-test', misclassified.length === 0, misclassified);
@@ -168,10 +194,15 @@ async function main() {
     await neg.click('.sim-home[data-home="apt"]');
     await neg.eval(`(async () => { try { await fetch('/__sim-network-negative-test', { cache: 'no-store' }); } catch {} return true; })()`);
     await neg.eval(`navigator.sendBeacon('/__sim-network-negative-beacon', 'x')`);
+    await neg.eval(`(async () => { try { await fetch('/api/e', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ e: 'sim_start', r: '/ar/try', l: 'ar' }) }); } catch {} return true; })()`);
+    await neg.eval(`navigator.sendBeacon('/api/e', new Blob([JSON.stringify({ e: 'drop_table', r: '/ar/try', l: 'ar' })], { type: 'application/json' }))`);
     await neg.eval(`(async () => { const img = new Image(); img.src = '/brand/otonom/assets/icons/favicon.ico?neg=1'; await new Promise((r) => { img.onload = img.onerror = r; setTimeout(r, 2000); }); return true; })()`);
     await sleep(600);
     const negHits = nonAssetRequests(neg, negFrom);
     add('try-network-rule-negative-fetch-fails', negHits.some((r) => r.type === 'Fetch' && r.url.endsWith('/__sim-network-negative-test')) && negHits.some((r) => r.type === 'Ping' && r.url.endsWith('/__sim-network-negative-beacon')) && !negHits.some((r) => r.url.endsWith('/favicon.ico')), negHits);
+    add('try-network-rule-negative-metrics', negHits.some((r) => r.type === 'Fetch' && r.url.endsWith('/api/e')) && negHits.some((r) => r.type === 'Ping' && r.url.endsWith('/api/e') && (r.postData ?? '').includes('drop_table')), negHits.filter((r) => r.url.endsWith('/api/e')));
+    const unknown = await fetch(`${BASE}/api/e`, { method: 'POST', headers: { 'content-type': 'application/json', origin: ORIGIN, 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/140.0 Safari/537.36' }, body: JSON.stringify({ e: 'drop_table', r: '/ar/try', l: 'ar' }) });
+    add('try-metrics-unknown-event-rejected', unknown.status === 400, unknown.status);
     await neg.close();
 
     const gate = await browser.newPage(1440, 1000);

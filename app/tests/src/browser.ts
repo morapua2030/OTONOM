@@ -60,7 +60,7 @@ export class Page {
   responses: PageResponse[] = [];
   lastUrls = new Map<string, string>();
   /** Every request this page started (method, CDP resource type, URL without query), in order. */
-  requests: Array<{ method: string; type: string; url: string; rsc: boolean }> = [];
+  requests: Array<{ method: string; type: string; url: string; rsc: boolean; postData?: string | null }> = [];
   constructor(
     private cdp: Cdp,
     private sid: string,
@@ -200,7 +200,13 @@ export class Browser {
         page.issues.push({ kind: 'request-failed', text: [p.errorText, p.blockedReason, p.corsErrorStatus?.corsError].filter(Boolean).join(' | '), url: clean(page.lastUrls.get(p.requestId)) });
       if (method === 'Network.requestWillBeSent') {
         page.lastUrls.set(p.requestId, p.request?.url);
-        page.requests.push({ method: String(p.request?.method ?? ''), type: String(p.type ?? ''), url: String(p.request?.url ?? '').split('?')[0], rsc: /[?&]_rsc=/.test(String(p.request?.url ?? '')) });
+        const entry: { method: string; type: string; url: string; rsc: boolean; postData?: string | null } = { method: String(p.request?.method ?? ''), type: String(p.type ?? ''), url: String(p.request?.url ?? '').split('?')[0], rsc: /[?&]_rsc=/.test(String(p.request?.url ?? '')) };
+        // request bodies are kept only for small non-GET requests (beacons): Chrome omits blob bodies from the event
+        if (entry.method !== 'GET') {
+          entry.postData = typeof p.request?.postData === 'string' ? p.request.postData.slice(0, 1024) : null;
+          if (entry.postData === null && p.request?.hasPostData) this.cdp.send('Network.getRequestPostData', { requestId: p.requestId }, sid).then((r: any) => { if (typeof r?.result?.postData === 'string') entry.postData = r.result.postData.slice(0, 1024); }).catch(() => undefined);
+        }
+        page.requests.push(entry);
         const u = String(p.request?.url ?? '');
         if (/^https?:\/\//.test(u) && !u.startsWith(this.base)) page.issues.push({ kind: 'third-party', text: 'request to another host', url: u.split('?')[0] });
       }

@@ -72,12 +72,19 @@ test('metrics: fixed event list, locale paths only (no query, ids or junk), bots
   assert.equal(cairoDay(new Date('2026-11-04T23:30:00Z')), '2026-11-05');
 });
 
-test('the metrics client sends only event, route and locale; no storage or cookie; paused on /try; honours DNT/GPC', () => {
+test('the metrics client sends only event, route and locale; no storage or cookie; honours DNT/GPC; simulator events allow-listed', () => {
   const beacon = read('components/MetricsBeacon.tsx');
   assert.match(beacon, /JSON\.stringify\(\{ e, r: where\.r, l: where\.l \}\)/);
   assert.match(beacon, /navigator\.sendBeacon\('\/api\/e'/);
   assert.doesNotMatch(beacon, /localStorage|sessionStorage|document\.cookie|fetch\(|XMLHttpRequest|https?:\/\/(?!wa\.me\/')/, 'the only URL is the wa.me prefix used to recognise WhatsApp clicks');
-  assert.match(beacon, /const PAUSED = \/\^\\\/\(\?:ar\|en\)\\\/try/);
+  // owner decision A (2026-11-04): metrics ON for /try; the beacon accepts only the five simulator event names
+  assert.match(beacon, /const SIM_EVENTS = new Set\(\['sim_start', 'sim_stage_2', 'sim_stage_3', 'sim_stage_4', 'plan_sent'\]\);/);
+  assert.match(beacon, /if \(typeof e === 'string' && SIM_EVENTS\.has\(e\)\) send\(e, location\.pathname\);/);
+  // the simulator never talks to the network: it only raises allow-listed page events
+  const sim = read('components/simulator/Simulator.tsx');
+  assert.doesNotMatch(sim, /sendBeacon|fetch\(|XMLHttpRequest|WebSocket|EventSource/);
+  assert.match(sim, /type SimMetric = 'sim_start' \| 'sim_stage_2' \| 'sim_stage_3' \| 'sim_stage_4' \| 'plan_sent';/);
+  assert.match(sim, /window\.dispatchEvent\(new CustomEvent\('otonom:metric', \{ detail: \{ e \} \}\)\)/);
   assert.match(beacon, /doNotTrack === '1' \|\| n\.globalPrivacyControl === true/);
 });
 
