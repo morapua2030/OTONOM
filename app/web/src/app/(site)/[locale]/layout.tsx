@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
-import '../fonts.css';
 import '../site.css';
 import '../hybrid03.css';
 import '../v2.css';
@@ -11,7 +10,6 @@ import { Bidi } from '@/components/bidi.tsx';
 import { publicMarketingOnly } from '@/lib/deployment.ts';
 import { SITE_URL } from '@/lib/server.ts';
 import { loadSiteContent } from '@/lib/site-content.ts';
-import { MetricsBeacon } from '@/components/MetricsBeacon.tsx';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
@@ -60,8 +58,8 @@ export default async function LocaleLayout({ children, params }: { children: Rea
         <main id="main" className="wrap" tabIndex={-1}>
           {children}
         </main>
+        {/* SiteFooter also starts the site metrics, only after the page load event (owner, 2026-11-04). */}
         <SiteFooter locale={locale} publicRelease={publicRelease} content={content} />
-        <MetricsBeacon />
       </body>
     </html>
   );

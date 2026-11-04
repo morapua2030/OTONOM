@@ -7,6 +7,7 @@ import { ServiceNavMenu } from './ServiceNavMenu.tsx';
 import { SiteNavLink } from './SiteNavLink.tsx';
 import { BrandLogo } from './BrandLogo.tsx';
 import { EscapableDetails } from './EscapableDetails.tsx';
+import { DeferredMetrics } from './DeferredMetrics.tsx';
 import { bookVisitMessage, EXTERNAL_LINK, phoneDisplay, telHref, whatsappHref } from '@/lib/contact.ts';
 import { DEFAULT_SITE_CONTENT, type SiteContent } from '@/lib/site-content.ts';
 import { SITE_COPY } from '@/lib/site-copy.ts';
@@ -136,6 +137,9 @@ export function SiteFooter({ locale, content = DEFAULT_SITE_CONTENT }: { locale:
           <span dir="ltr" className="footer-copy">© 2026 OTONOM</span>
         </div>
       </div>
+      {/* Renders nothing. Loads the site metrics after the page load event (owner, 2026-11-04); imported here so it
+          ships in the site chrome's existing script instead of adding a request before the first paint. */}
+      <DeferredMetrics />
     </footer>
   );
 }
