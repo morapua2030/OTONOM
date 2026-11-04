@@ -23,6 +23,27 @@ const EXTRA_WIDTHS = (page: string) => (page.startsWith('/try') ? [390, 1440] : 
 const PAGES = ['', '/services', '/services/iot-embedded', '/services/software-engineering', '/services/custom-engineering', '/services/smart-home-automation', '/about', '/start-project', '/support', '/smart-home/packages', '/contact', '/solutions', '/solutions/villas', '/solutions/apartments', '/business/developers', '/business/contractors', '/technology/controllers', '/technology/integrations', '/technology/documentation', '/products', '/products/4r', '/products/6r', '/products/16r', '/products/compare', '/try', '/try?demo=night', '/try?demo=gas', '/try?demo=plan', '/projects', '/business/request-a-proposal', '/consultation', '/shop', '/support/warranty', '/preview', '/preview/bidi-samples'];
 const rec = new Recorder();
 
+/**
+ * D8-C v5: text shown outside the page (document title, meta description, Open Graph and Twitter text) is read from
+ * the raw HTML <head>: it must carry no bidi control characters (LRM/RLM, embeddings, isolates) and no double or
+ * edge spaces (document.title would hide both, so the raw HTML is checked).
+ */
+const BIDI_CONTROL = /[‎‏‪-‮⁦-⁩]/;
+const decodeHtml = (s: string) => s.replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16))).replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d))).replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+async function headTexts(url: string): Promise<{ status: number; titles: string[]; texts: Array<[string, string]> }> {
+  const res = await fetch(url, { redirect: 'manual' });
+  const head = (await res.text()).split('</head>')[0] ?? '';
+  const titles = [...head.matchAll(/<title>([^<]*)<\/title>/g)].map((m) => decodeHtml(m[1]));
+  const texts: Array<[string, string]> = titles.map((t) => ['title', t]);
+  for (const m of head.matchAll(/<meta ([^>]*)>/g)) {
+    const key = /(?:name|property)="([^"]+)"/.exec(m[1])?.[1];
+    const content = /content="([^"]*)"/.exec(m[1])?.[1];
+    if (key && content !== undefined && /^(description|og:title|og:description|og:image:alt|twitter:title|twitter:description|twitter:image:alt)$/.test(key)) texts.push([key, decodeHtml(content)]);
+  }
+  return { status: res.status, titles, texts };
+}
+const plainTextIssues = (texts: Array<[string, string]>) => texts.filter(([, t]) => BIDI_CONTROL.test(t) || /\s{2}/.test(t) || t !== t.trim()).map(([k, t]) => `${k}: ${JSON.stringify(t)}`);
+
 class Cdp {
   private id = 0;
   private pending = new Map<number, (v: any) => void>();
@@ -314,9 +335,16 @@ async function main() {
               rec.add(`${id}-LANGSWITCH`, 'I18N', `${locale}${page} language switch keeps the page`, (p?.langSwitch ?? []).includes(`/${other}${pathOnly}`), p?.langSwitch);
               (titles[page] ??= {})[locale] = p?.title;
             }
+            const h = await headTexts(url);
+            rec.add(`${id}-META-PLAIN`, 'SEO', `${locale}${page} title/meta/OG text has no bidi control characters and no double spaces`, h.titles.length === 1 && plainTextIssues(h.texts).length === 0, { texts: h.texts.length, issues: plainTextIssues(h.texts) });
           }
         }
       }
+    }
+    // D8-C v5 (D8-A seo.404-title): the localized 404 and the unknown-locale 404 have their own plain-text title.
+    for (const [route, expected] of [['/ar/this-page-does-not-exist', 'الصفحة غير موجودة — OTONOM'], ['/ar/products/99r', 'الصفحة غير موجودة — OTONOM'], ['/en/this-page-does-not-exist', 'Page not found — OTONOM'], ['/en/products/99r', 'Page not found — OTONOM'], ['/xx', 'الصفحة غير موجودة — OTONOM'], ['/xx/about', 'الصفحة غير موجودة — OTONOM']] as const) {
+      const h = await headTexts(`${BASE}${route}`);
+      rec.add(`VIS-404-TITLE${route}`, 'SEO', `${route} answers 404 with the localized title "${expected}"`, h.status === 404 && h.titles.length === 1 && h.titles[0] === expected && plainTextIssues(h.texts).length === 0, { status: h.status, titles: h.titles, issues: plainTextIssues(h.texts) });
     }
     for (const [page, t] of Object.entries(titles)) rec.add(`VIS-TITLE-DIFFERS${page || '/'}`, 'SEO', `${page || '/'} title differs between ar and en`, !!t.ar && !!t.en && t.ar !== t.en, t);
     // Admin editing in Arabic (A4): EDITOR signs in with password + TOTP; the editor form must render ar fields RTL and en fields LTR

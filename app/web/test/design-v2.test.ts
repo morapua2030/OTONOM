@@ -26,14 +26,17 @@ test('contact surfaces collect nothing: no form, no input, no request (DR-101)',
   assert.match(read('app/(site)/[locale]/contact/page.tsx'), /smartHomePackage\(requested\)\?\.id \?\? null/, '?package goes through the registry allow-list');
 });
 
-test('fonts are self-hosted: next/font/local, OFL files present, no provider host anywhere, CSP unchanged (DR-104)', () => {
-  const fonts = read('app/(site)/fonts.ts');
-  assert.match(fonts, /from 'next\/font\/local'/);
-  assert.doesNotMatch(fonts, /next\/font\/google/);
+test('fonts are self-hosted: same-origin /fonts/ files, OFL files present, no provider host anywhere, CSP unchanged (DR-104, D8-C v5)', () => {
+  // D8-C v5: hand-written @font-face rules (fonts.css) replace next/font/local so each locale can preload its own face.
+  const fonts = read('app/(site)/fonts.css');
+  const sources = [...fonts.matchAll(/src: url\('([^']+)'\) format\('woff2'\)/g)].map((m) => m[1]);
+  assert.equal(sources.length, 10, 'ten faces, woff2 only');
+  for (const src of sources) assert.match(src, /^\/fonts\/[a-z0-9-]+\.[0-9a-f]{10}\.woff2$/, 'same-origin, content-hashed file');
+  assert.doesNotMatch(fonts, /next\/font\/google|https?:/);
   const files = readdirSync(new URL('../src/fonts/', import.meta.url));
   for (const licence of ['OFL-Inter.txt', 'OFL-DMSerifDisplay.txt', 'OFL-IBMPlexSansArabic.txt']) assert.ok(files.includes(licence), licence);
-  assert.ok(files.filter((file) => file.endsWith('.woff2')).length >= 10);
-  for (const file of ['app/(site)/fonts.ts', 'app/(site)/v2.css', 'app/(site)/[locale]/layout.tsx']) assert.doesNotMatch(read(file), /fonts\.(googleapis|gstatic)\.com/, file);
+  assert.ok(files.filter((file) => file.endsWith('.woff2')).length >= 10, 'masters kept');
+  for (const file of ['app/(site)/fonts.css', 'app/(site)/v2.css', 'app/(site)/[locale]/layout.tsx']) assert.doesNotMatch(read(file), /fonts\.(googleapis|gstatic)\.com/, file);
   const policy = contentSecurityPolicy('abc123');
   assert.match(policy, /font-src 'self' data:/);
   assert.doesNotMatch(policy, /googleapis|gstatic/);
