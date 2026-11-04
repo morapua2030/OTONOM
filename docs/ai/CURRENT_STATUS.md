@@ -46,6 +46,9 @@
 | `24a04b3d` | docs: record D8-C v5 (DR-113) and the open follow-ups |
 | `4a831d79` | fix(release-gate): INT/TERM stop run-all instead of letting it continue (the EXIT trap cleans up once) |
 | `0db31503` | test(visual): META-PLAIN reads the whole document (Next 16 can stream metadata after `</head>`) |
+| `50bfff23` | docs: list the two follow-up commits |
+| `9f18b531` | fix(seo): keep the localized 404 title after hydration (Next 16's 404 payload still carried the default title) |
+| `c77b22ae` | test: 404 title must survive hydration (`hybrid03:browser` and unit) |
 
 The docs commit that completes this table follows these commits. Fonts: one Arabic paragraph wrapped differently with `unicode-range` descriptors, so that part was reverted; every other v4 reference screenshot is pixel-identical except the footer language label.
 
