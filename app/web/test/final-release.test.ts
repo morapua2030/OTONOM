@@ -1,0 +1,144 @@
+// Final release (owner 2026-11-04): unit tests for the pure parts of the admin integration.
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { test } from 'node:test';
+import { bookingVisible, egyptianMobile, retentionCutoff, validateLead } from '../src/lib/leads.ts';
+import { checkBookingToken, issueBookingToken } from '../src/lib/booking-token.ts';
+import { cairoDay, isBotAgent, isMetricEvent, metricRoute, METRIC_EVENTS } from '../src/lib/metrics.ts';
+import { escapeHtml, leadAlertEmail, leadsNotifyTo, notificationsConfigured, sendMail } from '../src/lib/notify-email.ts';
+import { cronAuthorized, csvCell } from '../src/endpoints/final-release.ts';
+import { DEFAULT_SITE_CONTENT, mergeContent, packagesFrom } from '../src/lib/site-content.ts';
+import { canPublishSiteContent } from '../src/lib/content-workflow.ts';
+import { SMART_HOME_PACKAGES } from '../src/lib/smart-home-packages.ts';
+import { can } from '@otonom/domain';
+
+const read = (p: string) => readFileSync(new URL(`../src/${p}`, import.meta.url), 'utf8');
+const KEY = 'k'.repeat(40);
+const lead = (over: Record<string, unknown> = {}) => ({ name: 'Ali', phone: '01012345678', area: 'Damanhour', package: 'plus', consent: true, source: 'contact', locale: 'ar', idempotencyKey: 'abcdefghijklmnop1234', ...over });
+
+test('booking form is visible only when BOTH audited switches are on', () => {
+  assert.equal(bookingVisible({ privacyApproved: false, intakeEnabled: false }), false);
+  assert.equal(bookingVisible({ privacyApproved: true, intakeEnabled: false }), false);
+  assert.equal(bookingVisible({ privacyApproved: false, intakeEnabled: true }), false);
+  assert.equal(bookingVisible({ privacyApproved: true, intakeEnabled: true }), true);
+});
+
+test('lead validation: consent required, Egyptian mobile only, allow-listed package, over-long text rejected (not truncated)', () => {
+  assert.equal(validateLead(lead()).ok, true);
+  const v = validateLead(lead({ phone: '٠١١٢٣٤٥٦٧٨٩' }));
+  assert.ok(v.ok && v.value.phone === '+201123456789', 'Arabic-Indic digits normalised to +20');
+  for (const [over, field, code] of [
+    [{ consent: false }, 'consent', 'REQUIRED'], [{ consent: 'true' }, 'consent', 'REQUIRED'], [{ phone: '+441234567890' }, 'phone', 'EGYPTIAN_MOBILE'],
+    [{ phone: '0201234567' }, 'phone', 'EGYPTIAN_MOBILE'], [{ package: 'gold' }, 'package', 'REQUIRED'], [{ message: 'x'.repeat(501) }, 'message', 'TOO_LONG'],
+    [{ plan: 'x'.repeat(901) }, 'plan', 'TOO_LONG'], [{ name: 'A' }, 'name', 'REQUIRED'], [{ source: 'ads' }, 'source', 'INVALID'], [{ idempotencyKey: 'short' }, 'idempotencyKey', 'INVALID'],
+  ] as const) {
+    const r = validateLead(lead(over));
+    assert.ok(!r.ok && (r.errors as any)[field] === code, `${JSON.stringify(over)} → ${field}=${code}`);
+  }
+  const bidi = validateLead(lead({ name: 'Ali‮ evil', message: 'hi⁦x⁩' }));
+  assert.ok(bidi.ok && !/[‪-‮⁦-⁩]/.test(bidi.value.name + bidi.value.message), 'bidi overrides stripped from free text');
+  assert.equal(egyptianMobile('01512345678'), '+201512345678');
+  assert.equal(egyptianMobile('01312345678'), null);
+});
+
+test('timing token: signed, too fast below 3 s, expired after 6 h, forged refused', () => {
+  const now = 1_800_000_000_000;
+  const t = issueBookingToken(now, KEY);
+  assert.equal(checkBookingToken(t, now + 1000, KEY), 'TOO_FAST');
+  assert.equal(checkBookingToken(t, now + 3500, KEY), 'OK');
+  assert.equal(checkBookingToken(t, now + 7 * 3600_000, KEY), 'EXPIRED');
+  assert.equal(checkBookingToken(t, now + 3500, 'x'.repeat(40)), 'INVALID', 'another secret');
+  assert.equal(checkBookingToken(`${now - 60_000}.${'A'.repeat(43)}`, now, KEY), 'INVALID', 'forged older timestamp');
+  assert.equal(checkBookingToken(undefined, now, KEY), 'INVALID');
+});
+
+test('retention cutoff is N months before now (1–36, default 12)', () => {
+  const now = new Date('2026-11-04T12:00:00Z');
+  assert.equal(retentionCutoff(now, 12).toISOString().slice(0, 10), '2025-11-04');
+  assert.equal(retentionCutoff(now, 0).toISOString().slice(0, 10), '2025-11-04');
+  assert.equal(retentionCutoff(now, 99).toISOString().slice(0, 10), '2023-11-04');
+});
+
+test('metrics: fixed event list, locale paths only (no query, ids or junk), bots ignored, Cairo day', () => {
+  assert.equal(isMetricEvent('page_view'), true);
+  assert.equal(isMetricEvent('drop_table'), false);
+  assert.ok(METRIC_EVENTS.every((e) => /^[a-z][a-z0-9_]{1,31}$/.test(e)), 'every event fits the database CHECK');
+  assert.deepEqual(metricRoute('/ar/smart-home/packages'), { route: '/ar/smart-home/packages', locale: 'ar' });
+  assert.deepEqual(metricRoute('/en/try?demo=gas'), { route: '/en/try', locale: 'en' });
+  for (const bad of ['/fr/x', '/ar/a/b/c/d/e', '/ar/<script>', 'https://x.example/ar', '/ar/UPPER', '', 42]) assert.equal(metricRoute(bad), null, String(bad));
+  assert.equal(isBotAgent('Googlebot/2.1'), true);
+  assert.equal(isBotAgent(''), true);
+  assert.equal(isBotAgent('Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 Chrome/140 Safari/537.36'), false);
+  assert.equal(cairoDay(new Date('2026-11-04T23:30:00Z')), '2026-11-05');
+});
+
+test('the metrics client sends only event, route and locale; no storage or cookie; paused on /try; honours DNT/GPC', () => {
+  const beacon = read('components/MetricsBeacon.tsx');
+  assert.match(beacon, /JSON\.stringify\(\{ e, r: where\.r, l: where\.l \}\)/);
+  assert.match(beacon, /navigator\.sendBeacon\('\/api\/e'/);
+  assert.doesNotMatch(beacon, /localStorage|sessionStorage|document\.cookie|fetch\(|XMLHttpRequest|https?:\/\/(?!wa\.me\/')/, 'the only URL is the wa.me prefix used to recognise WhatsApp clicks');
+  assert.match(beacon, /const PAUSED = \/\^\\\/\(\?:ar\|en\)\\\/try/);
+  assert.match(beacon, /doNotTrack === '1' \|\| n\.globalPrivacyControl === true/);
+});
+
+test('e-mail: skipped without a provider, sent only to the allowed recipient, HTML escaped, no personal data in the subject', async () => {
+  const none = await sendMail({ to: 'team@otonomiot.com', subject: 's', text: 't', html: 'h', idempotencyKey: 'k' }, 'team@otonomiot.com', {} as NodeJS.ProcessEnv);
+  assert.deepEqual(none, { sent: false, reason: 'NOT_CONFIGURED' });
+  const env = { OTONOM_EMAIL_PROVIDER: 'resend', RESEND_API_KEY: 're_' + 'x'.repeat(30), OTONOM_EMAIL_FROM: 'OTONOM <noreply@otonomiot.com>' } as NodeJS.ProcessEnv;
+  assert.equal(notificationsConfigured(env), true);
+  let called = 0;
+  const fake = (async () => { called++; return new Response(JSON.stringify({ id: 'email_123456789' }), { status: 200 }); }) as typeof fetch;
+  assert.deepEqual(await sendMail({ to: 'other@example.com', subject: 's', text: 't', html: 'h', idempotencyKey: 'k' }, 'team@otonomiot.com', env, fake), { sent: false, reason: 'RECIPIENT_NOT_ALLOWED' });
+  assert.equal(called, 0);
+  assert.deepEqual(await sendMail({ to: 'TEAM@otonomiot.com', subject: 's', text: 't', html: 'h', idempotencyKey: 'k' }, 'team@otonomiot.com', env, fake), { sent: true, id: 'email_123456789' });
+  assert.equal(notificationsConfigured({ OTONOM_EMAIL_PROVIDER: 'test', OTONOM_EMAIL_TEST_MODE: '1', VERCEL: '1' } as NodeJS.ProcessEnv), false, 'test provider never on Vercel');
+  const mail = leadAlertEmail({ ref: 'BK-2026-ABCDEF', id: 7, name: '<script>x</script>', phone: '+201012345678', package: 'plus', area: 'Damanhour' }, 'https://otonom-admin.vercel.app');
+  assert.doesNotMatch(mail.html, /<script>/);
+  assert.match(mail.html, /&lt;script&gt;/);
+  assert.doesNotMatch(mail.subject, /script|201012345678|Damanhour/, 'subject carries only the reference');
+  assert.equal(escapeHtml(`"'&<>`), '&quot;&#39;&amp;&lt;&gt;');
+  assert.equal(leadsNotifyTo({ OTONOM_LEADS_NOTIFY_TO: ' Team@OtonomIoT.com ' } as NodeJS.ProcessEnv), 'team@otonomiot.com');
+  assert.equal(leadsNotifyTo({ OTONOM_LEADS_NOTIFY_TO: 'not-an-email' } as NodeJS.ProcessEnv), null);
+});
+
+test('daily job needs a CRON_SECRET of at least 32 characters (constant-time compare); CSV cells cannot start a formula', () => {
+  const env = { CRON_SECRET: 's'.repeat(40) } as NodeJS.ProcessEnv;
+  assert.equal(cronAuthorized(`Bearer ${'s'.repeat(40)}`, env), true);
+  assert.equal(cronAuthorized(`Bearer ${'s'.repeat(39)}`, env), false);
+  assert.equal(cronAuthorized(null, env), false);
+  assert.equal(cronAuthorized(`Bearer ${'s'.repeat(10)}`, { CRON_SECRET: 's'.repeat(10) } as NodeJS.ProcessEnv), false, 'short secrets are refused');
+  assert.equal(csvCell('=HYPERLINK("x")'), `"'=HYPERLINK(""x"")"`);
+  assert.equal(csvCell('+201012345678'), `"'+201012345678"`);
+  assert.equal(csvCell('Ali'), '"Ali"');
+});
+
+test('site content: every section falls back on its own; invalid admin data never reaches the page', () => {
+  assert.deepEqual(mergeContent({}).packages, DEFAULT_SITE_CONTENT.packages);
+  assert.equal(mergeContent({}).fromAdmin.length, 0);
+  const good = SMART_HOME_PACKAGES.map((p, i) => ({ packageId: p.id, nameAr: p.name.ar, nameEn: p.name.en, priceEgp: p.priceEgp + 1000, mostComplete: !!p.badge, badgeAr: p.badge?.ar, badgeEn: p.badge?.en, items: p.items.map((it) => ({ key: it.key, nameAr: it.name.ar, nameEn: it.name.en, quantity: it.quantity, model: it.model })), order: i, active: true }));
+  assert.equal(packagesFrom(good)?.[0]?.priceEgp, 45_000);
+  const bad = good.map((p, i) => (i === 0 ? { ...p, priceEgp: 12.5 } : p));
+  const m = mergeContent({ packages: bad, contact: { _status: 'published', phoneE164: 'abc', whatsappE164: '+201090721847', addressAr: 'x', addressEn: 'y' } });
+  assert.deepEqual(m.packages, DEFAULT_SITE_CONTENT.packages, 'an invalid price keeps the built-in packages');
+  assert.deepEqual(m.contact, DEFAULT_SITE_CONTENT.contact, 'an invalid phone keeps the built-in contact');
+  assert.equal(mergeContent({ announcement: { _status: 'published', enabled: true, textAr: 'أ', textEn: 'A', link: 'javascript:alert(1)' } }).announcement?.link, null, 'unsafe links are dropped');
+  assert.equal(mergeContent({ announcement: { _status: 'published', enabled: true, textAr: 'أ', textEn: 'A', activeTo: '2020-01-01' } }).announcement, null, 'expired announcement hidden');
+  assert.equal(mergeContent({ intake: { enabled: true } }).intakeEnabled, true);
+  assert.equal(mergeContent({ privacy: { bodyAr: 'نص', bodyEn: 'Text', approved: 'yes' } }).privacy.approved, false, 'only a real true approves');
+});
+
+test('publishing rights: OWNER/ADMIN; EDITOR only when the OWNER allowed it; SALES never; MFA required', () => {
+  const mfa = (role: string, extra: Record<string, unknown> = {}) => ({ id: 1, role, _sid: 's', mfaVerifiedSids: ['s'], ...extra });
+  assert.equal(canPublishSiteContent(mfa('OWNER') as any), true);
+  assert.equal(canPublishSiteContent(mfa('ADMIN') as any), true);
+  assert.equal(canPublishSiteContent(mfa('EDITOR') as any), false);
+  assert.equal(canPublishSiteContent(mfa('EDITOR', { canPublishContent: true }) as any), true);
+  assert.equal(canPublishSiteContent(mfa('SALES', { canPublishContent: true }) as any), false);
+  assert.equal(canPublishSiteContent({ id: 1, role: 'OWNER', _sid: 's', mfaVerifiedSids: [] } as any), false, 'MFA pending');
+  assert.equal(can('SALES', 'leads.read'), true);
+  assert.equal(can('EDITOR', 'leads.read'), false);
+  assert.equal(can('SALES', 'leads.export'), false);
+  assert.equal(can('SALES', 'content.edit'), false);
+  assert.equal(can('OWNER', 'privacy.approve') && can('OWNER', 'intake.settings') && can('OWNER', 'staff.invite'), true);
+  assert.equal(can('ADMIN', 'privacy.approve') || can('ADMIN', 'intake.settings') || can('ADMIN', 'staff.invite'), false);
+});
