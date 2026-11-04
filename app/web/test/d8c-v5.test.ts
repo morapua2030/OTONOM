@@ -5,7 +5,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { metaText, pageMetadata } from '../src/lib/seo.ts';
 import { NOT_FOUND_TITLE, notFoundTitle } from '../src/lib/not-found.ts';
-import { PRIMARY_FONT } from '../src/lib/fonts.ts';
+import { PRELOAD_FONT } from '../src/lib/fonts.ts';
 import { contentSecurityPolicy } from '../src/lib/csp.ts';
 
 const read = (path: string) => readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');
@@ -61,7 +61,7 @@ test('footer language link says "English" / "عربي" as in the design; the hea
   assert.match(site, /<div className="header-actions">[\s\S]*?<LanguageLink locale=\{locale\} \/>/);
 });
 
-test('font files: woff2 only, names carry their own SHA-256 prefix, each preload URL is an @font-face src', () => {
+test('font files: woff2 only, names carry their own SHA-256 prefix; English preloads its LCP heading face, Arabic nothing', () => {
   const dir = new URL('../public/fonts/', import.meta.url);
   const files = readdirSync(dir);
   assert.ok(files.length === 10 && files.every((f) => f.endsWith('.woff2')), files.join(','));
@@ -71,17 +71,17 @@ test('font files: woff2 only, names carry their own SHA-256 prefix, each preload
   }
   const css = read('app/(site)/fonts.css');
   for (const f of files) assert.ok(css.includes(`url('/fonts/${f}')`), `${f} is declared`);
-  for (const [locale, href] of Object.entries(PRIMARY_FONT)) {
-    assert.ok(css.includes(`src: url('${href}') format('woff2')`), `${locale} preload matches a face`);
-    assert.ok(existsSync(new URL(`../public${href}`, import.meta.url)), href);
-  }
-  assert.match(PRIMARY_FONT.ar, /ibm-plex-sans-arabic-arabic-400\./, 'Arabic pages preload the Arabic body face');
-  assert.match(PRIMARY_FONT.en, /inter-latin-wght\./, 'English pages preload Inter');
+  // Decision by measurement (owner rule 2026-11-04): English LCP is the DM Serif Display H1; preloading the Arabic H1
+  // face made Arabic LCP worse, so Arabic pages preload nothing.
+  assert.deepEqual(Object.keys(PRELOAD_FONT), ['en']);
+  assert.match(PRELOAD_FONT.en ?? '', /^\/fonts\/dm-serif-display-latin-400\.[0-9a-f]{10}\.woff2$/);
+  assert.ok(css.includes(`src: url('${PRELOAD_FONT.en}') format('woff2')`), 'the preload URL is the @font-face src');
+  assert.ok(existsSync(new URL(`../public${PRELOAD_FONT.en}`, import.meta.url)));
   const layout = read('app/(site)/[locale]/layout.tsx');
-  assert.equal((layout.match(/rel="preload"/g) ?? []).length, 1, 'exactly one font preload per page');
-  assert.match(layout, /<link rel="preload" href=\{PRIMARY_FONT\[locale\]\} as="font" type="font\/woff2" crossOrigin="anonymous" \/>/);
+  assert.equal((layout.match(/rel="preload"/g) ?? []).length, 1, 'at most one font preload per page');
+  assert.match(layout, /\{PRELOAD_FONT\[locale\] \? <link rel="preload" href=\{PRELOAD_FONT\[locale\]\} as="font" type="font\/woff2" crossOrigin="anonymous" \/> : null\}/);
   assert.doesNotMatch(layout, /next\/font/);
-  assert.match(read('app/(site)/[locale]/layout.tsx'), /import '\.\.\/fonts\.css';/);
+  assert.match(layout, /import '\.\.\/fonts\.css';/);
 });
 
 test('font stacks and fallback metrics are the ones next/font generated (same look), with font-display: swap', () => {
