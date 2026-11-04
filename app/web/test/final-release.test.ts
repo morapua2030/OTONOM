@@ -14,7 +14,7 @@ import { can } from '@otonom/domain';
 
 const read = (p: string) => readFileSync(new URL(`../src/${p}`, import.meta.url), 'utf8');
 const KEY = 'k'.repeat(40);
-const lead = (over: Record<string, unknown> = {}) => ({ name: 'Ali', phone: '01012345678', area: 'Damanhour', package: 'plus', consent: true, source: 'contact', locale: 'ar', idempotencyKey: 'abcdefghijklmnop1234', ...over });
+const lead = (over: Record<string, unknown> = {}) => ({ name: 'Ali', phone: '01012345678', package: 'plus', consent: true, source: 'contact', locale: 'ar', idempotencyKey: 'abcdefghijklmnop1234', ...over });
 
 test('booking form is visible only when BOTH audited switches are on', () => {
   assert.equal(bookingVisible({ privacyApproved: false, intakeEnabled: false }), false);
@@ -30,7 +30,8 @@ test('lead validation: consent required, Egyptian mobile only, allow-listed pack
   for (const [over, field, code] of [
     [{ consent: false }, 'consent', 'REQUIRED'], [{ consent: 'true' }, 'consent', 'REQUIRED'], [{ phone: '+441234567890' }, 'phone', 'EGYPTIAN_MOBILE'],
     [{ phone: '0201234567' }, 'phone', 'EGYPTIAN_MOBILE'], [{ package: 'gold' }, 'package', 'REQUIRED'], [{ message: 'x'.repeat(501) }, 'message', 'TOO_LONG'],
-    [{ plan: 'x'.repeat(901) }, 'plan', 'TOO_LONG'], [{ name: 'A' }, 'name', 'REQUIRED'], [{ source: 'ads' }, 'source', 'INVALID'], [{ idempotencyKey: 'short' }, 'idempotencyKey', 'INVALID'],
+    [{ source: 'simulator', plan: 'x'.repeat(901) }, 'plan', 'TOO_LONG'], [{ name: 'A' }, 'name', 'TOO_SHORT'], [{ name: '' }, 'name', 'REQUIRED'], [{ name: 'x'.repeat(61) }, 'name', 'TOO_LONG'],
+    [{ phone: '' }, 'phone', 'REQUIRED'], [{ source: 'ads' }, 'source', 'INVALID'], [{ idempotencyKey: 'short' }, 'idempotencyKey', 'INVALID'],
   ] as const) {
     const r = validateLead(lead(over));
     assert.ok(!r.ok && (r.errors as any)[field] === code, `${JSON.stringify(over)} → ${field}=${code}`);
@@ -39,6 +40,39 @@ test('lead validation: consent required, Egyptian mobile only, allow-listed pack
   assert.ok(bidi.ok && !/[‪-‮⁦-⁩]/.test(bidi.value.name + bidi.value.message), 'bidi overrides stripped from free text');
   assert.equal(egyptianMobile('01512345678'), '+201512345678');
   assert.equal(egyptianMobile('01312345678'), null);
+});
+
+test('simplified booking form (owner 2026-11-04): name 2–60, the mobile forms people type, no area / preferred time, plan only from the simulator', () => {
+  for (const raw of ['01012345678', '010 1234 5678', '+20 101 234 5678', '+201012345678', '+20 010 1234 5678', '00201012345678', '201012345678', '1012345678', '010-1234-5678', '(010) 1234.5678', '٠١٠١٢٣٤٥٦٧٨', '۰۱۰۱۲۳۴۵۶۷۸', ' 010 1234 5678 ']) {
+    assert.equal(egyptianMobile(raw), '+201012345678', raw);
+  }
+  for (const raw of ['0221234567', '01312345678', '0101234567', '010123456789', '+441012345678', '+2101012345678', 'abc', '', '0'.repeat(41)]) assert.equal(egyptianMobile(raw), null, raw);
+  const v = validateLead(lead({ name: '  Ali   Hassan ', area: 'Damanhour', preferredTime: 'Evening' }));
+  assert.ok(v.ok && v.value.name === 'Ali Hassan', 'inner spaces collapsed, ends trimmed');
+  assert.ok(v.ok && !('area' in v.value) && !('preferredTime' in v.value), 'removed fields are ignored, never stored');
+  for (const name of ['ab', 'محمد', 'x'.repeat(60), 'A😀']) assert.equal(validateLead(lead({ name })).ok, true, name);
+  assert.equal(validateLead(lead({ message: 'x'.repeat(500) })).ok, true);
+  const sim = validateLead(lead({ source: 'simulator', plan: 'p'.repeat(900) }));
+  assert.ok(sim.ok && sim.value.plan?.length === 900, 'a 900-character plan is accepted from the simulator');
+  const contact = validateLead(lead({ plan: 'a plan sent from the contact page' }));
+  assert.ok(contact.ok && contact.value.plan === null, 'a plan is kept only for simulator requests');
+});
+
+test('booking form markup: only the owner’s fields, accessible names, honeypot and consent kept', () => {
+  const form = read('components/BookingForm.tsx');
+  assert.deepEqual([...form.matchAll(/ name="([a-z]+)"/g)].map((m) => m[1]).sort(), ['consent', 'message', 'name', 'package', 'phone', 'website']);
+  assert.match(form, /type="text" autoComplete="name" maxLength=\{LEAD_LIMITS\.name\}/);
+  assert.match(form, /type="tel" inputMode="tel" autoComplete="tel"/);
+  assert.match(form, /type="radio" name="package"/, 'package chips are a real radio group');
+  assert.doesNotMatch(form, /area|preferredTime/);
+  for (const copy of ["'احجز زيارة'", "'وصلنا طلبك! هنكلمك قريب.'", "'عايز تضيف ملاحظة؟'", "'موافق إن OTONOM تتواصل معايا بخصوص طلبي'", "'مش متأكد'"]) assert.ok(form.includes(copy), copy);
+  assert.match(form, /aria-expanded=\{noteOpen\}/, 'the note is collapsed behind a disclosure button');
+  assert.match(form, /className="booking-hp" aria-hidden="true"/, 'honeypot kept');
+  assert.match(form, /name="consent" type="checkbox" required/);
+  assert.match(form, /role="region" aria-labelledby=\{f\('plan-label'\)\} tabIndex=\{0\}/, 'the simulator plan is a read-only, keyboard-scrollable preview');
+  const contact = read('components/ContactBooking.tsx');
+  assert.ok(contact.includes("'احجز بالواتساب'") && contact.includes("'احجز بالفورم'"), 'two equal options on the contact page');
+  assert.doesNotMatch(contact, /import \{ BookingForm \}/, 'the form code is not loaded while the form is off');
 });
 
 test('timing token: signed, too fast below 3 s, expired after 6 h, forged refused', () => {
@@ -99,10 +133,13 @@ test('e-mail: skipped without a provider, sent only to the allowed recipient, HT
   assert.equal(called, 0);
   assert.deepEqual(await sendMail({ to: 'TEAM@otonomiot.com', subject: 's', text: 't', html: 'h', idempotencyKey: 'k' }, 'team@otonomiot.com', env, fake), { sent: true, id: 'email_123456789' });
   assert.equal(notificationsConfigured({ OTONOM_EMAIL_PROVIDER: 'test', OTONOM_EMAIL_TEST_MODE: '1', VERCEL: '1' } as NodeJS.ProcessEnv), false, 'test provider never on Vercel');
-  const mail = leadAlertEmail({ ref: 'BK-2026-ABCDEF', id: 7, name: '<script>x</script>', phone: '+201012345678', package: 'plus', area: 'Damanhour' }, 'https://otonom-admin.vercel.app');
+  const mail = leadAlertEmail({ ref: 'BK-2026-ABCDEF', id: 7, name: '<script>x</script>', phone: '+201012345678', package: 'plus', source: 'simulator', hasNote: true, hasPlan: true }, 'https://otonom-admin.vercel.app');
   assert.doesNotMatch(mail.html, /<script>/);
   assert.match(mail.html, /&lt;script&gt;/);
-  assert.doesNotMatch(mail.subject, /script|201012345678|Damanhour/, 'subject carries only the reference');
+  assert.doesNotMatch(mail.subject, /script|201012345678|Simulator/, 'subject carries only the reference');
+  assert.match(mail.text, /المصدر \/ Source: المحاكي \/ Simulator/);
+  assert.match(mail.text, /مرفق \/ Attached: ملاحظة \/ note \+ خطة المحاكي \/ simulator plan/);
+  assert.doesNotMatch(mail.text, /Area|المنطقة/, 'area is no longer collected');
   assert.equal(escapeHtml(`"'&<>`), '&quot;&#39;&amp;&lt;&gt;');
   assert.equal(leadsNotifyTo({ OTONOM_LEADS_NOTIFY_TO: ' Team@OtonomIoT.com ' } as NodeJS.ProcessEnv), 'team@otonomiot.com');
   assert.equal(leadsNotifyTo({ OTONOM_LEADS_NOTIFY_TO: 'not-an-email' } as NodeJS.ProcessEnv), null);

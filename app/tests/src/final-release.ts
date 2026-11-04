@@ -47,7 +47,7 @@ const audit = async (action: string, since: Date) => Number((await su.query(`SEL
 const leadCount = async () => Number((await su.query(`SELECT count(*) FROM cms.leads`)).rows[0].count);
 const tokenFrom = (html: string) => html.match(/\d{13}\.[A-Za-z0-9_-]{43}/)?.[0] ?? null;
 const lead = (t: string, over: Record<string, unknown> = {}) => ({
-  name: 'Synthetic Lead', phone: '01012345678', area: 'Damanhour', package: 'plus', preferredTime: 'Evening', message: 'Synthetic test request',
+  name: 'Synthetic Lead', phone: '01012345678', package: 'plus', message: 'Synthetic test request',
   plan: '', consent: true, website: '', t, idempotencyKey: randomUUID().replace(/-/g, ''), source: 'contact', locale: 'ar', ...over,
 });
 
@@ -135,13 +135,31 @@ async function main() {
   const noConsent = await anon.post('/api/booking', lead(fresh, { consent: false }), { 'x-forwarded-for': ip() });
   const badPhone2 = await anon.post('/api/booking', lead(fresh, { phone: '0201234' }), { 'x-forwarded-for': ip() });
   const tooLong = await anon.post('/api/booking', lead(fresh, { message: 'x'.repeat(501) }), { 'x-forwarded-for': ip() });
-  rec.add('F-BOOKING-VALIDATION', 'LEADS', 'consent is required; Egyptian mobile only; over-long text is rejected (never truncated)', noConsent.status === 422 && noConsent.json?.fieldErrors?.consent === 'REQUIRED' && badPhone2.json?.fieldErrors?.phone === 'EGYPTIAN_MOBILE' && tooLong.json?.fieldErrors?.message === 'TOO_LONG', { noConsent: noConsent.status, badPhone: badPhone2.json?.fieldErrors, tooLong: tooLong.json?.fieldErrors });
+  const shortName = await anon.post('/api/booking', lead(fresh, { name: 'A' }), { 'x-forwarded-for': ip() });
+  const longName = await anon.post('/api/booking', lead(fresh, { name: 'x'.repeat(61) }), { 'x-forwarded-for': ip() });
+  const noPkg = await anon.post('/api/booking', lead(fresh, { package: 'gold' }), { 'x-forwarded-for': ip() });
+  rec.add('F-BOOKING-VALIDATION', 'LEADS', 'consent is required; Egyptian mobile only; name 2–60; allow-listed package; over-long text is rejected (never truncated)', noConsent.status === 422 && noConsent.json?.fieldErrors?.consent === 'REQUIRED' && badPhone2.json?.fieldErrors?.phone === 'EGYPTIAN_MOBILE' && tooLong.json?.fieldErrors?.message === 'TOO_LONG' && shortName.json?.fieldErrors?.name === 'TOO_SHORT' && longName.json?.fieldErrors?.name === 'TOO_LONG' && noPkg.json?.fieldErrors?.package === 'REQUIRED', { noConsent: noConsent.status, badPhone: badPhone2.json?.fieldErrors, tooLong: tooLong.json?.fieldErrors, shortName: shortName.json?.fieldErrors, longName: longName.json?.fieldErrors, noPkg: noPkg.json?.fieldErrors });
   const body = lead(fresh, { phone: '٠١١٢٣٤٥٦٧٨٩', source: 'simulator', plan: 'Synthetic plan: 6 rooms, 13 channels' });
   const ok = await anon.post('/api/booking', body, { 'x-forwarded-for': ip() });
   const replay = await anon.post('/api/booking', body, { 'x-forwarded-for': ip() });
   rec.add('F-BOOKING-CREATED', 'LEADS', 'a valid request is stored once with a BK reference; a retry returns the same reference', ok.status === 201 && /^BK-\d{4}-[A-Z2-9]{6}$/.test(ok.json?.ref ?? '') && replay.status === 200 && replay.json?.ref === ok.json?.ref, { ok: ok.status, replay: replay.status });
   const row = (await su.query(`SELECT phone, consent_given, consent_privacy_version, status, source, plan FROM cms.leads WHERE ref=$1`, [ok.json?.ref])).rows[0];
-  rec.add('F-BOOKING-STORED', 'LEADS', 'phone normalised to +20…, consent and the privacy text date kept with the lead, status NEW', row?.phone === '+201123456789' && row?.consent_given === true && /^\d{4}-\d{2}-\d{2}$/.test(row?.consent_privacy_version ?? '') && row?.status === 'NEW' && row?.source === 'simulator', row);
+  rec.add('F-BOOKING-STORED', 'LEADS', 'phone normalised to +20…, consent and the privacy text date kept with the lead, status NEW, the simulator plan attached', row?.phone === '+201123456789' && row?.consent_given === true && /^\d{4}-\d{2}-\d{2}$/.test(row?.consent_privacy_version ?? '') && row?.status === 'NEW' && row?.source === 'simulator' && row?.plan === 'Synthetic plan: 6 rooms, 13 channels', row);
+  // owner 2026-11-04: the simplified form. Area and preferred time are gone from the form, the API and the database;
+  // an old client that still sends them is accepted and they are dropped; +20 / spaces are normalised; a plan is kept
+  // only for simulator requests.
+  const leadCols = (await su.query(`SELECT column_name FROM information_schema.columns WHERE table_schema='cms' AND table_name IN ('leads', '_leads_v')`)).rows.map((r: any) => r.column_name);
+  const legacy = await anon.post('/api/booking', lead(fresh, { phone: '+20 101 234 5678', area: 'Damanhour', preferredTime: 'Evening', plan: 'a plan from the contact page' }), { 'x-forwarded-for': ip() });
+  const legacyRow = (await su.query(`SELECT phone, plan, source FROM cms.leads WHERE ref=$1`, [legacy.json?.ref])).rows[0];
+  const contactForm = contact2.text.match(/<form[^>]*data-testid="booking-form-contact"[\s\S]*?<\/form>/)?.[0] ?? '';
+  const formNames = [...new Set([...contactForm.matchAll(/ name="([a-zA-Z]+)"/g)].map((m) => m[1]))].sort();
+  const preset = await anon.get('/ar/contact?package=premium');
+  const unknown = await anon.get('/ar/contact?package=gold');
+  rec.add('F-BOOKING-SIMPLIFIED', 'LEADS', 'the form has only name, mobile, package, consent, the optional note and the honeypot; two equal options (WhatsApp / form) plus Call; ?package= preselects via the allow-list; no area / preferred time columns; legacy fields dropped; plan only from the simulator',
+    JSON.stringify(formNames) === JSON.stringify(['consent', 'message', 'name', 'package', 'phone', 'website']) && ['contact-options', 'option-whatsapp', 'option-form', 'contact-call', 'احجز بالواتساب', 'احجز بالفورم', 'عايز تضيف ملاحظة؟', 'موافق إن OTONOM تتواصل معايا بخصوص طلبي'].every((x) => contact2.text.includes(x)) &&
+    /<input(?=[^>]*name="package")(?=[^>]*value="premium")(?=[^>]*checked="")[^>]*>/.test(preset.text) && !/<input(?=[^>]*name="package")(?=[^>]*checked="")[^>]*>/.test(unknown.text) &&
+    !leadCols.some((c: string) => /area|preferred_time/.test(c)) && legacy.status === 201 && legacyRow?.phone === '+201012345678' && legacyRow?.plan === null && legacyRow?.source === 'contact',
+    { formNames, leadCols: leadCols.filter((c: string) => /area|preferred|plan|message/.test(c)), legacy: legacy.status, legacyRow });
   rec.add('F-BOOKING-AUDITED', 'LEADS', 'every new lead is audited', (await audit('lead.created', t0)) >= 1, null);
   const rlIp = ip();
   const statuses: number[] = [];
