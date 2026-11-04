@@ -43,8 +43,11 @@
 | `a522fb98` | fix(i18n): footer language link says "English" / "عربي" as in the design |
 | `66c3443c` | perf(fonts): lighter Arabic font files, per-locale preload, immutable caching |
 | `05eb5a86` | test: D8-C v5 checks for plain-text meta, 404 titles, footer label and fonts |
+| `24a04b3d` | docs: record D8-C v5 (DR-113) and the open follow-ups |
+| `4a831d79` | fix(release-gate): INT/TERM stop run-all instead of letting it continue (the EXIT trap cleans up once) |
+| `0db31503` | test(visual): META-PLAIN reads the whole document (Next 16 can stream metadata after `</head>`) |
 
-The docs commit that records this table follows these commits. Fonts: one Arabic paragraph wrapped differently with `unicode-range` descriptors, so that part was reverted; every other v4 reference screenshot is pixel-identical except the footer language label.
+The docs commit that completes this table follows these commits. Fonts: one Arabic paragraph wrapped differently with `unicode-range` descriptors, so that part was reverted; every other v4 reference screenshot is pixel-identical except the footer language label.
 
 ## D8-C v4 (2026-11-03, pushed to PR #16)
 
