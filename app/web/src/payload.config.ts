@@ -6,12 +6,14 @@ import { collections } from './collections/index.ts';
 import { Settings } from './globals/Settings.ts';
 import { endpoints } from './endpoints/index.ts';
 import { cmsConnString, payloadSecret, SITE_URL, trustedCsrfOrigins } from './lib/server.ts';
+import { protectedAdminOrigin, publicMarketingOnly } from './lib/deployment.ts';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default buildConfig({
   secret: payloadSecret(),
-  serverURL: SITE_URL,
+  // Production marketing-only mode serves the admin on its own host (OTONOM_ADMIN_URL); everywhere else the site URL.
+  serverURL: (publicMarketingOnly() && protectedAdminOrigin()) || SITE_URL,
   csrf: trustedCsrfOrigins(),
   admin: {
     user: 'users',

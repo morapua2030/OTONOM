@@ -3,6 +3,8 @@ const PRIVATE_PREFIXES = ['/api', '/graphql'];
 const PRIVATE_LOCALIZED_PREFIXES = ['/account', '/cart', '/checkout', '/shop', '/preview', '/support/warranty'];
 const PUBLIC_ADMIN_PATHS = ['/admin/login', '/admin/forgot', '/admin/reset', '/admin/logout', '/admin/unauthorized'];
 
+const STATIC_PREFIXES = ['/brand', '/fonts', '/products'];
+
 const hasPathPrefix = (pathname: string, prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
 
 /**
@@ -35,17 +37,75 @@ export function isPrivatePublicRoute(pathname: string): boolean {
   return PRIVATE_LOCALIZED_PREFIXES.some((prefix) => hasPathPrefix(localizedPath, prefix));
 }
 
-/** Only an HTTPS Vercel deployment origin can receive staff/admin redirects. */
+/**
+ * The admin host origin (OTONOM_ADMIN_URL). It must be credential-free HTTPS and either a Vercel domain or an origin
+ * listed exactly in OTONOM_CSRF_ORIGINS (so a later move to the company domain is an env change only, see
+ * docs/ai/DOMAIN_MOVE.md). Anything else is ignored: staff/admin requests on the public host then answer 404.
+ */
 export function protectedAdminOrigin(env: NodeJS.ProcessEnv = process.env): string | undefined {
   const configured = env.OTONOM_ADMIN_URL?.trim();
   if (!configured) return undefined;
   try {
     const url = new URL(configured);
-    if (url.protocol !== 'https:' || !url.hostname.endsWith('.vercel.app') || url.username || url.password) return undefined;
+    if (url.protocol !== 'https:' || url.username || url.password) return undefined;
+    const listed = (env.OTONOM_CSRF_ORIGINS ?? '').split(',').map((o) => o.trim()).filter(Boolean).some((o) => {
+      try { return new URL(o).origin === url.origin && new URL(o).protocol === 'https:'; } catch { return false; }
+    });
+    if (!url.hostname.endsWith('.vercel.app') && !listed) return undefined;
     return url.origin;
   } catch {
     return undefined;
   }
+}
+
+/** Which host a request arrived on in Production: the admin host (OTONOM_ADMIN_URL) or the public site. */
+export function hostRole(host: string | null | undefined, env: NodeJS.ProcessEnv = process.env): 'admin' | 'public' {
+  const admin = protectedAdminOrigin(env);
+  if (!admin || !host) return 'public';
+  return host.trim().toLowerCase() === new URL(admin).host.toLowerCase() ? 'admin' : 'public';
+}
+
+/**
+ * The only application endpoints the public host serves in marketing-only mode (owner, 2026-11-04): the privacy-first
+ * metrics counter and the booking request. Exact method + path; everything else under /api stays closed there.
+ */
+export const PUBLIC_HOST_ENDPOINTS: ReadonlyArray<{ method: 'POST'; path: string }> = [
+  { method: 'POST', path: '/api/e' },
+  { method: 'POST', path: '/api/booking' },
+];
+export const isPublicHostEndpoint = (method: string, pathname: string) =>
+  PUBLIC_HOST_ENDPOINTS.some((e) => e.method === method && e.path === pathname);
+
+export type MarketingDecision =
+  | { kind: 'pass'; noindex: boolean }
+  | { kind: 'not-found' }
+  | { kind: 'redirect'; to: string; status: 307 };
+
+/**
+ * Routing in Production marketing-only mode, as a pure function (tested in deployment-mode.test.ts):
+ * - admin host: staff/admin pages and /api are served (MFA, RBAC and audit apply as before), every response is
+ *   noindex, and public pages redirect to /admin;
+ * - public host: GET/HEAD marketing pages only; /admin and /staff redirect to the admin host (404 without one);
+ *   /api, /graphql and private pages answer 404, except the exact PUBLIC_HOST_ENDPOINTS.
+ */
+export function marketingDecision(req: { method: string; pathname: string; search: string; host: string | null }, env: NodeJS.ProcessEnv = process.env): MarketingDecision {
+  const { method, pathname, search } = req;
+  if (hostRole(req.host, env) === 'admin') {
+    if (isAdministrativePath(pathname) || hasPathPrefix(pathname, '/api') || hasPathPrefix(pathname, '/graphql')) return { kind: 'pass', noindex: true };
+    // Static files (brand logo, icons, fonts, product images) used by the staff shell.
+    if ((method === 'GET' || method === 'HEAD') && (STATIC_PREFIXES.some((p) => hasPathPrefix(pathname, p)) || /\/[^/]+\.[a-z0-9]{2,5}$/i.test(pathname))) return { kind: 'pass', noindex: true };
+    if (method !== 'GET' && method !== 'HEAD') return { kind: 'not-found' };
+    return { kind: 'redirect', to: `${protectedAdminOrigin(env)}/admin`, status: 307 };
+  }
+  if (isPublicHostEndpoint(method, pathname)) return { kind: 'pass', noindex: true };
+  if (method !== 'GET' && method !== 'HEAD') return { kind: 'not-found' };
+  if (isAdministrativePath(pathname)) {
+    const adminOrigin = protectedAdminOrigin(env);
+    if (!adminOrigin) return { kind: 'not-found' };
+    return { kind: 'redirect', to: `${adminOrigin}${pathname}${search}`, status: 307 };
+  }
+  if (isPrivatePublicRoute(pathname)) return { kind: 'not-found' };
+  return { kind: 'pass', noindex: false };
 }
 
 /** First path segment shaped like a language code (e.g. /xx, /fr-fr/...) that is not one of the site locales. */
