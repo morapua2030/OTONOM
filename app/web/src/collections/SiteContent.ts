@@ -61,7 +61,7 @@ export const CatalogPackages: CollectionConfig = {
   slug: 'catalog-packages',
   labels: { singular: 'Package', plural: 'Packages' },
   admin: { group: 'Site content', useAsTitle: 'nameEn', defaultColumns: ['nameEn', 'priceEgp', 'order', 'active', '_status'] },
-  versions: { drafts: true, maxPerDoc: 50 },
+  versions: { drafts: { validate: true }, maxPerDoc: 50 },
   access: contentAccess,
   fields: [
     { name: 'packageId', type: 'select', required: true, unique: true, options: [...SMART_HOME_PACKAGE_IDS], access: { update: () => false } },
@@ -95,7 +95,7 @@ export const CatalogControllers: CollectionConfig = {
   slug: 'catalog-controllers',
   labels: { singular: 'Controller', plural: 'Controllers' },
   admin: { group: 'Site content', useAsTitle: 'nameEn', defaultColumns: ['model', 'nameEn', 'channels', '_status'] },
-  versions: { drafts: true, maxPerDoc: 50 },
+  versions: { drafts: { validate: true }, maxPerDoc: 50 },
   access: contentAccess,
   fields: [
     { name: 'model', type: 'select', required: true, unique: true, options: [...PRODUCT_MODELS], access: { update: () => false } },
@@ -133,7 +133,7 @@ export const SimRoutines: CollectionConfig = {
   slug: 'sim-routines',
   labels: { singular: 'Simulator routine', plural: 'Simulator routines' },
   admin: { group: 'Site content', useAsTitle: 'titleEn', defaultColumns: ['routineId', 'titleEn', 'premium', 'order', '_status'] },
-  versions: { drafts: true, maxPerDoc: 50 },
+  versions: { drafts: { validate: true }, maxPerDoc: 50 },
   access: contentAccess,
   fields: [
     { name: 'routineId', type: 'select', required: true, unique: true, options: [...RORDER], access: { update: () => false }, admin: { description: 'The routine steps on the demo house are built in; this record holds its texts' } },
@@ -152,7 +152,7 @@ export const ServiceFaqs: CollectionConfig = {
   slug: 'service-faqs',
   labels: { singular: 'Service FAQ', plural: 'Service FAQs' },
   admin: { group: 'Site content', useAsTitle: 'questionEn', defaultColumns: ['service', 'questionEn', 'order', '_status'] },
-  versions: { drafts: true, maxPerDoc: 50 },
+  versions: { drafts: { validate: true }, maxPerDoc: 50 },
   access: contentAccess,
   fields: [
     { name: 'service', type: 'select', required: true, options: ['iot', 'soft', 'custom'] },
@@ -178,7 +178,7 @@ export const ContactSettings: GlobalConfig = {
   slug: 'contact-settings',
   label: 'Contact settings',
   admin: { group: 'Site content' },
-  versions: { drafts: true, max: 50 },
+  versions: { drafts: { validate: true }, max: 50 },
   access: globalContentAccess,
   fields: [
     { name: 'phoneE164', type: 'text', required: true, validate: e164 },
@@ -205,7 +205,7 @@ export const Announcement: GlobalConfig = {
   slug: 'announcement',
   label: 'Announcement bar',
   admin: { group: 'Site content' },
-  versions: { drafts: true, max: 50 },
+  versions: { drafts: { validate: true }, max: 50 },
   access: globalContentAccess,
   fields: [
     { name: 'enabled', type: 'checkbox', defaultValue: false },
@@ -232,7 +232,7 @@ export const SimRules: GlobalConfig = {
   slug: 'sim-rules',
   label: 'Simulator rules (owner facts)',
   admin: { group: 'Site content' },
-  versions: { drafts: true, max: 50 },
+  versions: { drafts: { validate: true }, max: 50 },
   access: { read: () => true, readVersions: staffOnly, update: perm('settings.stage') },
   fields: [
     { name: 'acChannels', type: 'number', required: true, defaultValue: 0, validate: intIn(0, 4, 'AC channels') },

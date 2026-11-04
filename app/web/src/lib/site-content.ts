@@ -5,7 +5,8 @@
  * production seed publishes exactly these values, so nothing visible changes at release. `loadSiteContent()` reads
  * the PUBLISHED admin content through Payload's Local API (read access applies: published only), validates it, and
  * falls back per section to the built-in values when nothing is published, when a value is invalid, or when the
- * database is unreachable or slow. The result is cached under the `site-content` tag that every publish expires.
+ * database is unreachable or slow (6 s, then 15 s on the built-in values). The result is cached under the
+ * `site-content` tag that every publish expires.
  */
 import type { Locale } from './i18n.ts';
 import { ADDRESS, PHONE_E164, setActiveContact } from './contact.ts';
@@ -184,7 +185,8 @@ export function privacyFrom(g: any): SiteContent['privacy'] | null {
 }
 
 // ---- Reading -----------------------------------------------------------------------------------------------------
-const READ_TIMEOUT_MS = 2500;
+/** Covers Payload's first initialisation on a cold instance; a slower read uses the built-in values instead. */
+const READ_TIMEOUT_MS = 6000;
 
 async function readPublished(): Promise<SiteContent> {
   const [{ getPayload }, { default: config }] = await Promise.all([import('payload'), import('@payload-config')]);
@@ -238,9 +240,9 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 }
 
 let cachedLoader: (() => Promise<SiteContent>) | null = null;
-/** After a failed read the site uses the built-in values for a minute instead of waiting on the database again. */
+/** After a failed read the site uses the built-in values for 15 seconds instead of waiting on the database again. */
 let failedAt = 0;
-const BACKOFF_MS = 60_000;
+const BACKOFF_MS = 15_000;
 
 /** Published site content, cached under the `site-content` tag (expired by every publish); never throws. */
 export async function loadSiteContent(): Promise<SiteContent> {
@@ -253,8 +255,9 @@ export async function loadSiteContent(): Promise<SiteContent> {
     const content = await cachedLoader();
     setActiveContact({ phoneE164: content.contact.phoneE164, whatsappE164: content.contact.whatsappE164, address: content.contact.address });
     return content;
-  } catch {
+  } catch (error) {
     failedAt = Date.now();
+    console.warn(`[site-content] published content unavailable, built-in values used for 15 s: ${error instanceof Error ? error.message.slice(0, 160) : 'unknown error'}`);
     return DEFAULT_SITE_CONTENT;
   }
 }
