@@ -165,7 +165,7 @@ export async function migrate(): Promise<MigrationResult> {
       GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA domain TO ${d};
       REVOKE UPDATE, DELETE, TRUNCATE ON domain.inventory_ledger, domain.audit_events, domain.attribution_changes,
         domain.serial_replacements, domain.service_ticket_events, domain.service_diagnoses, domain.rma_inspections,
-        domain.rma_actions, domain.service_outbox, domain.schema_migrations FROM ${d};
+        domain.rma_actions, domain.service_outbox, domain.schema_migrations, domain.job_runs FROM ${d};
       REVOKE INSERT ON domain.schema_migrations FROM ${d};
       GRANT USAGE ON ALL SEQUENCES IN SCHEMA domain TO ${d};
       GRANT DELETE ON domain.rate_limits TO ${d};

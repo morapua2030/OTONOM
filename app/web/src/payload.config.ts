@@ -4,6 +4,7 @@ import { buildConfig } from 'payload';
 import { postgresAdapter } from '@payloadcms/db-postgres';
 import { collections } from './collections/index.ts';
 import { Settings } from './globals/Settings.ts';
+import { siteContentGlobals } from './collections/SiteContent.ts';
 import { endpoints } from './endpoints/index.ts';
 import { cmsConnString, payloadSecret, SITE_URL, trustedCsrfOrigins } from './lib/server.ts';
 import { protectedAdminOrigin, publicMarketingOnly } from './lib/deployment.ts';
@@ -38,7 +39,7 @@ export default buildConfig({
     avatar: 'default',
   },
   collections,
-  globals: [Settings],
+  globals: [Settings, ...siteContentGlobals],
   endpoints,
   // expected business-rule refusals are not server faults (see lib/errors.ts BusinessRuleError)
   // custom error name (not in Payload's ErrorName union) — matched at runtime by err.name in logError
