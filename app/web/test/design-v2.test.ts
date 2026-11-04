@@ -12,9 +12,11 @@ test('Home (mix) shows the 16R as hero and Choose opens WhatsApp with the encode
   assert.match(home, /const r16 = requireProductByModel\('16r'\)/);
   assert.match(home, /<div className="v2-hero-card">\s*<Image src=\{r16\.image\}[^>]*priority \/>/);
   assert.match(home, /href=\{whatsappHref\(bookVisitMessage\(locale, entry\.id\)\)\} \{\.\.\.EXTERNAL_LINK\}/);
-  assert.match(home, /SMART_HOME_PACKAGES\.map/, 'package cards come from the registry');
+  // final release: cards render the admin-managed list, whose built-in default is the registry (never literal prices)
+  assert.match(home, /packages = SMART_HOME_PACKAGES/, 'package cards default to the registry');
+  assert.match(home, /\{packages\.map\(\(entry, index\) =>/, 'package cards come from the package list');
   assert.doesNotMatch(home, /44[,_]?000|32[,_]?000|24[,_]?000/, 'no duplicated prices');
-  assert.match(read('app/(site)/[locale]/page.tsx'), /<HomeMix locale=\{locale as Locale\} \/>/);
+  assert.match(read('app/(site)/[locale]/page.tsx'), /<HomeMix locale=\{locale as Locale\} packages=\{content\.packages\} \/>/);
 });
 
 test('contact surfaces collect nothing: no form, no input, no request (DR-101)', () => {
@@ -70,7 +72,10 @@ test('unknown language-code paths get the localized 404; site paths never do', (
 test('sitemap indexes /products and keeps the placeholder and redirected routes out (D8-C #7, DR-107)', () => {
   const sitemap = read('app/(site)/sitemap.xml/route.ts');
   assert.match(sitemap, /'\/products'/);
-  for (const path of ['/solutions/villas', '/solutions/apartments', '/solutions/scenarios', '/technology/documentation', '/insights', '/support/service', '/legal/privacy',
+  // final release: /legal/privacy is listed only once the OWNER approved the privacy text (never in the static list)
+  assert.match(sitemap, /const privacy = \(await loadSiteContent\(\)\)\.privacy\.approved \? \['\/legal\/privacy'\] : \[\];/);
+  assert.ok(!/const STATIC = \[[^\]]*legal\/privacy/.test(sitemap), '/legal/privacy is not a static sitemap path');
+  for (const path of ['/solutions/villas', '/solutions/apartments', '/solutions/scenarios', '/technology/documentation', '/insights', '/support/service',
     '/solutions', '/technology', '/technology/controllers', '/engineering-process', '/build-with-us', '/products/compare', '/consultation', '/business/request-a-proposal', '/business/partners']) {
     assert.ok(!sitemap.includes(`'${path}'`), `${path} must stay out of the sitemap`);
   }

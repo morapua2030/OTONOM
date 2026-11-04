@@ -47,19 +47,27 @@ test('design placeholders never ship', () => {
   assert.doesNotMatch(read('components/v3-pages.tsx'), /<table|showOptional/, 'no spec table: specs are out of scope (DR-106)');
 });
 
-test('no Privacy link anywhere in nav, drawer, footer or consent text (DR-108)', () => {
-  for (const file of ['components/site.tsx', 'components/RfqForm.tsx', 'components/ProjectBuilder.tsx', 'components/v3-pages.tsx', 'components/Gated.tsx']) {
+test('no Privacy link unless the OWNER approved the privacy text in the admin (DR-108, superseded by the final release)', () => {
+  for (const file of ['components/RfqForm.tsx', 'components/ProjectBuilder.tsx', 'components/v3-pages.tsx', 'components/Gated.tsx']) {
     assert.doesNotMatch(read(file), /legal\/privacy/, file);
   }
   assert.doesNotMatch(JSON.stringify(SITE_COPY), /"privacy"/);
+  // footer: the only privacy link is rendered behind the approval switch
+  const site = read('components/site.tsx');
+  assert.equal((site.match(/legal\/privacy/g) ?? []).length, 1);
+  assert.match(site, /\{content\.privacy\.approved \? <Link href=\{L\('\/legal\/privacy'\)\}/);
+  // the page itself keeps redirecting to /contact until approved
+  assert.match(read('app/(site)/[locale]/legal/privacy/page.tsx'), /if \(!content\.privacy\.approved\) redirect\(`\/\$\{locale\}\/contact`\);/);
 });
 
 test('the address comes from lib/contact.ts only', () => {
   assert.equal(ADDRESS.ar, 'كريتيفا دمنهور، مجمع الكليات');
   assert.equal(ADDRESS.en, 'Creativa Damanhour, Colleges Complex');
-  for (const file of ['components/site.tsx', 'app/(site)/[locale]/contact/page.tsx']) {
+  // final release: pages render the admin-managed address, whose built-in default is ADDRESS from lib/contact.ts
+  assert.match(read('lib/site-content.ts'), /address: \{ ar: ADDRESS\.ar, en: ADDRESS\.en \}/);
+  for (const file of ['components/site.tsx', 'app/(site)/[locale]/contact/page.tsx', 'lib/site-content.ts']) {
     const source = read(file);
-    assert.match(source, /ADDRESS\[locale\]/, file);
+    assert.match(source, /(?:contact|content\.contact)\.address\[locale\]|ADDRESS\.ar/, file);
     assert.doesNotMatch(source, /Creativa|كريتيفا/, `${file} must not hard-code the address`);
   }
 });
@@ -69,8 +77,10 @@ test('legacy routes redirect with the locale kept; gated and new pages never red
   const cases: Array<[string, string]> = [
     ['/ar/solutions', '/ar/services'], ['/en/solutions/villas', '/en/services'], ['/ar/engineering-process', '/ar/about'], ['/en/build-with-us', '/en/start-project'],
     ['/ar/products/compare', '/ar/products'], ['/en/consultation', '/en/contact'], ['/ar/business/request-a-proposal', '/ar/contact'], ['/en/business/partners', '/en/business/contractors'],
-    ['/ar/technology', '/ar/products'], ['/en/technology/integrations', '/en/products'], ['/ar/insights', '/ar'], ['/en/support/service', '/en/support'], ['/ar/legal/privacy', '/ar/contact'],
+    ['/ar/technology', '/ar/products'], ['/en/technology/integrations', '/en/products'], ['/ar/insights', '/ar'], ['/en/support/service', '/en/support'],
   ];
+  // final release: /legal/privacy is a real page that redirects to /contact itself until the OWNER approves the text
+  assert.equal(legacyRouteRedirect('/ar/legal/privacy', env), null);
   for (const [from, to] of cases) assert.equal(legacyRouteRedirect(from, env), to, from);
   for (const path of ['/ar', '/en/services', '/ar/products', '/en/support', '/ar/support/warranty', '/en/account', '/ar/shop', '/en/cart', '/ar/checkout', '/en/preview', '/ar/start-project', '/en/business/developers', '/ar/solutionsx', '/api/ready']) {
     assert.equal(legacyRouteRedirect(path, env), null, path);

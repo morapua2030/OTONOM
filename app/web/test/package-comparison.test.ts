@@ -35,15 +35,17 @@ test('PackageComparison says "Not in this package" with an accessible name and n
   assert.ok(block.includes("<span aria-hidden=\"true\">—</span><span className=\"sr-only\">{tx(locale, 'غير مدرج في الباقة', 'Not in this package')}</span>"));
   assert.ok(block.includes("'قارن المكونات', 'Compare what’s included'"));
   assert.doesNotMatch(block, /not included|excluded|غير مشمول|غير متضمن|مستبعد/i);
-  assert.match(block, /packageComparisonRows\(\)/);
+  assert.match(block, /packageComparisonRows\(packages\)/);
+  assert.match(block, /packages = SMART_HOME_PACKAGES/, 'the built-in default is the registry');
   assert.match(block, /formatPackageAmount\(entry\.priceEgp\)\}<\/bdi> \{packageCurrency\(locale\)\}/);
   assert.match(block, /role="region" aria-label=\{caption\} tabIndex=\{0\}/);
   assert.match(block, /href=\{`\/\$\{locale\}\/products\/\$\{row\.model\}`\}/);
   assert.doesNotMatch(block, /'(Amazon Alexa|Smart Lock|IR Remote|Gas Sensor|16R Smart Controller)'/, 'item names come from the registry');
-  const comparisonAt = source.indexOf('<PackageComparison locale={locale} />');
+  const comparisonAt = source.indexOf('<PackageComparison locale={locale} packages={packages} />');
+  assert.ok(comparisonAt > 0, 'the comparison renders the same package list as the cards');
   assert.ok(comparisonAt > source.indexOf('data-testid="smart-home-packages"') && comparisonAt < source.indexOf('className="package-caveat"'), 'the caveat stays right under the table');
   const page = readFileSync(new URL('../src/app/(site)/[locale]/smart-home/packages/page.tsx', import.meta.url), 'utf8');
-  assert.match(page, /<SmartHomePackages locale=\{locale\} comparison \/>/);
+  assert.match(page, /<SmartHomePackages locale=\{locale\} comparison packages=\{content\.packages\} \/>/);
 });
 
 test('rows with any multi-unit package show every listed quantity; all-single rows show Listed', () => {
