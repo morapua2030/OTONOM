@@ -2,16 +2,16 @@
 
 | Field | Value |
 |---|---|
-| Checked at (Cairo) | 2026-11-03 (D8-C v4, local only) |
+| Checked at (Cairo) | 2026-11-04 (D8-C v5) |
 | Repository | `morapua2030/OTONOM` (public) |
-| Local branch / code head | `codex/d6-products-smarthome-20261102`. Up to `0dabf70a` (design v3.1) is in PR #16. The D8-C v4 commits (`98f67eb0` onward) are local only until the owner writes «ارفع». |
+| Local branch / code head | `codex/d6-products-smarthome-20261102`. Up to `624b70b2` (D8-C v4) is in PR #16. The D8-C v5 commits (`d9c75bd7` onward) are pushed only if their full verification on one SHA passes (owner pre-authorization 2026-11-04). |
 | `origin/main` | `b6181212` (contains D5); `git ls-remote`, checked now |
-| PR #16 | `OPEN`, draft, head `0dabf70a` on `codex/hybrid03-redesign-20261028` (Hybrid 03 + D6 + design v2 + v3.1 inner pages, added by fast-forward). GitHub Quality Gate on that head: PASS. |
+| PR #16 | `OPEN`, draft, head `624b70b2` on `codex/hybrid03-redesign-20261028` (Hybrid 03 + D6 + design v2 + v3.1 inner pages + v4 simulator, added by fast-forward on 2026-11-03). GitHub Quality Gate on that head: PASS. |
 | Public canonical | `https://otonom-smart-home-web.vercel.app` serves the D4-era build. Source fingerprint `57f72bc` is HISTORICAL (2026-11-02 project map). Route fingerprint re-verified now with anonymous GET: `/en`, `/ar`, `/en/products`, `/en/products/16r`, `/en/projects` → 200; `/en/start-project`, `/en/smart-home/packages` → 404 |
-| Protected Preview | Preview of `0dabf70a` (design v3.1): READY, Preview target, Vercel Authentication on; the owner created the team-lead Shareable Link. Earlier Previews are preserved. URL, ID and link are kept in private evidence. |
+| Protected Preview | Preview of `624b70b2` (D8-C v4): READY, Preview target, Vercel Authentication on; the owner creates its Shareable Link. Earlier Previews (including `0dabf70a`) are preserved. URLs, IDs and links are kept in private evidence. |
 | Brand Guardian | `validate_brand.py --project app/web` PASS on the D8-A candidate (2026-11-03, 0 legacy references) |
 | Release gates | Production is frozen (DR-093); canonical unchanged (`/en` 200, D5/D6 routes 404). There is no G01–G16 verdict for any D6 candidate. |
-| Latest owner decisions | DR-092..DR-112, recorded 2026-11-03 |
+| Latest owner decisions | DR-092..DR-113, recorded 2026-11-03 and 2026-11-04 |
 
 ## Phase status
 
@@ -25,14 +25,28 @@
 | D5.5 Hybrid 03 redesign | `PREVIEW` | PR #16 draft; protected Preview of `025d382b`. Page styling superseded by design v2 (DR-099); logo files unchanged |
 | D8-C design v2 (Claude Design, option A) | `PREVIEW` | 2026-11-03: DR-099..DR-105; Home (mix), v2 packages, controllers and contact, inner template, self-hosted fonts, published phone/WhatsApp (no form), brochure photos, D8-A carry-overs. PR #16 head `1a7a1b9a` and its protected Preview; its background full chain was stopped on the owner's instruction because v3 supersedes it |
 | D8-C v3 inner pages (Claude Design v3.1) | `PREVIEW` | 2026-11-03: DR-106..DR-109; header, drawer, footer and address; service template, smart-home landing, services index, company, support, business, product, Our work (empty state) and Start a project (chips → one WhatsApp message); `/products` without the selector; 308 redirects for routes outside the design; privacy page removed. Verification on this head: private evidence `execution/evidence/d8c-v3-2026-11-03/` |
-| D8-C v4 simulator + restored selector (Claude Design v4) | `IMPLEMENTED (local only)` | 2026-11-03: DR-110..DR-112; "Try your smart home" at `/try` (four stages, demo only, `?demo=` allow-list) with entry points on Home, Smart Home, Packages, Controllers, 16R, drawer and footer; the Smart Product Selector is back on `/products`, restyled to v3. Not pushed and not deployed: the owner runs it locally for the evaluation committee; a push needs a new «ارفع». Verification: private evidence `execution/evidence/d8c-v4-2026-11-03/` |
+| D8-C v4 simulator + restored selector (Claude Design v4) | `PREVIEW` | 2026-11-03: DR-110..DR-112; "Try your smart home" at `/try` (four stages, demo only, `?demo=` allow-list) with entry points on Home, Smart Home, Packages, Controllers, 16R, drawer and footer; the Smart Product Selector is back on `/products`, restyled to v3. Pushed to PR #16 on «ارفع» (head `624b70b2`) with its protected Preview. Verification: private evidence `execution/evidence/d8c-v4-2026-11-03/` |
+| D8-C v5 polish + release-gate hardening | `IMPLEMENTED` | 2026-11-04: DR-113; run-all exit code (self-tested), plain-text titles/meta, localized 404 title, footer "English" / "عربي", lighter fonts with per-locale preload (same look). Verification and push status: private evidence `execution/evidence/d8c-v5-2026-11-04/` |
 | D6 products and smart home | `PREVIEW` | Commits below are in PR #16 and the protected Preview of `025d382b`; full local QA on `16c2b42a` plus d4 on `025d382b` |
 | D7 customer account, devices, service, warranty | `PARTIAL` | Local backend foundations only; no customer UI; not authorized live |
 | D8-A full-site audit + objective fixes | `IMPLEMENTED (local only)` | 2026-11-03: 21 objective findings fixed in `b181dab3`..`51069f26`; after-run has 0 axe violations, 0 broken links/anchors, 0 console errors; 18 design/content items listed for D8-C |
 | D8-D release dry-run | `IMPLEMENTED (local only)` | 2026-11-03: delta from live Production has no migrations and no new env names; gate dry-run `PROMOTION_ALLOWED=false` as expected; plan in `RELEASE_CHECKLIST.md`, decisions 13–20 in `OPEN_APPROVALS.md`. Live Production is `noindex` with robots disallow-all because marketing-only mode is off |
 | D8-B/E review and release | `PLANNED` | D8-B needs the owner's Shareable Link; D8-C after team-lead feedback; D8-E only on owner gates |
 
-## D8-C v4 (2026-11-03, local only)
+## D8-C v5 (2026-11-04)
+
+| SHA | Change |
+|---|---|
+| `d9c75bd7` | fix(release-gate): run-all exits non-zero when any step fails (shared `run-all-lib.sh`, self-test step `run-all-selftest`) |
+| `50219bd5` | fix(seo): plain-text titles and meta, without bidi control characters |
+| `baa1d566` | fix(seo): localized 404 title for the localized and unknown-locale 404 |
+| `a522fb98` | fix(i18n): footer language link says "English" / "عربي" as in the design |
+| `66c3443c` | perf(fonts): lighter Arabic font files, per-locale preload, immutable caching |
+| `05eb5a86` | test: D8-C v5 checks for plain-text meta, 404 titles, footer label and fonts |
+
+The docs commit that records this table follows these commits. Fonts: one Arabic paragraph wrapped differently with `unicode-range` descriptors, so that part was reverted; every other v4 reference screenshot is pixel-identical except the footer language label.
+
+## D8-C v4 (2026-11-03, pushed to PR #16)
 
 | SHA | Change |
 |---|---|
