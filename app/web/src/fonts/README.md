@@ -1,6 +1,9 @@
 # Self-hosted fonts (DR-104)
 
-Loaded with `next/font/local` from the site origin: no request to a font provider at build or run time; the CSP stays `font-src 'self'`.
+This folder keeps the **masters** (unchanged since DR-104) and the licences. Since D8-C v5 the site serves derived copies
+from `public/fonts/` through hand-written `@font-face` rules in `src/app/(site)/fonts.css` (same family names, stacks and
+metric-matched fallbacks that `next/font/local` generated before), so each locale can preload its own body face
+(`src/lib/fonts.ts`). Everything stays on the site origin: no request to a font provider; the CSP stays `font-src 'self'`.
 All three families are licensed under the SIL Open Font License 1.1 (full text in the `OFL-*.txt` files).
 
 | File | Source package | SHA-256 |
@@ -15,3 +18,30 @@ All three families are licensed under the SIL Open Font License 1.1 (full text i
 | `ibm-plex-sans-arabic-latin-600-normal.woff2` | `@fontsource/ibm-plex-sans-arabic@5.3.0` | `63f4757271e403f7baec0862f284ffaa4560ea6096ba9fe8bc6e585ca656e724` |
 | `ibm-plex-sans-arabic-latin-700-normal.woff2` | `@fontsource/ibm-plex-sans-arabic@5.3.0` | `ae2d59f91ecf9f7ed279e4a1fc1a9da8170fb0ce5b9152917a8f759033f5777c` |
 | `inter-latin-wght-normal.woff2` | `@fontsource-variable/inter@5.3.0` | `3100e775e8616cd2611beecfa23a4263d7037586789b43f035236a2e6fbd4c62` |
+
+## Served files (`public/fonts/`)
+
+File names end with the first 10 hex digits of the file's SHA-256, so they are cached as immutable (`next.config.mjs`).
+
+| Served file | Derived from | How |
+|---|---|---|
+| `ibm-plex-sans-arabic-arabic-{400,500,600,700}.<hash>.woff2` | `ibm-plex-sans-arabic-arabic-*-normal.woff2` | subset to the Arabic block (below) |
+| `ibm-plex-sans-arabic-latin-{400,500,600,700}.<hash>.woff2` | `ibm-plex-sans-arabic-latin-*-normal.woff2` | byte-identical copy |
+| `inter-latin-wght.<hash>.woff2` | `inter-latin-wght-normal.woff2` | byte-identical copy |
+| `dm-serif-display-latin-400.<hash>.woff2` | `dm-serif-display-latin-400-normal.woff2` | byte-identical copy |
+
+Arabic subset (fontTools 4.68, brotli 1.2; every OpenType layout feature and all glyphs reachable from the kept
+characters are kept, so shaping is unchanged). It drops the Arabic Supplement/Extended-A letters (U+0750-077F,
+U+08A0-08FF) and the legacy presentation-form code points (U+FB50-FDFF, U+FE70-FEFC), which no site page uses
+(D8-C v5 scan of every public route); such a character would fall back to the next font in the stack:
+
+```
+pyftsubset ibm-plex-sans-arabic-arabic-<w>-normal.woff2 --unicodes="U+0000,U+000D,U+0020,U+00A0,U+0600-06FF,U+2010"   --layout-features='*' --name-IDs='*' --name-languages='*' --notdef-outline --flavor=woff2 --output-file=<out>.woff2
+```
+
+| Served Arabic file | SHA-256 | Bytes (master → served) |
+|---|---|---|
+| `ibm-plex-sans-arabic-arabic-400.2f4f939130.woff2` | `2f4f939130ab7aa335feab43d376381b8bf98aaf05f835187ad575ecb7f16912` | 42,848 → 28,996 |
+| `ibm-plex-sans-arabic-arabic-500.97ad2e28ec.woff2` | `97ad2e28ec241f2b086e0f88794b5bba01540188ee2005af096be9022052079a` | 45,296 → 30,640 |
+| `ibm-plex-sans-arabic-arabic-600.c85c0519ce.woff2` | `c85c0519ce3d6d046e12de358e3bb61fa683601a1884604f16cbdc2dfab998df` | 45,688 → 31,112 |
+| `ibm-plex-sans-arabic-arabic-700.f86cb892ee.woff2` | `f86cb892ee89da5aec1575880d55c91d1dd6ecd98bb5e9cd46e02ec524bd7fa1` | 44,280 → 30,140 |

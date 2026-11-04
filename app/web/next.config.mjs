@@ -19,7 +19,11 @@ const nextConfig = {
   poweredByHeader: false,
   serverExternalPackages: ['pg'],
   async headers() {
-    return [{ source: '/:path*', headers: securityHeaders }];
+    return [
+      { source: '/:path*', headers: securityHeaders },
+      // Self-hosted font files carry a content hash in their name (src/app/(site)/fonts.css): cache them for a year.
+      { source: '/fonts/:file*', headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }] },
+    ];
   },
 };
 

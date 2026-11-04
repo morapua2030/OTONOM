@@ -1,13 +1,14 @@
 import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
+import '../fonts.css';
 import '../site.css';
 import '../hybrid03.css';
 import '../v2.css';
-import { fontVariables } from '../fonts.ts';
 import { dirOf, isLocale, t } from '@/lib/i18n.ts';
 import { SiteHeader, SiteFooter } from '@/components/site.tsx';
 import { Bidi } from '@/components/bidi.tsx';
+import { PRIMARY_FONT } from '@/lib/fonts.ts';
 import { publicMarketingOnly } from '@/lib/deployment.ts';
 import { SITE_URL } from '@/lib/server.ts';
 
@@ -31,8 +32,10 @@ export default async function LocaleLayout({ children, params }: { children: Rea
   const d = t(locale);
   const publicRelease = publicMarketingOnly();
   return (
-    <html lang={locale} dir={dirOf(locale)} className={fontVariables}>
+    <html lang={locale} dir={dirOf(locale)}>
       <body>
+        {/* Only this locale's body face is preloaded (same URL as its @font-face src in fonts.css); React hoists it into <head>. */}
+        <link rel="preload" href={PRIMARY_FONT[locale]} as="font" type="font/woff2" crossOrigin="anonymous" />
         <a href="#main" className="skip">
           {locale === 'ar' ? 'انتقل إلى المحتوى' : 'Skip to content'}
         </a>
