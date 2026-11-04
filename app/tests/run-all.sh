@@ -63,6 +63,7 @@ cd "$APP/web" && step build npx --no-install next build
 # Clone the known synthetic development database into a unique disposable target. All HTTP/browser suites and
 # their server write only to this clone; the source database is never reset or cleaned by the regression run.
 export PGHOST=127.0.0.1 PGPORT=5433 PGUSER=spike_admin PGPASSWORD="$(cat "$PG_PW_FILE")"
+CLONE_T0=$(date +%s)
 "$PG/pg_dump.exe" -Fc -d otonom_dev -f "$CLONE_DUMP" > "$OUT/database-clone.log" 2>&1
 "$PG/psql.exe" -q -d postgres -c "CREATE DATABASE $E2E_DB" >> "$OUT/database-clone.log" 2>&1
 CLONE_READY=1
@@ -70,6 +71,7 @@ CLONE_READY=1
 # cluster; preserving ownership is required for Payload's schema access and is safe inside the disposable DB.
 "$PG/pg_restore.exe" -d "$E2E_DB" "$CLONE_DUMP" >> "$OUT/database-clone.log" 2>&1
 rm -f "$CLONE_DUMP"
+CLONE_COPY_S=$(( $(date +%s) - CLONE_T0 ))
 export OTONOM_DB="$E2E_DB"
 # Apply forward-only domain migrations only inside the disposable clone. The source otonom_dev and hosted databases
 # remain untouched; the pg_dump above is the verified restore point for this isolated run.
@@ -89,6 +91,9 @@ if ! OTONOM_DB="$E2E_DB" npx --no-install tsx scripts/seed-site-content.ts < /de
   echo "disposable database content seed failed"
   exit 2
 fi
+# Clone timing (seconds): copy = pg_dump + restore of otonom_dev; total = copy + domain/Payload migrations + seed.
+echo -e "copy\t$CLONE_COPY_S\ntotal\t$(( $(date +%s) - CLONE_T0 ))" > "$OUT/database-clone-seconds.tsv"
+echo "disposable clone $E2E_DB ready: copy ${CLONE_COPY_S}s, total $(( $(date +%s) - CLONE_T0 ))s"
 # Test-only: clear shared rate-limit buckets in the disposable clone (they persist across server restarts).
 "$PG/psql.exe" -q -d "$E2E_DB" -c 'DELETE FROM domain.rate_limits' > /dev/null
 cd "$APP/web" && (OTONOM_TRUST_PROXY=1 OTONOM_TEST_PAGES=1 OTONOM_ENABLE_SYNTHETIC_COMMERCIAL_TESTS=1 OTONOM_ENABLE_SYNTHETIC_RFQ_TESTS=1 OTONOM_OWNER_EMAIL_OTP_REQUIRED=1 OTONOM_OWNER_EMAIL_OTP_ACCOUNT=otp-owner@otonom.local OTONOM_EMAIL_OTP_ALLOWED_RECIPIENT=otp-owner@otonom.local OTONOM_EMAIL_OTP_PEPPER=synthetic-email-otp-pepper-for-tests-2026 OTONOM_EMAIL_PROVIDER=test OTONOM_EMAIL_TEST_MODE=1 OTONOM_EMAIL_OTP_TEST_CODE=483921 CRON_SECRET=synthetic-cron-secret-for-local-tests-only-2026 OTONOM_LEADS_NOTIFY_TO=team@otonom.local npx --no-install next start -H 127.0.0.1 -p 3301 > "$OUT/server.log" 2>&1 &)
