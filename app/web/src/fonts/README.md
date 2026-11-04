@@ -1,9 +1,10 @@
 # Self-hosted fonts (DR-104)
 
-This folder keeps the **masters** (unchanged since DR-104) and the licences. Since D8-C v5 the site serves derived copies
-from `public/fonts/` through hand-written `@font-face` rules in `src/app/(site)/fonts.css` (same family names, stacks and
-metric-matched fallbacks that `next/font/local` generated before), so each locale can preload its own body face
-(`src/lib/fonts.ts`). Everything stays on the site origin: no request to a font provider; the CSP stays `font-src 'self'`.
+This folder keeps the **masters** (unchanged since DR-104) and the licences. Since D8-C v5 (DR-113) the site serves
+derived copies from `public/fonts/` through hand-written `@font-face` rules in `src/app/(site)/fonts.css` (same family
+names, stacks and metric-matched fallbacks that `next/font/local` generated before). No font is preloaded: preloading
+the LCP heading face was measured against the v4 baseline and reverted (owner rule, 2026-11-04). Everything stays on
+the site origin: no request to a font provider; the CSP stays `font-src 'self'`.
 All three families are licensed under the SIL Open Font License 1.1 (full text in the `OFL-*.txt` files).
 
 | File | Source package | SHA-256 |

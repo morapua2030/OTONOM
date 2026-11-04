@@ -26,7 +26,7 @@
 | D8-C design v2 (Claude Design, option A) | `PREVIEW` | 2026-11-03: DR-099..DR-105; Home (mix), v2 packages, controllers and contact, inner template, self-hosted fonts, published phone/WhatsApp (no form), brochure photos, D8-A carry-overs. PR #16 head `1a7a1b9a` and its protected Preview; its background full chain was stopped on the owner's instruction because v3 supersedes it |
 | D8-C v3 inner pages (Claude Design v3.1) | `PREVIEW` | 2026-11-03: DR-106..DR-109; header, drawer, footer and address; service template, smart-home landing, services index, company, support, business, product, Our work (empty state) and Start a project (chips → one WhatsApp message); `/products` without the selector; 308 redirects for routes outside the design; privacy page removed. Verification on this head: private evidence `execution/evidence/d8c-v3-2026-11-03/` |
 | D8-C v4 simulator + restored selector (Claude Design v4) | `PREVIEW` | 2026-11-03: DR-110..DR-112; "Try your smart home" at `/try` (four stages, demo only, `?demo=` allow-list) with entry points on Home, Smart Home, Packages, Controllers, 16R, drawer and footer; the Smart Product Selector is back on `/products`, restyled to v3. Pushed to PR #16 on «ارفع» (head `624b70b2`) with its protected Preview. Verification: private evidence `execution/evidence/d8c-v4-2026-11-03/` |
-| D8-C v5 polish + release-gate hardening | `IMPLEMENTED` | 2026-11-04: DR-113; run-all exit code (self-tested), plain-text titles/meta, localized 404 title, footer "English" / "عربي", lighter fonts with per-locale preload (same look). Verification and push status: private evidence `execution/evidence/d8c-v5-2026-11-04/` |
+| D8-C v5 polish + release-gate hardening | `IMPLEMENTED` | 2026-11-04: DR-113; run-all exit code (self-tested), plain-text titles/meta, localized 404 title, footer "English" / "عربي", lighter Arabic fonts (same look; font preload measured and reverted). Verification and push status: private evidence `execution/evidence/d8c-v5-2026-11-04/` |
 | D6 products and smart home | `PREVIEW` | Commits below are in PR #16 and the protected Preview of `025d382b`; full local QA on `16c2b42a` plus d4 on `025d382b` |
 | D7 customer account, devices, service, warranty | `PARTIAL` | Local backend foundations only; no customer UI; not authorized live |
 | D8-A full-site audit + objective fixes | `IMPLEMENTED (local only)` | 2026-11-03: 21 objective findings fixed in `b181dab3`..`51069f26`; after-run has 0 axe violations, 0 broken links/anchors, 0 console errors; 18 design/content items listed for D8-C |
@@ -49,8 +49,13 @@
 | `50bfff23` | docs: list the two follow-up commits |
 | `9f18b531` | fix(seo): keep the localized 404 title after hydration (Next 16's 404 payload still carried the default title) |
 | `c77b22ae` | test: 404 title must survive hydration (`hybrid03:browser` and unit) |
+| `ddf3efce` | docs: list the 404-title hydration fix |
+| `be290486` | perf(fonts): preload the face of each locale's LCP element (measured: DM Serif on English, nothing on Arabic) |
+| `1617c45c` | test: font preload expectation follows the measured LCP faces |
+| `beffcfd0` | perf(fonts): revert the font preload, keep the subset files and caching (owner rule: English LCP not reliably better) |
+| `1e581c24` | test: no font preload; font files still hash-named and declared |
 
-The docs commit that completes this table follows these commits. Fonts: one Arabic paragraph wrapped differently with `unicode-range` descriptors, so that part was reverted; every other v4 reference screenshot is pixel-identical except the footer language label.
+The docs commit that completes this table follows these commits. Fonts: one Arabic paragraph wrapped differently with `unicode-range` descriptors, so that part was reverted; every other v4 reference screenshot is pixel-identical except the footer language label. The font preload was measured per the owner's rule (LCP element and its font logged per page; no page more than 50 ms worse on the median) and reverted; the Arabic subset files and caching stay.
 
 ## D8-C v4 (2026-11-03, pushed to PR #16)
 

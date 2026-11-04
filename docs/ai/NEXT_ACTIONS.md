@@ -33,8 +33,8 @@ stays local and the failures are reported.
 
 - `run-all.sh` now exits non-zero when any step fails, the summary counts a failure, or a suite has no fresh result;
   a self-test (`pnpm --filter @otonom/tests test:run-all-exit`) runs as its own run-all step.
-- Font weight: Arabic font files subset to the Arabic block, per-locale preload of the body face, immutable caching;
-  same look (pixel comparison of 52 reference screenshots).
+- Font weight: Arabic font files subset to the Arabic block and cached as immutable; same look (pixel comparison of
+  52 reference screenshots). A font preload was measured and reverted (owner rule: no page's LCP more than 50 ms worse).
 
 ## Follow-ups (not in this batch)
 

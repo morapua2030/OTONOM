@@ -50,7 +50,7 @@ This design system replaces the Hybrid 03 page styling (DR-099). The v3.1 inner 
 
 ## Typography (DR-104)
 
-- Fonts are self-hosted (DR-104). Since D8-C v5 (DR-113) the site serves content-hashed copies from `app/web/public/fonts/` through `src/app/(site)/fonts.css` (same family names, stacks and metric-matched fallbacks as before); the Arabic files are subset to the Arabic block, each locale preloads only its body face (`src/lib/fonts.ts`) and the files are cached as immutable. Masters, OFL 1.1 licences, SHA-256 list and the subset command are in `app/web/src/fonts/README.md`. There is no request to a font provider, and the CSP stays `font-src 'self'`.
+- Fonts are self-hosted (DR-104). Since D8-C v5 (DR-113) the site serves content-hashed copies from `app/web/public/fonts/` through `src/app/(site)/fonts.css` (same family names, stacks and metric-matched fallbacks as before); the Arabic files are subset to the Arabic block and the files are cached as immutable. No font is preloaded: the LCP-face preload was measured against the v4 baseline and reverted (owner rule). Masters, OFL 1.1 licences, SHA-256 list and the subset command are in `app/web/src/fonts/README.md`. There is no request to a font provider, and the CSP stays `font-src 'self'`.
 - Document titles and meta/Open Graph text are plain text (`metaText` in `lib/seo.ts`, DR-113): bidi isolation (`<Bidi>`, `<Ltr>`) is for the visible page body only.
 - **English:** DM Serif Display 400 for headings (−0.028em, line height 1.04–1.08); Inter 400–700 for body (line height 1.6).
 - **Arabic:** IBM Plex Sans Arabic for all text, with its Latin subset for brand names and numbers. Headings are 700 with line height 1.25–1.3; body line height 1.8; no negative tracking.
