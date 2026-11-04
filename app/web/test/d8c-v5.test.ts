@@ -68,18 +68,19 @@ test('font files: woff2 only, names carry their own SHA-256 prefix, every file d
     const hash = createHash('sha256').update(readFileSync(new URL(f, dir))).digest('hex');
     assert.equal(f.split('.').at(-2), hash.slice(0, 10), f);
   }
-  const css = read('app/(site)/fonts.css');
+  // Owner decision 2026-11-04: the @font-face rules live in the main stylesheet (v2.css), not in a separate file.
+  const css = read('app/(site)/v2.css');
   for (const f of files) assert.ok(css.includes(`url('/fonts/${f}')`), `${f} is declared`);
   // Owner rule 2026-11-04: the LCP-face preload was measured against the v4 baseline and reverted (English LCP not
   // reliably better); the subset files and the immutable caching stay.
   const layout = read('app/(site)/[locale]/layout.tsx');
   assert.doesNotMatch(layout, /rel="preload"|as="font"/);
   assert.doesNotMatch(layout, /next\/font/);
-  assert.match(layout, /import '\.\.\/fonts\.css';/);
+  assert.doesNotMatch(layout, /fonts\.css/, 'no separate font stylesheet: a third render-blocking request before the first paint');
 });
 
 test('font stacks and fallback metrics are the ones next/font generated (same look), with font-display: swap', () => {
-  const css = read('app/(site)/fonts.css');
+  const css = read('app/(site)/v2.css');
   assert.match(css, /--font-inter: 'inter', 'inter Fallback';/);
   assert.match(css, /--font-dm-serif: 'dmSerif', 'dmSerif Fallback';/);
   assert.match(css, /--font-plex-arabic: 'plexArabic', 'plexArabic Fallback';/);

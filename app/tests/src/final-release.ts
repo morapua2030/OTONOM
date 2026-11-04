@@ -225,6 +225,28 @@ async function main() {
   const adminLinks = pages.map((p) => (p.text.match(/href="\/(?:admin|staff)[^"]*"/g) ?? []).length);
   rec.add('F-NO-ADMIN-LINK', 'HOSTS', 'no link to the admin or the staff sign-in in public HTML', adminLinks.every((n) => n === 0), adminLinks);
 
+  // ---------------- First paint (owner decision, 2026-11-04) ----------------
+  // Every page waits on the same stylesheets as v4: the shared one and the main one, with the @font-face rules inside
+  // the main one (no fonts-only stylesheet); /try adds the simulator's own stylesheet, as in v4. No script the page
+  // HTML refers to (script tags, preloads, the RSC payload) carries the metrics beacon code: DeferredMetrics loads it
+  // only after the page load event.
+  const assets = new Map<string, Promise<string>>();
+  const asset = (href: string) => {
+    if (!assets.has(href)) assets.set(href, anon.get(href).then((r) => (r.status === 200 ? r.text : `HTTP ${r.status}`)));
+    return assets.get(href)!;
+  };
+  const BEACON_CODE = /sendBeacon|["'`]\/api\/e["'`]/;
+  const firstPaint: Record<string, { sheets: number; expected: number; fontSheets: number; fontsInMain: boolean; scripts: number; withBeaconCode: string[] }> = {};
+  for (const p of ['/ar', '/en', '/ar/try', '/en/try', '/ar/smart-home/packages', '/en/smart-home/packages', '/ar/products', '/en/products', '/ar/contact']) {
+    const html = (await anon.get(p)).text;
+    const sheets = [...html.matchAll(/<link\b[^>]*>/g)].map((m) => m[0]).filter((t) => /\srel="stylesheet"/.test(t)).map((t) => t.match(/\shref="([^"]+)"/)?.[1] ?? '');
+    const scripts = [...new Set(html.match(/\/_next\/static\/chunks\/[A-Za-z0-9_.~-]+\.js/g) ?? [])];
+    const fontCss = (await Promise.all(sheets.map(asset))).filter((css) => css.includes('@font-face'));
+    const withBeaconCode = (await Promise.all(scripts.map(async (s) => (BEACON_CODE.test(await asset(s)) ? s : '')))).filter(Boolean);
+    firstPaint[p] = { sheets: sheets.length, expected: p.endsWith('/try') ? 3 : 2, fontSheets: fontCss.length, fontsInMain: fontCss.length === 1 && fontCss[0].includes('--v2-navy'), scripts: scripts.length, withBeaconCode };
+  }
+  rec.add('F-FIRST-PAINT', 'PERF', 'each page waits on the same stylesheets as v4 (the fonts inside the main one) and loads no metrics code before the page load event', Object.values(firstPaint).every((f) => f.sheets === f.expected && f.fontSheets === 1 && f.fontsInMain && f.scripts > 0 && f.withBeaconCode.length === 0), firstPaint);
+
   // leave the switches off again (the clone is dropped after the run anyway)
   await owner.post('/api/globals/intake-settings', { enabled: false, retentionMonths: 12 });
   await owner.post('/api/globals/privacy-policy', { approved: false });
