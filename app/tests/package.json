@@ -19,6 +19,8 @@
     "sim:browser": "tsx src/sim-browser.ts",
     "e2e": "tsx src/e2e.ts",
     "final-release": "tsx src/final-release.ts",
+    "final-shots": "tsx src/final-shots.ts",
+    "hosts": "tsx src/hosts.ts",
     "release:verify": "tsx src/release-gate.ts",
     "release:promote": "tsx src/release-promote.ts",
     "test:release-gate": "tsx --test src/release-gate.test.ts",
