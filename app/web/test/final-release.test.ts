@@ -14,7 +14,7 @@ import { can } from '@otonom/domain';
 
 const read = (p: string) => readFileSync(new URL(`../src/${p}`, import.meta.url), 'utf8');
 const KEY = 'k'.repeat(40);
-const lead = (over: Record<string, unknown> = {}) => ({ name: 'Ali', phone: '01012345678', package: 'plus', consent: true, source: 'contact', locale: 'ar', idempotencyKey: 'abcdefghijklmnop1234', ...over });
+const lead = (over: Record<string, unknown> = {}) => ({ name: 'Ali', phone: '01012345678', package: 'plus', consent: true, source: 'contact', locale: 'ar', idempotencyKey: 'test-idempotency-0000000001', ...over });
 
 test('booking form is visible only when BOTH audited switches are on', () => {
   assert.equal(bookingVisible({ privacyApproved: false, intakeEnabled: false }), false);
