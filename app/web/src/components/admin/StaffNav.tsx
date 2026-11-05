@@ -13,6 +13,7 @@ export function StaffNav({ user }: ServerProps) {
     { href: '/admin/service-desk', label: 'Service desk', labelAr: 'الخدمة والضمان', description: 'Tickets, ownership and RMA', group: 'Operate', show: can(role, 'service.manage') },
     { href: '/admin/product-drafts', label: 'Product drafts', labelAr: 'مسودات المنتجات', description: 'Bilingual merchandising review', group: 'Govern', show: can(role, 'product.draft') || can(role, 'product.approve') },
     { href: '/admin/content-review', label: 'Content review', labelAr: 'مراجعة المحتوى', description: 'Editorial approval workflow', group: 'Govern', show: can(role, 'content.edit') || can(role, 'content.review') || can(role, 'content.publish') },
+    { href: '/admin/sales', label: 'Sales & site metrics', labelAr: 'الطلبات والمقاييس', description: 'Booking requests and privacy-first site metrics', group: 'Operate', show: can(role, 'leads.read') || can(role, 'metrics.read') },
     { href: '/admin/kpi', label: 'KPI dashboard', labelAr: 'مؤشرات الأداء', description: 'Evidence-based commercial reporting', group: 'Govern', show: can(role, 'kpi.read') },
     { href: '/admin/account-security', label: 'Account security', labelAr: 'أمان الحساب', description: 'Role, MFA and protected account controls', group: 'Govern', show: !!role },
   ].filter((link) => link.show).map(({ show: _show, ...link }) => link) as WorkspaceLink[];

@@ -49,3 +49,28 @@
 @media (max-width: 900px) { .pf-hero-foot { align-items: start; flex-direction: column; }.pf-cta { align-items: start; flex-direction: column; } }
 @media (max-width: 760px) { .pf-grid, .pf-product, .pf-disciplines, .pf-narrative { grid-template-columns: 1fr; }.pf-empty { grid-template-columns: 1fr; gap: 20px; }.pf-empty-mark { font-size: 48px; }.pf-product { margin-block-end: 48px; }.pf-disciplines { gap: 20px; }.pf-narrative { gap: 16px; padding-block: 32px; }.pf-hero h1 { margin-block: 16px 28px; }.pf-product-photos > img { aspect-ratio: 1.25; }.pf-cta { margin-block-start: 48px; }.pf-card-featured .pf-card-image { aspect-ratio: 4 / 3; } }
 @media (prefers-reduced-motion: reduce) { .pf-page *, .pf-page *::before, .pf-page *::after { scroll-behavior: auto; transition: none; animation: none; } }
+
+/* Hybrid 03 portfolio layer */
+.pf-hero { padding-block: clamp(72px, 9vw, 128px) clamp(52px, 7vw, 92px); }
+.pf-hero h1 { color: var(--brand-navy); font-weight: 710; line-height: 1.02; }
+.pf-hero-foot { border-color: var(--brand-sky); }
+.pf-search { max-width: 720px; }
+.pf-search-row input { border-radius: 6px; border-color: #8eafc3; }
+.pf-search-row input:focus { border-color: var(--brand-blue); box-shadow: 0 0 0 3px rgb(24 163 224 / 16%); outline: 0; }
+.pf-filters { gap: 6px; }
+.pf-filters a { border-radius: 4px; }
+.pf-filters a[aria-current='true'] { background: var(--brand-navy); border-color: var(--brand-navy); }
+.pf-grid { gap: 1px; background: var(--c-line); border: 1px solid var(--c-line); }
+.pf-card-link { border-radius: 0; background: #fff; }
+.pf-card-image { border-radius: 0; background: var(--brand-ice); }
+.pf-card-copy { padding: clamp(24px, 3vw, 36px); }
+.pf-no-photo { background: var(--brand-ice); }
+.pf-empty { border-radius: 8px; background: var(--surface-soft); }
+.pf-empty-mark { color: var(--brand-blue); }
+.pf-product { border-radius: 12px; background: var(--brand-ice); border-color: var(--brand-sky); }
+.pf-disciplines a { border-color: var(--c-line); }
+.pf-cta { border-radius: 12px; background: var(--brand-navy); color: #fff; }
+.pf-cta h2 { color: #fff; }
+.pf-cta p { color: #c5d8e3; }
+.pf-case-hero img, .pf-gallery img { border-radius: 8px; background: var(--brand-ice); }
+.pf-engineering .pf-grid > section { border: 0; border-radius: 0; }

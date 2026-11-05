@@ -10,13 +10,40 @@ import { APP_ROOT, SECRETS_DIR } from '@otonom/domain';
 import { Client, Recorder, sleep } from './http-client.ts';
 
 const BASE = process.env.OTONOM_BASE ?? 'http://127.0.0.1:3301';
+/** Configured site origin: canonical URLs are absolute on it (metadataBase from SITE_URL). */
+const SITE = (process.env.OTONOM_SITE_URL ?? 'http://127.0.0.1:3301').replace(/\/$/, '');
 const EDGE = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
 const PROFILE = path.join(APP_ROOT, 'tests', '.edge-profile');
 const SHOTS = path.resolve(APP_ROOT, '..', 'execution', 'evidence', 'screenshots', 's11-20261021');
 const PORT = 9334;
 const WIDTHS = [360, 768, 1366];
-const PAGES = ['', '/solutions', '/solutions/villas', '/solutions/apartments', '/business/developers', '/business/contractors', '/technology/controllers', '/technology/integrations', '/technology/documentation', '/products', '/products/4r', '/products/6r', '/products/16r', '/products/compare', '/projects', '/business/request-a-proposal', '/consultation', '/shop', '/support/warranty', '/preview', '/preview/bidi-samples'];
+/** D8-C v4: the simulator is also checked at the design's 390 and 1440 widths (all its demo states). */
+const EXTRA_WIDTHS = (page: string) => (page.startsWith('/try') ? [390, 1440] : []);
+// D8-C v3: the design v3.1 pages are covered; legacy pages stay listed because the local synthetic harness still serves them (DR-107).
+const PAGES = ['', '/services', '/services/iot-embedded', '/services/software-engineering', '/services/custom-engineering', '/services/smart-home-automation', '/about', '/start-project', '/support', '/smart-home/packages', '/contact', '/solutions', '/solutions/villas', '/solutions/apartments', '/business/developers', '/business/contractors', '/technology/controllers', '/technology/integrations', '/technology/documentation', '/products', '/products/4r', '/products/6r', '/products/16r', '/products/compare', '/try', '/try?demo=night', '/try?demo=gas', '/try?demo=plan', '/projects', '/business/request-a-proposal', '/consultation', '/shop', '/support/warranty', '/preview', '/preview/bidi-samples'];
 const rec = new Recorder();
+
+/**
+ * D8-C v5: text shown outside the page (document title, meta description, Open Graph and Twitter text) is read from
+ * the raw HTML: it must carry no bidi control characters (LRM/RLM, embeddings, isolates) and no double or edge spaces
+ * (document.title would hide both, so the raw HTML is checked). Next 16 may stream metadata after </head> (React hoists it
+ * on the client), so the whole document is read; inline-SVG <title> elements are not document titles and are skipped.
+ */
+const BIDI_CONTROL = /[‎‏‪-‮⁦-⁩]/;
+const decodeHtml = (s: string) => s.replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16))).replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d))).replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+async function headTexts(url: string): Promise<{ status: number; titles: string[]; texts: Array<[string, string]> }> {
+  const res = await fetch(url, { redirect: 'manual' });
+  const head = (await res.text()).replace(/<svg[\s\S]*?<\/svg>/g, '');
+  const titles = [...head.matchAll(/<title>([^<]*)<\/title>/g)].map((m) => decodeHtml(m[1]));
+  const texts: Array<[string, string]> = titles.map((t) => ['title', t]);
+  for (const m of head.matchAll(/<meta ([^>]*)>/g)) {
+    const key = /(?:name|property)="([^"]+)"/.exec(m[1])?.[1];
+    const content = /content="([^"]*)"/.exec(m[1])?.[1];
+    if (key && content !== undefined && /^(description|og:title|og:description|og:image:alt|twitter:title|twitter:description|twitter:image:alt)$/.test(key)) texts.push([key, decodeHtml(content)]);
+  }
+  return { status: res.status, titles, texts };
+}
+const plainTextIssues = (texts: Array<[string, string]>) => texts.filter(([, t]) => BIDI_CONTROL.test(t) || /\s{2}/.test(t) || t !== t.trim()).map(([k, t]) => `${k}: ${JSON.stringify(t)}`);
 
 class Cdp {
   private id = 0;
@@ -56,6 +83,24 @@ class Cdp {
 }
 
 // In-page probe (runs in the browser). Returns layout, bidi, form and SEO facts.
+/**
+ * A data table fits when it is no wider than its parent, or when it sits in an intentional horizontal scroll
+ * region that keyboard and screen-reader users can operate: the table-scroll marker, role="region",
+ * tabindex="0", an accessible name (aria-label, or aria-labelledby pointing to an existing element) and real
+ * horizontal scrolling. Page-level overflow is checked separately and is never exempted.
+ */
+const TABLE_FITS = `(t) => {
+  const region = t.closest('.table-scroll[role="region"][tabindex="0"]');
+  if (region && region.contains(t)) {
+    const label = (region.getAttribute('aria-label') || '').trim();
+    const labelledBy = region.getAttribute('aria-labelledby');
+    const named = !!label || (!!labelledBy && !!document.getElementById(labelledBy) && !!document.getElementById(labelledBy).textContent.trim());
+    const scrolls = ['auto', 'scroll'].includes(getComputedStyle(region).overflowX);
+    if (named && scrolls) return true;
+  }
+  return t.scrollWidth <= (t.parentElement?.clientWidth ?? t.clientWidth) + 1;
+}`;
+
 const PROBE = `(() => {
   const html = document.documentElement, vw = window.innerWidth;
   const AR = /[\\u0600-\\u06FF]/, LAT = /[A-Za-z0-9]/;
@@ -78,6 +123,39 @@ const PROBE = `(() => {
       if (!t.trim() || !p || skip(p) || p.closest('bdi,[dir=ltr]')) continue;
       if (LAT.test(t) && AR.test(t)) mixed.push(t.trim().slice(0, 70));
       else if (LAT.test(t) && AR.test((p.textContent || '').replace(ISO, '')) && p.childElementCount === 0) mixed.push('[adjacent] ' + (p.textContent || '').trim().slice(0, 70));
+    }
+  }
+  // Arabic letters must never render touching an isolated LTR run (e.g. "كنترولر16R"): a space next to the isolate must
+  // actually be drawn, and an Arabic letter may attach without a space only as a one-letter prefix (و ب ل ف ك) or a tatweel.
+  const touch = [];
+  if (html.lang === 'ar') {
+    const LETTER = /[\\u0621-\\u063F\\u0641-\\u064A]/, PREFIX = /(^|[\\s\\u00A0(«])[وبلفك]$/;
+    const texts = [];
+    const tw2 = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let tn;
+    while ((tn = tw2.nextNode())) if (tn.nodeValue && tn.parentElement && !skip(tn.parentElement)) texts.push(tn);
+    const charRect = (node, i) => { const r = document.createRange(); r.setStart(node, i); r.setEnd(node, i + 1); return r.getBoundingClientRect(); };
+    const isolates = [...document.querySelectorAll('bdi[dir=ltr], bdi.ltr')].filter((b) => !b.parentElement.closest('bdi[dir=ltr], bdi.ltr') && b.getClientRects().length);
+    for (const b of isolates) {
+      const inner = texts.filter((x) => b.contains(x));
+      if (!inner.length) continue;
+      const rects = [...b.getClientRects()];
+      for (const side of ['before', 'after']) {
+        const node = texts[texts.indexOf(side === 'before' ? inner[0] : inner[inner.length - 1]) + (side === 'before' ? -1 : 1)];
+        if (!node || b.contains(node)) continue;
+        const raw = node.nodeValue;
+        const at = side === 'before' ? raw.search(/\\S\\s*$/) : raw.search(/\\S/);
+        if (at < 0 || !LETTER.test(raw[at]) && raw[at] !== '\\u0640') continue;
+        const spaced = side === 'before' ? at < raw.length - 1 : at > 0;
+        const lr = charRect(node, at);
+        if (!lr.width) continue;
+        const br = rects.reduce((best, r) => (Math.min(r.bottom, lr.bottom) - Math.max(r.top, lr.top) > Math.min(best.bottom, lr.bottom) - Math.max(best.top, lr.top) ? r : best), rects[0]);
+        if (Math.min(br.bottom, lr.bottom) - Math.max(br.top, lr.top) < Math.min(br.height, lr.height) * 0.5) continue;
+        const gap = side === 'before' ? (html.dir === 'rtl' ? lr.left - br.right : br.left - lr.right) : (html.dir === 'rtl' ? br.left - lr.right : lr.left - br.right);
+        if (gap >= 2) continue;
+        const attachedPrefix = side === 'before' && !spaced && (PREFIX.test(raw.slice(0, at + 1)) || raw[at] === '\\u0640');
+        if (!attachedPrefix) touch.push((spaced ? 'space lost ' : 'no space ') + side + ': ' + (raw.slice(Math.max(0, at - 12), at + 12) + ' | ' + b.textContent).replace(/\\s+/g, ' ').trim().slice(0, 80));
+      }
     }
   }
   const fields = [...document.querySelectorAll('input,select,textarea')].filter((f) => f.type !== 'hidden' && !f.closest('.hp'));
@@ -120,11 +198,12 @@ const PROBE = `(() => {
   const landmarks = ['header', 'nav', 'main', 'footer'].filter((s) => !document.querySelector(s));
   const smallTargets = [...document.querySelectorAll('.btn, summary, nav a, input:not([type=hidden]), select, textarea')].filter((e) => { if (!e.offsetParent || e.closest('.hp')) return false; const r = e.getBoundingClientRect(); return r.width < 24 || r.height < 24; }).map((e) => e.tagName.toLowerCase() + ':' + (e.textContent || e.name || '').trim().slice(0, 20));
   const ids = [...document.querySelectorAll('[id]')].map((e) => e.id); const dupIds = ids.filter((x, i) => ids.indexOf(x) !== i);
-  const tablesClipped =[...document.querySelectorAll('table.data')].filter((t) => t.scrollWidth > (t.parentElement?.clientWidth ?? t.clientWidth) + 1).length;
+  const tableFits = ${TABLE_FITS};
+  const tablesClipped = [...document.querySelectorAll('table.data')].filter((t) => !tableFits(t)).length;
   return JSON.stringify({
     orderBad, wrapped, tablesClipped, lowContrast: lowContrast.slice(0, 6), lowContrastCount: lowContrast.length, headingSkips, nameless, landmarks, smallTargets: smallTargets.slice(0, 6), dupIds: [...new Set(dupIds)],
     lang: html.lang, dir: html.dir, vw, scrollW: html.scrollWidth, contentH: Math.ceil(document.documentElement.scrollHeight),
-    overflow: over.slice(0, 8), overflowCount: over.length, mixed: mixed.slice(0, 8), mixedCount: mixed.length,
+    overflow: over.slice(0, 8), overflowCount: over.length, mixed: mixed.slice(0, 8), mixedCount: mixed.length, touch: touch.slice(0, 8), touchCount: touch.length,
     fields: fields.length, unlabelled, ltrWrong, h1: document.querySelectorAll('h1').length,
     title: document.title, description: meta('meta[name=description]'), robots: meta('meta[name=robots]'),
     canonical: document.querySelector('link[rel=canonical]')?.getAttribute('href') || '',
@@ -177,9 +256,41 @@ async function main() {
   };
   const titles: Record<string, Record<string, string>> = {};
   try {
+    {
+      // TABLES self-test (owner GATE-T): only a fully qualified scroll region exempts a wide table.
+      const { sid, targetId } = await open(`${BASE}/en`, 360);
+      const verdicts = await evalJson(sid, `(() => {
+        const fits = ${TABLE_FITS};
+        const host = document.createElement('div');
+        host.style.width = '320px';
+        document.body.appendChild(host);
+        const make = (attrs, scroll) => {
+          const wrap = document.createElement('div');
+          for (const [k, v] of Object.entries(attrs)) wrap.setAttribute(k, v);
+          wrap.style.overflowX = scroll ? 'auto' : 'visible'; // .table-scroll defaults to auto in site.css
+          wrap.innerHTML = '<table class="data" style="min-width:900px"><tr><td>wide</td></tr></table>';
+          host.appendChild(wrap);
+          return fits(wrap.querySelector('table'));
+        };
+        const result = {
+          plain: make({}, false),
+          scrollOnly: make({}, true),
+          noName: make({ class: 'table-scroll', role: 'region', tabindex: '0' }, true),
+          noTabindex: make({ class: 'table-scroll', role: 'region', 'aria-label': 'x' }, true),
+          noScroll: make({ class: 'table-scroll', role: 'region', tabindex: '0', 'aria-label': 'x' }, false),
+          qualified: make({ class: 'table-scroll', role: 'region', tabindex: '0', 'aria-label': 'Package comparison' }, true),
+        };
+        host.remove();
+        return JSON.stringify(result);
+      })()`);
+      await cdp.send('Target.closeTarget', { targetId });
+      const negatives = ['plain', 'scrollOnly', 'noName', 'noTabindex', 'noScroll'];
+      rec.add('VIS-TABLES-SELFTEST-NEGATIVE', 'VISUAL', 'a wide table outside a labelled, focusable table-scroll region still fails TABLES', negatives.every((k) => verdicts?.[k] === false), verdicts);
+      rec.add('VIS-TABLES-SELFTEST-QUALIFIED', 'VISUAL', 'a wide table inside a labelled, focusable table-scroll region counts as fitting', verdicts?.qualified === true, verdicts);
+    }
     for (const locale of ['ar', 'en'] as const) {
       for (const page of PAGES) {
-        for (const width of WIDTHS) {
+        for (const width of [...WIDTHS, ...EXTRA_WIDTHS(page)]) {
           const url = `${BASE}/${locale}${page}`;
           const { sid, targetId } = await open(url, width);
           // Exercise native lazy-loading before the full-page capture so evidence does not contain blank
@@ -189,18 +300,21 @@ async function main() {
             awaitPromise: true,
           }, sid);
           const p = await evalJson(sid, PROBE);
-          const name = `${locale}${page.replace(/\//g, '_') || '_home'}-${width}.png`;
+          const name = `${locale}${page.replace(/\//g, '_').replace(/[?=&]/g, '-') || '_home'}-${width}.png`;
           await shot(sid, name, width, p?.contentH ?? 900);
           await cdp.send('Target.closeTarget', { targetId });
           const id = `VIS-${locale}${page || '/'}-${width}`;
           const other = locale === 'ar' ? 'en' : 'ar';
-          const expectHreflang = [`ar=/ar${page}`, `en=/en${page}`, `x-default=/ar${page}`].sort();
+          // A demo preset query (/try?demo=…) is not part of the canonical path.
+          const pathOnly = page.split('?')[0];
+          const expectHreflang = [`ar=/ar${pathOnly}`, `en=/en${pathOnly}`, `x-default=/ar${pathOnly}`].sort();
           const isTest = page.includes('bidi-samples');
           rec.add(`${id}-LANGDIR`, 'VISUAL', `${locale}${page} lang/dir`, p?.lang === locale && p?.dir === (locale === 'ar' ? 'rtl' : 'ltr'), { lang: p?.lang, dir: p?.dir });
           rec.add(`${id}-OVERFLOW`, 'VISUAL', `${locale}${page} no horizontal overflow at ${width}px`, p?.scrollW <= width && p?.overflowCount === 0, { scrollW: p?.scrollW, overflow: p?.overflow });
           rec.add(`${id}-LTR-ORDER`, 'BIDI', `${locale}${page} LTR tokens render in left-to-right character order at ${width}px`, (p?.orderBad ?? ['probe failed']).length === 0, p?.orderBad);
           rec.add(`${id}-NOWRAP`, 'BIDI', `${locale}${page} short technical tokens never break across lines at ${width}px`, (p?.wrapped ?? ['probe failed']).length === 0, p?.wrapped);
           rec.add(`${id}-TABLES`, 'VISUAL', `${locale}${page} data tables fit their container at ${width}px`, p?.tablesClipped === 0, p?.tablesClipped);
+          if (locale === 'ar') rec.add(`${id}-BIDI-SPACING`, 'BIDI', `${locale}${page} Arabic letters never touch an isolated Latin/number run at ${width}px`, p?.touchCount === 0, p?.touch);
           if (locale === 'ar') rec.add(`${id}-BIDI`, 'BIDI', `${locale}${page} no un-isolated Latin/number run inside Arabic text at ${width}px`, p?.mixedCount === 0, p?.mixed);
           if (p?.fields) {
             rec.add(`${id}-LABELS`, 'A11Y', `${locale}${page} every field labelled`, p.unlabelled.length === 0, p.unlabelled);
@@ -218,13 +332,20 @@ async function main() {
             rec.add(`${id}-ROBOTS`, 'SEO', `${locale}${page} noindex while not launched`, /noindex/.test(p?.robots ?? ''), p?.robots);
             if (!isTest) {
               rec.add(`${id}-META`, 'SEO', `${locale}${page} localized title + description`, !!p?.title && p.title !== 'OTONOM' && (p?.description ?? '').length > 20, { title: p?.title, description: p?.description });
-              rec.add(`${id}-HREFLANG`, 'SEO', `${locale}${page} canonical + reciprocal hreflang for the same path`, p?.canonical === `/${locale}${page}` && JSON.stringify(p?.hreflang) === JSON.stringify(expectHreflang), { canonical: p?.canonical, hreflang: p?.hreflang });
-              rec.add(`${id}-LANGSWITCH`, 'I18N', `${locale}${page} language switch keeps the page`, (p?.langSwitch ?? []).includes(`/${other}${page}`), p?.langSwitch);
+              rec.add(`${id}-HREFLANG`, 'SEO', `${locale}${page} canonical + reciprocal hreflang for the same path`, p?.canonical === `${SITE}/${locale}${pathOnly}` && JSON.stringify(p?.hreflang) === JSON.stringify(expectHreflang), { canonical: p?.canonical, hreflang: p?.hreflang });
+              rec.add(`${id}-LANGSWITCH`, 'I18N', `${locale}${page} language switch keeps the page`, (p?.langSwitch ?? []).includes(`/${other}${pathOnly}`), p?.langSwitch);
               (titles[page] ??= {})[locale] = p?.title;
             }
+            const h = await headTexts(url);
+            rec.add(`${id}-META-PLAIN`, 'SEO', `${locale}${page} title/meta/OG text has no bidi control characters and no double spaces`, h.titles.length === 1 && plainTextIssues(h.texts).length === 0, { texts: h.texts.length, issues: plainTextIssues(h.texts) });
           }
         }
       }
+    }
+    // D8-C v5 (D8-A seo.404-title): the localized 404 and the unknown-locale 404 have their own plain-text title.
+    for (const [route, expected] of [['/ar/this-page-does-not-exist', 'الصفحة غير موجودة — OTONOM'], ['/ar/products/99r', 'الصفحة غير موجودة — OTONOM'], ['/en/this-page-does-not-exist', 'Page not found — OTONOM'], ['/en/products/99r', 'Page not found — OTONOM'], ['/xx', 'الصفحة غير موجودة — OTONOM'], ['/xx/about', 'الصفحة غير موجودة — OTONOM']] as const) {
+      const h = await headTexts(`${BASE}${route}`);
+      rec.add(`VIS-404-TITLE${route}`, 'SEO', `${route} answers 404 with the localized title "${expected}"`, h.status === 404 && h.titles.length === 1 && h.titles[0] === expected && plainTextIssues(h.texts).length === 0, { status: h.status, titles: h.titles, issues: plainTextIssues(h.texts) });
     }
     for (const [page, t] of Object.entries(titles)) rec.add(`VIS-TITLE-DIFFERS${page || '/'}`, 'SEO', `${page || '/'} title differs between ar and en`, !!t.ar && !!t.en && t.ar !== t.en, t);
     // Admin editing in Arabic (A4): EDITOR signs in with password + TOTP; the editor form must render ar fields RTL and en fields LTR

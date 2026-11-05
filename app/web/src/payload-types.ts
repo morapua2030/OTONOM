@@ -78,6 +78,11 @@ export interface Config {
     opportunities: Opportunity;
     'private-files': PrivateFile;
     media: Media;
+    leads: Lead;
+    'catalog-packages': CatalogPackage;
+    'catalog-controllers': CatalogController;
+    'sim-routines': SimRoutine;
+    'service-faqs': ServiceFaq;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -96,6 +101,11 @@ export interface Config {
     opportunities: OpportunitiesSelect<false> | OpportunitiesSelect<true>;
     'private-files': PrivateFilesSelect<false> | PrivateFilesSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
+    leads: LeadsSelect<false> | LeadsSelect<true>;
+    'catalog-packages': CatalogPackagesSelect<false> | CatalogPackagesSelect<true>;
+    'catalog-controllers': CatalogControllersSelect<false> | CatalogControllersSelect<true>;
+    'sim-routines': SimRoutinesSelect<false> | SimRoutinesSelect<true>;
+    'service-faqs': ServiceFaqsSelect<false> | ServiceFaqsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -107,9 +117,19 @@ export interface Config {
   fallbackLocale: ('false' | 'none' | 'null') | false | null | ('ar' | 'en') | ('ar' | 'en')[];
   globals: {
     settings: Setting;
+    'contact-settings': ContactSetting;
+    announcement: Announcement;
+    'sim-rules': SimRule;
+    'privacy-policy': PrivacyPolicy;
+    'intake-settings': IntakeSetting;
   };
   globalsSelect: {
     settings: SettingsSelect<false> | SettingsSelect<true>;
+    'contact-settings': ContactSettingsSelect<false> | ContactSettingsSelect<true>;
+    announcement: AnnouncementSelect<false> | AnnouncementSelect<true>;
+    'sim-rules': SimRulesSelect<false> | SimRulesSelect<true>;
+    'privacy-policy': PrivacyPolicySelect<false> | PrivacyPolicySelect<true>;
+    'intake-settings': IntakeSettingsSelect<false> | IntakeSettingsSelect<true>;
   };
   locale: 'ar' | 'en';
   widgets: {
@@ -145,7 +165,11 @@ export interface UserAuthOperations {
  */
 export interface User {
   id: number;
-  role: 'OWNER' | 'ADMIN' | 'ENGINEER' | 'STORE' | 'EDITOR' | 'CUSTOMER';
+  role: 'OWNER' | 'ADMIN' | 'ENGINEER' | 'STORE' | 'EDITOR' | 'SALES' | 'CUSTOMER';
+  /**
+   * OWNER only: lets an EDITOR ("CONTENT") publish site content. OWNER/ADMIN can always publish.
+   */
+  canPublishContent?: boolean | null;
   totpSecret?: string | null;
   mfaEnabled?: boolean | null;
   mfaVerifiedSids?:
@@ -560,6 +584,169 @@ export interface Media {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "leads".
+ */
+export interface Lead {
+  id: number;
+  ref: string;
+  name: string;
+  phone: string;
+  package: 'premium' | 'plus' | 'essential' | 'unsure';
+  /**
+   * Optional note the visitor added (up to 500 characters)
+   */
+  message?: string | null;
+  /**
+   * Simulator plan sent with the request (text only, attached automatically from the simulator)
+   */
+  plan?: string | null;
+  source: 'contact' | 'simulator';
+  locale: 'ar' | 'en';
+  consent: {
+    given: boolean;
+    at: string;
+    /**
+     * Date of the approved privacy text the visitor accepted
+     */
+    privacyVersion: string;
+  };
+  status: 'NEW' | 'CONTACTED' | 'VISIT_SCHEDULED' | 'QUOTED' | 'FOLLOW_UP' | 'NOT_INTERESTED';
+  assignee?: (number | null) | User;
+  /**
+   * Notes are added, never edited or removed
+   */
+  notes?:
+    | {
+        text: string;
+        by?: string | null;
+        at?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  lastActivityAt?: string | null;
+  idempotencyKey?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "catalog-packages".
+ */
+export interface CatalogPackage {
+  id: number;
+  packageId: 'premium' | 'plus' | 'essential';
+  nameAr: string;
+  nameEn: string;
+  priceEgp: number;
+  /**
+   * Shows the "most complete" badge
+   */
+  mostComplete?: boolean | null;
+  badgeAr?: string | null;
+  badgeEn?: string | null;
+  items?:
+    | {
+        key: 'alexa' | 'lock' | 'ir' | 'gas' | 'controller' | 'panel';
+        nameAr: string;
+        nameEn: string;
+        quantity: number;
+        /**
+         * Links the item to its OTONOM controller page
+         */
+        model?: ('4r' | '6r' | '16r') | null;
+        photo?: (number | null) | Media;
+        id?: string | null;
+      }[]
+    | null;
+  order: number;
+  active?: boolean | null;
+  /**
+   * Draft → In review (submitted by the editor) → Published (OWNER, or an editor the OWNER allowed to publish)
+   */
+  reviewState?: ('DRAFT' | 'IN_REVIEW' | 'PUBLISHED') | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "catalog-controllers".
+ */
+export interface CatalogController {
+  id: number;
+  model: '4r' | '6r' | '16r';
+  nameAr: string;
+  nameEn: string;
+  channels: number;
+  /**
+   * OWNER only: allow a channel count other than 4 / 6 / 16
+   */
+  channelsOwnerOverride?: boolean | null;
+  photo?: (number | null) | Media;
+  noteAr?: string | null;
+  noteEn?: string | null;
+  inPackages?: boolean | null;
+  /**
+   * Draft → In review (submitted by the editor) → Published (OWNER, or an editor the OWNER allowed to publish)
+   */
+  reviewState?: ('DRAFT' | 'IN_REVIEW' | 'PUBLISHED') | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sim-routines".
+ */
+export interface SimRoutine {
+  id: number;
+  /**
+   * The routine steps on the demo house are built in; this record holds its texts
+   */
+  routineId: 'morning' | 'leave' | 'arrive' | 'night' | 'guests' | 'suhoor' | 'travel' | 'pump' | 'gas';
+  titleAr: string;
+  titleEn: string;
+  triggerAr: string;
+  triggerEn: string;
+  actionsAr: string;
+  actionsEn: string;
+  /**
+   * Needs the smart lock (Premium)
+   */
+  premium?: boolean | null;
+  order: number;
+  active?: boolean | null;
+  /**
+   * Draft → In review (submitted by the editor) → Published (OWNER, or an editor the OWNER allowed to publish)
+   */
+  reviewState?: ('DRAFT' | 'IN_REVIEW' | 'PUBLISHED') | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "service-faqs".
+ */
+export interface ServiceFaq {
+  id: number;
+  service: 'iot' | 'soft' | 'custom';
+  questionAr: string;
+  questionEn: string;
+  answerAr: string;
+  answerEn: string;
+  order: number;
+  active?: boolean | null;
+  /**
+   * Draft → In review (submitted by the editor) → Published (OWNER, or an editor the OWNER allowed to publish)
+   */
+  reviewState?: ('DRAFT' | 'IN_REVIEW' | 'PUBLISHED') | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -625,6 +812,26 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'media';
         value: number | Media;
+      } | null)
+    | ({
+        relationTo: 'leads';
+        value: number | Lead;
+      } | null)
+    | ({
+        relationTo: 'catalog-packages';
+        value: number | CatalogPackage;
+      } | null)
+    | ({
+        relationTo: 'catalog-controllers';
+        value: number | CatalogController;
+      } | null)
+    | ({
+        relationTo: 'sim-routines';
+        value: number | SimRoutine;
+      } | null)
+    | ({
+        relationTo: 'service-faqs';
+        value: number | ServiceFaq;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -674,6 +881,7 @@ export interface PayloadMigration {
  */
 export interface UsersSelect<T extends boolean = true> {
   role?: T;
+  canPublishContent?: T;
   totpSecret?: T;
   mfaEnabled?: T;
   mfaVerifiedSids?: T;
@@ -939,6 +1147,127 @@ export interface MediaSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "leads_select".
+ */
+export interface LeadsSelect<T extends boolean = true> {
+  ref?: T;
+  name?: T;
+  phone?: T;
+  package?: T;
+  message?: T;
+  plan?: T;
+  source?: T;
+  locale?: T;
+  consent?:
+    | T
+    | {
+        given?: T;
+        at?: T;
+        privacyVersion?: T;
+      };
+  status?: T;
+  assignee?: T;
+  notes?:
+    | T
+    | {
+        text?: T;
+        by?: T;
+        at?: T;
+        id?: T;
+      };
+  lastActivityAt?: T;
+  idempotencyKey?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "catalog-packages_select".
+ */
+export interface CatalogPackagesSelect<T extends boolean = true> {
+  packageId?: T;
+  nameAr?: T;
+  nameEn?: T;
+  priceEgp?: T;
+  mostComplete?: T;
+  badgeAr?: T;
+  badgeEn?: T;
+  items?:
+    | T
+    | {
+        key?: T;
+        nameAr?: T;
+        nameEn?: T;
+        quantity?: T;
+        model?: T;
+        photo?: T;
+        id?: T;
+      };
+  order?: T;
+  active?: T;
+  reviewState?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "catalog-controllers_select".
+ */
+export interface CatalogControllersSelect<T extends boolean = true> {
+  model?: T;
+  nameAr?: T;
+  nameEn?: T;
+  channels?: T;
+  channelsOwnerOverride?: T;
+  photo?: T;
+  noteAr?: T;
+  noteEn?: T;
+  inPackages?: T;
+  reviewState?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sim-routines_select".
+ */
+export interface SimRoutinesSelect<T extends boolean = true> {
+  routineId?: T;
+  titleAr?: T;
+  titleEn?: T;
+  triggerAr?: T;
+  triggerEn?: T;
+  actionsAr?: T;
+  actionsEn?: T;
+  premium?: T;
+  order?: T;
+  active?: T;
+  reviewState?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "service-faqs_select".
+ */
+export interface ServiceFaqsSelect<T extends boolean = true> {
+  service?: T;
+  questionAr?: T;
+  questionEn?: T;
+  answerAr?: T;
+  answerEn?: T;
+  order?: T;
+  active?: T;
+  reviewState?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv_select".
  */
 export interface PayloadKvSelect<T extends boolean = true> {
@@ -1005,11 +1334,193 @@ export interface Setting {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "contact-settings".
+ */
+export interface ContactSetting {
+  id: number;
+  phoneE164: string;
+  whatsappE164: string;
+  email?: string | null;
+  addressAr: string;
+  addressEn: string;
+  hoursAr?: string | null;
+  hoursEn?: string | null;
+  /**
+   * Empty links are hidden on the site
+   */
+  socials?:
+    | {
+        network: 'facebook' | 'instagram' | 'linkedin' | 'youtube' | 'tiktok' | 'x';
+        url?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Draft → In review (submitted by the editor) → Published (OWNER, or an editor the OWNER allowed to publish)
+   */
+  reviewState?: ('DRAFT' | 'IN_REVIEW' | 'PUBLISHED') | null;
+  _status?: ('draft' | 'published') | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "announcement".
+ */
+export interface Announcement {
+  id: number;
+  enabled?: boolean | null;
+  textAr?: string | null;
+  textEn?: string | null;
+  link?: string | null;
+  activeFrom?: string | null;
+  activeTo?: string | null;
+  /**
+   * Draft → In review (submitted by the editor) → Published (OWNER, or an editor the OWNER allowed to publish)
+   */
+  reviewState?: ('DRAFT' | 'IN_REVIEW' | 'PUBLISHED') | null;
+  _status?: ('draft' | 'published') | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sim-rules".
+ */
+export interface SimRule {
+  id: number;
+  acChannels: number;
+  channelsPerDevice: number;
+  engineerReviewAbove: number;
+  /**
+   * Draft → In review (submitted by the editor) → Published (OWNER, or an editor the OWNER allowed to publish)
+   */
+  reviewState?: ('DRAFT' | 'IN_REVIEW' | 'PUBLISHED') | null;
+  _status?: ('draft' | 'published') | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "privacy-policy".
+ */
+export interface PrivacyPolicy {
+  id: number;
+  bodyAr: string;
+  bodyEn: string;
+  lastUpdated: string;
+  /**
+   * OWNER only. While off, /legal/privacy redirects to /contact and the booking form stays hidden.
+   */
+  approved?: boolean | null;
+  approvedBy?: string | null;
+  approvedAt?: string | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "intake-settings".
+ */
+export interface IntakeSetting {
+  id: number;
+  enabled?: boolean | null;
+  /**
+   * Leads are deleted this many months after their last activity
+   */
+  retentionMonths: number;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "settings_select".
  */
 export interface SettingsSelect<T extends boolean = true> {
   stage?: T;
   northStarKpi?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "contact-settings_select".
+ */
+export interface ContactSettingsSelect<T extends boolean = true> {
+  phoneE164?: T;
+  whatsappE164?: T;
+  email?: T;
+  addressAr?: T;
+  addressEn?: T;
+  hoursAr?: T;
+  hoursEn?: T;
+  socials?:
+    | T
+    | {
+        network?: T;
+        url?: T;
+        id?: T;
+      };
+  reviewState?: T;
+  _status?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "announcement_select".
+ */
+export interface AnnouncementSelect<T extends boolean = true> {
+  enabled?: T;
+  textAr?: T;
+  textEn?: T;
+  link?: T;
+  activeFrom?: T;
+  activeTo?: T;
+  reviewState?: T;
+  _status?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sim-rules_select".
+ */
+export interface SimRulesSelect<T extends boolean = true> {
+  acChannels?: T;
+  channelsPerDevice?: T;
+  engineerReviewAbove?: T;
+  reviewState?: T;
+  _status?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "privacy-policy_select".
+ */
+export interface PrivacyPolicySelect<T extends boolean = true> {
+  bodyAr?: T;
+  bodyEn?: T;
+  lastUpdated?: T;
+  approved?: T;
+  approvedBy?: T;
+  approvedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "intake-settings_select".
+ */
+export interface IntakeSettingsSelect<T extends boolean = true> {
+  enabled?: T;
+  retentionMonths?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

@@ -72,9 +72,14 @@ async function main() {
     const h = await anon.get('/ar');
     rec.add('APP-SEC-HEADERS', 'SEC', 'security headers present', h.headers.get('x-content-type-options') === 'nosniff' && h.headers.get('x-frame-options') === 'DENY' && !!h.headers.get('referrer-policy') && !h.headers.get('x-powered-by'), Object.fromEntries(h.headers));
   }
-  for (const p of ['about', 'solutions', 'solutions/villas', 'solutions/apartments', 'solutions/scenarios', 'business/developers', 'business/contractors', 'business/partners', 'technology', 'technology/controllers', 'technology/integrations', 'technology/documentation', 'projects', 'consultation', 'business/request-a-proposal', 'support', 'support/service', 'preview', 'legal/privacy', 'contact']) {
+  for (const p of ['about', 'solutions', 'solutions/villas', 'solutions/apartments', 'solutions/scenarios', 'business/developers', 'business/contractors', 'business/partners', 'technology', 'technology/controllers', 'technology/integrations', 'technology/documentation', 'projects', 'consultation', 'business/request-a-proposal', 'support', 'support/service', 'preview', 'contact']) {
     const r = await anon.get(`/en/${p}`);
     rec.add(`APP-WEB-PAGE-${p}`, 'WEB', `/en/${p} renders`, r.status === 200, r.status);
+  }
+  {
+    // final release (DR-114): /legal/privacy is a real page that keeps redirecting to /contact until the OWNER approves the text
+    const r = await anon.get('/en/legal/privacy');
+    rec.add('APP-WEB-PRIVACY-GATED', 'WEB', '/en/legal/privacy redirects to /en/contact while the privacy text is not approved', [307, 308].includes(r.status) && (r.headers.get('location') ?? '').endsWith('/en/contact'), { status: r.status, location: r.headers.get('location') });
   }
   {
     const r = await anon.get('/en/technology/integrations');

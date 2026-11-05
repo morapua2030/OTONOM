@@ -5,6 +5,7 @@ import { productionOwnerPasswordOnly } from '@/lib/production-owner-auth.ts';
 import { accountSecurityProjection } from '@/lib/security-display.ts';
 import { StaffShell, staffOf } from './shell.tsx';
 import s from './staff.module.css';
+import { InviteStaff } from './InviteStaff.tsx';
 
 /** Read-only security posture. Passwords, TOTP material, recovery codes and session tokens are never selected. */
 export async function AccountSecurityView(props: AdminViewServerProps) {
@@ -51,8 +52,10 @@ export async function AccountSecurityView(props: AdminViewServerProps) {
       </section>
 
       <p className={s.banner} data-testid="security-notice">
-        Invitations are not configured. Staff creation, role changes and unlock operations remain OWNER-controlled in the protected Users collection.
+        Staff accounts are personal and OWNER-controlled: invite each person below (one-time link, MFA required at first sign-in). Role changes and unlock operations stay in the protected Users collection.
       </p>
+
+      {isOwner ? <InviteStaff /> : null}
 
       {isOwner ? (
         <section className={s.section} data-testid="security-directory">

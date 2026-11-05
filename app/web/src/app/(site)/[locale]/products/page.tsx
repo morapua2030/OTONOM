@@ -2,9 +2,13 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { isLocale, type Locale } from '@/lib/i18n.ts';
 import { pageMetadata } from '@/lib/seo.ts';
-import { ProductComparison, ProductGrid } from '@/components/products.tsx';
+import { ControllerRows } from '@/components/products.tsx';
+import { SwashText } from '@/components/v2.tsx';
 import { PRODUCT_REVIEW_NOTICE, localProductText } from '@/lib/products.ts';
-import { Bidi } from '@/components/bidi.tsx';
+import { Bidi, isolateText } from '@/components/bidi.tsx';
+import { SmartProductSelector } from '@/components/SmartProductSelector.tsx';
+import { loadSiteContent } from '@/lib/site-content.ts';
+import { SIM_ENTRY } from '@/lib/simulator/copy.ts';
 
 export const dynamic = 'force-dynamic';
 type P = { params: Promise<{ locale: string }> };
@@ -24,22 +28,25 @@ export default async function ProductsPage({ params }: P) {
   const { locale: value } = await params;
   if (!isLocale(value)) notFound();
   const locale = value as Locale;
+  const content = await loadSiteContent();
   return (
     <>
-      <section className="hero products-intro">
-        <p className="eyebrow"><Bidi text={locale === 'ar' ? 'منتجات OTONOM الفعلية' : 'GENUINE OTONOM PRODUCTS'} locale={locale} /></p>
-        <h1>{locale === 'ar' ? 'وحدة مناسبة لحجم مشروعك' : 'A controller range for different project scales'}</h1>
-        <p className="lead">{locale === 'ar' ? 'اختَر مبدئيًا حسب عدد قنوات التحكم، ثم اطلب مراجعة هندسية للتأكد من الملاءمة ومتطلبات التركيب.' : 'Start with the confirmed channel count, then request an engineering review to validate fit and installation requirements.'}</p>
+      <section className="v2-page-head products-intro">
+        <span className="v2-eyebrow"><Bidi text={locale === 'ar' ? 'وحدات تحكم OTONOM' : 'OTONOM Controllers'} locale={locale} /></span>
+        <h1><SwashText text={locale === 'ar' ? 'وحدة تحكم لكل مساحة.' : 'One controller for every room size.'} word={locale === 'ar' ? 'مساحة.' : 'controller'} locale={locale} /></h1>
+        <a className="btn secondary sim-entry-btn" href={`/${locale}/try`} data-testid="sim-entry">{SIM_ENTRY[locale].cta}</a>
         <p className="hero-note"><Bidi text={localProductText(PRODUCT_REVIEW_NOTICE, locale)} locale={locale} /></p>
       </section>
-      <section className="section product-list-section" aria-labelledby="product-list-title">
-        <h2 id="product-list-title"><Bidi text={locale === 'ar' ? '4R و6R و16R' : '4R, 6R and 16R'} locale={locale} /></h2>
-        <ProductGrid locale={locale} />
+      <section className="v2-section product-list-section" aria-labelledby="product-list-title">
+        <h2 id="product-list-title" className="sr-only">{isolateText(locale === 'ar' ? '4R و6R و16R' : '4R, 6R and 16R', locale)}</h2>
+        <ControllerRows locale={locale} />
       </section>
-      <section className="section" aria-labelledby="quick-compare-title">
-        <h2 id="quick-compare-title">{locale === 'ar' ? 'مقارنة واضحة بلا مواصفات مفترضة' : 'A clear comparison without assumed specifications'}</h2>
-        <ProductComparison locale={locale} />
-        <p className="actions"><a className="btn secondary" href={`/${locale}/products/compare`}>{locale === 'ar' ? 'افتح المقارنة الكاملة' : 'Open full comparison'}</a></p>
+      <section className="v2-section product-selector-section" aria-labelledby="product-selector-title">
+        <div className="v2-section-head">
+          <span className="v2-eyebrow">{locale === 'ar' ? 'اختار الكنترولر' : 'Pick a controller'}</span>
+          <h2 id="product-selector-title">{locale === 'ar' ? 'محتاج كام قناة؟' : 'How many channels do you need?'}</h2>
+        </div>
+        <SmartProductSelector locale={locale} packages={content.packages} contact={{ whatsappE164: content.contact.whatsappE164 }} />
       </section>
     </>
   );

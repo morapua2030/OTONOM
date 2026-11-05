@@ -10,7 +10,7 @@ type Content = {
   engagement: { title: string; items: Card[] };
   process: { title: string; steps: Card[] };
   scenarios: { title: string; note: string; items: Card[] };
-  controllers: { title: string; models: Card[]; note: string };
+  controllers: { title: string; note: string };
   developers: { painsTitle: string; pains: string[]; faqTitle: string; faqs: Faq[]; prepareTitle: string; prepare: string[] };
   contractors: { whoTitle: string; who: string; benefitsTitle: string; benefits: Card[]; docsNote: string };
   finalCta: { title: string; body: string };
@@ -52,11 +52,6 @@ const en: Content = {
   },
   controllers: {
     title: 'OTONOM controllers',
-    models: [
-      { title: 'OTONOM 4R', body: 'Four owner-confirmed control channels. Project fit is reviewed before installation.' },
-      { title: 'OTONOM 6R', body: 'Six owner-confirmed control channels. Project fit is reviewed before installation.' },
-      { title: 'OTONOM 16R', body: 'Sixteen owner-confirmed control channels. Project fit is reviewed before installation.' },
-    ],
     note: 'Electrical specifications are published once the datasheet is approved. Online ordering opens with the commercial launch.',
   },
   developers: {
@@ -127,11 +122,6 @@ const ar: Content = {
   },
   controllers: {
     title: 'وحدات تحكم OTONOM',
-    models: [
-      { title: 'OTONOM 4R', body: 'أربع قنوات تحكم مؤكدة من المالك، وتُراجع ملاءمة المشروع قبل التركيب.' },
-      { title: 'OTONOM 6R', body: 'ست قنوات تحكم مؤكدة من المالك، وتُراجع ملاءمة المشروع قبل التركيب.' },
-      { title: 'OTONOM 16R', body: 'ست عشرة قناة تحكم مؤكدة من المالك، وتُراجع ملاءمة المشروع قبل التركيب.' },
-    ],
     note: 'تُنشر المواصفات الكهربائية بعد اعتماد ورقة البيانات. الطلب أونلاين متاح عند الإطلاق التجاري.',
   },
   developers: {

@@ -4,14 +4,18 @@ import { buildConfig } from 'payload';
 import { postgresAdapter } from '@payloadcms/db-postgres';
 import { collections } from './collections/index.ts';
 import { Settings } from './globals/Settings.ts';
+import { siteContentGlobals } from './collections/SiteContent.ts';
 import { endpoints } from './endpoints/index.ts';
+import { finalReleaseEndpoints } from './endpoints/final-release.ts';
 import { cmsConnString, payloadSecret, SITE_URL, trustedCsrfOrigins } from './lib/server.ts';
+import { protectedAdminOrigin, publicMarketingOnly } from './lib/deployment.ts';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default buildConfig({
   secret: payloadSecret(),
-  serverURL: SITE_URL,
+  // Production marketing-only mode serves the admin on its own host (OTONOM_ADMIN_URL); everywhere else the site URL.
+  serverURL: (publicMarketingOnly() && protectedAdminOrigin()) || SITE_URL,
   csrf: trustedCsrfOrigins(),
   admin: {
     user: 'users',
@@ -29,6 +33,7 @@ export default buildConfig({
         serviceDesk: { Component: '/components/admin/ServiceView#ServiceView', path: '/service-desk', exact: true },
         productDrafts: { Component: '/components/admin/ProductDraftsView#ProductDraftsView', path: '/product-drafts', exact: true },
         accountSecurity: { Component: '/components/admin/AccountSecurityView#AccountSecurityView', path: '/account-security', exact: true },
+        sales: { Component: '/components/admin/SalesView#SalesView', path: '/sales', exact: true },
       },
     },
     meta: { titleSuffix: ' — OTONOM' },
@@ -36,8 +41,8 @@ export default buildConfig({
     avatar: 'default',
   },
   collections,
-  globals: [Settings],
-  endpoints,
+  globals: [Settings, ...siteContentGlobals],
+  endpoints: [...endpoints, ...finalReleaseEndpoints],
   // expected business-rule refusals are not server faults (see lib/errors.ts BusinessRuleError)
   // custom error name (not in Payload's ErrorName union) — matched at runtime by err.name in logError
   loggingLevels: { BusinessRuleError: 'info' } as Record<string, 'info'>,

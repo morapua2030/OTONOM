@@ -1,9 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { contentSecurityPolicy } from './lib/csp.ts';
-import { adminPathRequiresSessionCookie, isAdministrativePath, isPrivatePublicRoute, protectedAdminOrigin, publicMarketingOnly } from './lib/deployment.ts';
+import { adminPathRequiresSessionCookie, isUnknownLocalePath, legacyRouteRedirect, marketingDecision, publicMarketingOnly } from './lib/deployment.ts';
 
-function secured(response: NextResponse, policy: string) {
+function secured(response: NextResponse, policy: string, noindex = false) {
   response.headers.set('Content-Security-Policy', policy);
+  if (noindex) response.headers.set('x-robots-tag', 'noindex');
   return response;
 }
 
@@ -16,24 +17,20 @@ export function proxy(request: NextRequest) {
   const nonce = crypto.randomUUID().replaceAll('-', '');
   const policy = contentSecurityPolicy(nonce);
 
+  let noindex = false;
   if (publicMarketingOnly()) {
     const { pathname, search } = request.nextUrl;
-    if (request.method !== 'GET' && request.method !== 'HEAD') {
+    const decision = marketingDecision({ method: request.method, pathname, search, host: request.headers.get('host') });
+    if (decision.kind === 'not-found') {
       return secured(new NextResponse('Not Found', { status: 404, headers: { 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } }), policy);
     }
-    if (isAdministrativePath(pathname)) {
-      const adminOrigin = protectedAdminOrigin();
-      if (!adminOrigin) {
-        return secured(new NextResponse('Not Found', { status: 404, headers: { 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } }), policy);
-      }
-      const destination = new URL(adminOrigin);
-      destination.pathname = pathname;
-      destination.search = search;
-      return secured(NextResponse.redirect(destination, 307), policy);
+    if (decision.kind === 'redirect') {
+      const response = NextResponse.redirect(new URL(decision.to), decision.status);
+      response.headers.set('cache-control', 'no-store');
+      response.headers.set('x-robots-tag', 'noindex');
+      return secured(response, policy);
     }
-    if (isPrivatePublicRoute(pathname)) {
-      return secured(new NextResponse('Not Found', { status: 404, headers: { 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } }), policy);
-    }
+    noindex = decision.noindex;
   }
 
   if (adminPathRequiresSessionCookie(request.nextUrl.pathname, request.cookies.has('payload-token'))) {
@@ -50,8 +47,26 @@ export function proxy(request: NextRequest) {
   requestHeaders.set('content-security-policy', policy);
   requestHeaders.set('x-nonce', nonce);
 
+  // Legacy routes outside design v3.1 (DR-107): permanent 308 to the nearest page, locale kept, query dropped.
+  const legacyTarget = (request.method === 'GET' || request.method === 'HEAD') ? legacyRouteRedirect(request.nextUrl.pathname) : null;
+  if (legacyTarget) {
+    const destination = request.nextUrl.clone();
+    destination.pathname = legacyTarget;
+    destination.search = '';
+    destination.hash = '';
+    return secured(NextResponse.redirect(destination, 308), policy, noindex);
+  }
+
+  // An unknown two-letter locale (e.g. /xx, /fr/about) renders the branded Arabic 404 inside the site shell
+  // instead of the framework's unbranded page. The status stays 404 (the catch-all route calls notFound()).
+  if (isUnknownLocalePath(request.nextUrl.pathname)) {
+    const destination = request.nextUrl.clone();
+    destination.pathname = `/ar${request.nextUrl.pathname}`;
+    return secured(NextResponse.rewrite(destination, { request: { headers: requestHeaders } }), policy, noindex);
+  }
+
   const response = NextResponse.next({ request: { headers: requestHeaders } });
-  return secured(response, policy);
+  return secured(response, policy, noindex);
 }
 
 export const config = {

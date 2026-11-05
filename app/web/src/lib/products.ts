@@ -100,7 +100,21 @@ const PRODUCT_CANDIDATES: readonly PublicProduct[] = [
 export const PRODUCTS: readonly PublicProduct[] = PRODUCT_CANDIDATES.map((product) => Object.freeze(publicProductProjection(product)));
 
 export const productByModel = (model: string) => PRODUCTS.find((product) => product.model === model);
+/** Registry lookup for a model the code depends on; throws instead of rendering a missing product silently. */
+export function requireProductByModel(model: ProductModel): PublicProduct {
+  const product = productByModel(model);
+  if (!product) throw new Error(`OTONOM product registry is missing model "${model}"`);
+  return product;
+}
 export const localProductText = (value: Localized, locale: Locale) => value[locale];
+
+/** Localized channel phrase for the owner-confirmed channel counts only (no generic number words). */
+const CHANNEL_LABELS: Record<PublicProduct['channels'], Localized> = {
+  4: { ar: 'أربع قنوات', en: 'four channels' },
+  6: { ar: 'ست قنوات', en: 'six channels' },
+  16: { ar: 'ست عشرة قناة', en: 'sixteen channels' },
+};
+export const productChannelLabel = (product: Pick<PublicProduct, 'channels'>, locale: Locale) => CHANNEL_LABELS[product.channels][locale];
 
 export const PRODUCT_REVIEW_NOTICE: Localized = {
   ar: 'المواصفات الكهربائية والميكانيكية والتوافق والسعر والضمان بانتظار اعتماد المالك والمراجعة الهندسية، وليست منشورة على موقع المعلومات العام.',

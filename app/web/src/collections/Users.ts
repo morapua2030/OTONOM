@@ -42,6 +42,13 @@ export const Users: CollectionConfig = {
   },
   fields: [
     { name: 'role', type: 'select', required: true, defaultValue: 'CUSTOMER', options: ROLES, access: { create: ownerOnlyField, update: ownerOnlyField } },
+    {
+      name: 'canPublishContent',
+      type: 'checkbox',
+      defaultValue: false,
+      access: { create: ownerOnlyField, update: ownerOnlyField },
+      admin: { description: 'OWNER only: lets an EDITOR ("CONTENT") publish site content. OWNER/ADMIN can always publish.' },
+    },
     { name: 'totpSecret', type: 'text', access: hiddenField, admin: { hidden: true } },
     { name: 'mfaEnabled', type: 'checkbox', defaultValue: false, access: { read: staffOnly as any, create: () => false, update: () => false } },
     { name: 'mfaVerifiedSids', type: 'json', access: hiddenField, admin: { hidden: true } },

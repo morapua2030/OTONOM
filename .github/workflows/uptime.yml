@@ -1,0 +1,35 @@
+name: Uptime check
+
+# Monitoring minimum for the final release (owner 2026-11-04, OPEN_APPROVALS 18): no new vendor. Every 30 minutes the
+# public pages and the admin sign-in page must answer 200. Origins come from repository variables (not secrets).
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: ${{ vars.OTONOM_PUBLIC_URL != '' }}
+    steps:
+      - name: Public site and admin sign-in answer 200
+        env:
+          PUBLIC_URL: ${{ vars.OTONOM_PUBLIC_URL }}
+          ADMIN_URL: ${{ vars.OTONOM_ADMIN_URL }}
+        run: |
+          set -u
+          fail=0
+          check() {
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$1")
+            echo "$code $1"
+            [ "$code" = 200 ] || fail=1
+          }
+          check "$PUBLIC_URL/ar"
+          check "$PUBLIC_URL/en"
+          check "$PUBLIC_URL/ar/try"
+          if [ -n "$ADMIN_URL" ]; then check "$ADMIN_URL/staff/login"; fi
+          exit $fail

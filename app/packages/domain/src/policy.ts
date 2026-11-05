@@ -1,7 +1,11 @@
 // Framework-agnostic policy helpers shared by Option A and Option C (synthetic spike).
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 
-export const STAFF_ROLES = ['OWNER', 'ADMIN', 'ENGINEER', 'STORE', 'EDITOR'] as const;
+/**
+ * Staff roles. Final release (owner 2026-11-04): SALES handles booking leads and metrics; the owner's "CONTENT" role is
+ * the existing EDITOR (edit drafts, submit for review; publish only when the OWNER grants `canPublishContent`).
+ */
+export const STAFF_ROLES = ['OWNER', 'ADMIN', 'ENGINEER', 'STORE', 'EDITOR', 'SALES'] as const;
 export type Role = (typeof STAFF_ROLES)[number] | 'CUSTOMER';
 
 /** Server-side permission matrix (doc 14 §2, M3P role names). */
@@ -44,6 +48,14 @@ export const PERMISSIONS = {
   'rma.decide': ['OWNER', 'ADMIN', 'ENGINEER'],
   'product.draft': ['OWNER', 'ADMIN', 'EDITOR'],
   'product.approve': ['OWNER', 'ADMIN'],
+  // Final release (owner 2026-11-04): booking leads, site metrics, intake/privacy switches, staff invitations.
+  'leads.read': ['OWNER', 'ADMIN', 'SALES'],
+  'leads.write': ['OWNER', 'ADMIN', 'SALES'],
+  'leads.export': ['OWNER'],
+  'metrics.read': ['OWNER', 'ADMIN', 'SALES'],
+  'intake.settings': ['OWNER'],
+  'privacy.approve': ['OWNER'],
+  'staff.invite': ['OWNER'],
 } as const satisfies Record<string, readonly Role[]>;
 export type Permission = keyof typeof PERMISSIONS;
 

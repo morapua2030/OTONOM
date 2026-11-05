@@ -15,10 +15,16 @@
     "wave1:browser": "tsx src/wave1-browser.ts",
     "d3:browser": "tsx src/d3-browser.ts",
     "d4:browser": "tsx src/d4-browser.ts",
+    "hybrid03:browser": "tsx src/hybrid03-browser.ts",
+    "sim:browser": "tsx src/sim-browser.ts",
     "e2e": "tsx src/e2e.ts",
+    "final-release": "tsx src/final-release.ts",
+    "final-shots": "tsx src/final-shots.ts",
+    "hosts": "tsx src/hosts.ts",
     "release:verify": "tsx src/release-gate.ts",
     "release:promote": "tsx src/release-promote.ts",
-    "test:release-gate": "tsx --test src/release-gate.test.ts"
+    "test:release-gate": "tsx --test src/release-gate.test.ts",
+    "test:run-all-exit": "tsx --test src/run-all-exit.test.ts"
   },
   "dependencies": {
     "@otonom/domain": "workspace:*",
@@ -28,6 +34,7 @@
   "devDependencies": {
     "@types/node": "24.19.2",
     "@types/pg": "8.23.1",
+    "axe-core": "4.14.0",
     "tsx": "4.23.15",
     "typescript": "5.9.3"
   }

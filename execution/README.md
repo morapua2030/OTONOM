@@ -1,3 +1,4 @@
+> Historical document. Current verified status: docs/ai/CURRENT_STATUS.md.
 # OTONOM — Execution Evidence Index
 
 Directives:

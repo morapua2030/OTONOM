@@ -3,7 +3,10 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { Locale } from '@/lib/i18n.ts';
 import { wave, type WaveItem, type WavePage } from '@/lib/wave1.ts';
+import { requireProductByModel } from '@/lib/products.ts';
 import { Bidi } from './bidi.tsx';
+import { BrandLogo } from './BrandLogo.tsx';
+import { SwashText } from './v2.tsx';
 
 function LocalLink({ locale, href, className, children }: { locale: Locale; href: string; className?: string; children: ReactNode }) {
   return <Link className={className} href={`/${locale}${href}`}>{children}</Link>;
@@ -39,9 +42,15 @@ export function CorporateHome({ locale }: { locale: Locale }) {
           </div>
           <p className="hero-note"><Bidi text={d.hero.note} locale={locale} /></p>
         </div>
-        <div className="capability-orbit" aria-label={locale === 'ar' ? 'قدرات OTONOM الأربع' : 'Four OTONOM capabilities'}>
-          <div className="orbit-core"><Image src="/brand/otonom-logo.png" alt="" width={776} height={719} priority /><span>OTONOM</span></div>
-          {d.services.map((service, index) => <span className={`orbit-node orbit-node-${index + 1}`} key={service.title}>{service.title}</span>)}
+        <div className="engineering-stage" aria-label={locale === 'ar' ? 'قدرات OTONOM الهندسية الأربع' : 'Four OTONOM engineering capabilities'}>
+          <div className="engineering-stage-head">
+            <BrandLogo className="engineering-stage-mark" variant="toggle-dark" decorative priority />
+            <span>{locale === 'ar' ? <>منظومة هندسية / <bdi dir="ltr">01–04</bdi></> : 'ENGINEERING SYSTEM / 01–04'}</span>
+          </div>
+          <ol>
+            {d.services.map((service, index) => <li key={service.title}><span>0{index + 1}</span><strong>{service.title}</strong></li>)}
+          </ol>
+          <p>{locale === 'ar' ? 'من الكود إلى العتاد إلى بيئة تشغيل قابلة للمراجعة.' : 'From code to hardware to a reviewable operating environment.'}</p>
         </div>
       </section>
 
@@ -67,7 +76,7 @@ export function CorporateHome({ locale }: { locale: Locale }) {
 
       <section className="wave-section product-proof">
         <div className="product-proof-copy"><p className="eyebrow">{locale === 'ar' ? 'دليل قائم' : 'Existing proof'}</p><h2>{d.proofTitle}</h2><p><Bidi text={d.proofBody} locale={locale} /></p><LocalLink className="text-arrow" locale={locale} href="/products">{locale === 'ar' ? 'استكشف عائلة وحدات التحكم' : 'Explore the controller family'} <span aria-hidden="true">→</span></LocalLink></div>
-        <div className="product-proof-image"><Image src="/products/otonom-16r.png" alt={locale === 'ar' ? 'وحدة تحكم OTONOM 16R — صورة المنتج الفعلية' : 'OTONOM 16R controller — genuine product image'} width={1254} height={1254} sizes="(max-width: 760px) 90vw, 480px" loading="eager" /></div>
+        <div className="product-proof-image"><Image src={requireProductByModel('16r').image} alt={locale === 'ar' ? 'وحدة تحكم OTONOM 16R — صورة المنتج الفعلية' : 'OTONOM 16R controller — genuine product image'} width={1254} height={1254} sizes="(max-width: 760px) 90vw, 480px" loading="eager" /></div>
       </section>
 
       <section className="wave-section work-note">
@@ -92,11 +101,11 @@ export function CorporatePage({ locale, page }: { locale: Locale; page: WavePage
     <>
       <section className="wave-page-hero">
         <p className="eyebrow">{page.eyebrow}</p>
-        <h1><Bidi text={page.title} locale={locale} /></h1>
+        <h1><SwashText text={page.title} locale={locale} /></h1>
         <p className="wave-lead"><Bidi text={page.body} locale={locale} /></p>
       </section>
       {page.sections.map((section, index) => (
-        <section className={`wave-section${index % 2 === 1 ? ' wave-tint' : ''}`} key={section.title}>
+        <section className={`wave-section${index % 2 === 1 ? ' wave-tint' : ''}`} id={section.id} key={section.title}>
           <div className="section-head">
             {section.eyebrow && <p className="eyebrow">{section.eyebrow}</p>}
             <h2><Bidi text={section.title} locale={locale} /></h2>

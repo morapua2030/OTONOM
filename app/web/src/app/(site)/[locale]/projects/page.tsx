@@ -4,6 +4,7 @@ import { isLocale } from '@/lib/i18n.ts';
 import { publicProjects } from '@/lib/portfolio-public.ts';
 import { portfolioCopy, portfolioQuery } from '@/lib/portfolio.ts';
 import { pageMetadata } from '@/lib/seo.ts';
+import { WorkEmptyV3 } from '@/components/v3-pages.tsx';
 import { PortfolioOverview } from '@/components/portfolio.tsx';
 import '../../portfolio.css';
 
@@ -18,5 +19,8 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
 export default async function Projects({ params, searchParams }: P) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  return <PortfolioOverview locale={locale} projects={await publicProjects(locale)} query={portfolioQuery(await searchParams)} />;
+  const projects = await publicProjects(locale);
+  // Design v3.1 "08 Our work": the empty state ships until real, permitted projects are published (DR-098, DR-106).
+  if (projects.length === 0) return <WorkEmptyV3 locale={locale} />;
+  return <PortfolioOverview locale={locale} projects={projects} query={portfolioQuery(await searchParams)} />;
 }

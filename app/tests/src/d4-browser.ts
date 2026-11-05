@@ -40,18 +40,15 @@ async function main() {
         const page = await browser.newPage(width, 900);
         if (width < 768) await page.touch();
         await page.reducedMotion();
+        // D8-C v3 (design "08 Our work", DR-106): with no published projects the live page is the empty state, so the
+        // search/filter explorer is not rendered; the synthetic fixture below still exercises the explorer end to end.
         await page.goto(`/${locale}/projects`);
-        await page.waitHydrated('#project-search');
-        await page.waitFor(`[...document.querySelectorAll('.pf-product img')].every((image) => image.complete && image.naturalWidth > 0)`, 20_000, 'portfolio product images');
-        const facts = await page.eval<any>(`({ h1: document.querySelectorAll('main h1').length, cards: document.querySelectorAll('[data-project]').length, overflow: document.documentElement.scrollWidth > innerWidth, lang: document.documentElement.lang, dir: document.documentElement.dir, images: [...document.querySelectorAll('.pf-product img')].every(i=>i.complete&&i.naturalWidth>0), active: document.querySelector('.nav-desktop a[href="/${locale}/projects"]')?.getAttribute('aria-current') })`);
-        add(`${locale}@${width}:page`, facts.h1 === 1 && facts.cards === 0 && facts.lang === locale && facts.dir === (locale === 'ar' ? 'rtl' : 'ltr'), facts);
-        add(`${locale}@${width}:layout`, !facts.overflow && facts.images && facts.active === 'page', facts);
+        await page.waitFor(`document.querySelector('[data-testid="work-empty"]')`, 20_000, 'work empty state');
+        const facts = await page.eval<any>(`({ h1: document.querySelectorAll('main h1').length, cards: document.querySelectorAll('[data-project]').length, overflow: document.documentElement.scrollWidth > innerWidth, lang: document.documentElement.lang, dir: document.documentElement.dir, empty: !!document.querySelector('[data-testid="work-empty"]'), search: !!document.querySelector('#project-search'), controllers: document.querySelector('[data-testid="work-empty"] a[href="/${locale}/products"]') !== null, active: document.querySelector('.nav-desktop a[href="/${locale}/projects"]')?.getAttribute('aria-current'), switchHref: document.querySelector('.header-actions a[hreflang]')?.getAttribute('href') })`);
+        add(`${locale}@${width}:page`, facts.h1 === 1 && facts.cards === 0 && facts.empty && !facts.search && facts.lang === locale && facts.dir === (locale === 'ar' ? 'rtl' : 'ltr'), facts);
+        add(`${locale}@${width}:layout`, !facts.overflow && facts.controllers && facts.active === 'page', facts);
         add(`${locale}@${width}:browser-errors`, page.issues.length === 0, page.issues);
-        await page.fill('#project-search', 'مستشعر');
-        await page.waitFor(`new URLSearchParams(location.search).get('q') === 'مستشعر'`);
-        add(`${locale}@${width}:url`, await page.eval(`document.querySelector('.header-actions a[hreflang]')?.getAttribute('href').includes('q=')`));
-        await page.click('.pf-results-bar a');
-        add(`${locale}@${width}:reset-focus`, await page.eval(`location.search === '' && document.activeElement.id === 'project-search'`));
+        add(`${locale}@${width}:language-switch`, facts.switchHref === `/${locale === 'ar' ? 'en' : 'ar'}/projects`, facts);
         await page.screenshot(`${locale}-portfolio-${width}.png`);
         await page.close();
       }

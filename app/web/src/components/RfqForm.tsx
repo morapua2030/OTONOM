@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Bidi, isolateText } from './bidi.tsx';
+import { PRODUCT_MODELS, PRODUCTS, productChannelLabel } from '../lib/products.ts';
 
 type Locale = 'ar' | 'en';
 type Kind = 'RFQ' | 'CONSULTATION' | 'PARTNER';
@@ -60,7 +61,7 @@ export function RfqForm({ locale, kind }: { locale: Locale; kind: Kind }) {
   }, [errors]);
   useEffect(() => {
     const model = new URLSearchParams(window.location.search).get('model')?.toLowerCase();
-    if (model && ['4r', '6r', '16r'].includes(model)) setModelHint(model);
+    if (model && (PRODUCT_MODELS as readonly string[]).includes(model)) setModelHint(model);
   }, []);
   const FIELD_OF: Record<string, string> = { contact: 'email', size: 'units' };
   // the summary names each field so repeated generic messages stay meaningful
@@ -188,9 +189,11 @@ export function RfqForm({ locale, kind }: { locale: Locale; kind: Kind }) {
         {L('الوحدة محل الاستفسار (اختياري)', 'Controller of interest (optional)')}
         <select name="productModel" value={modelHint} onChange={(event) => setModelHint(event.target.value)}>
           <option value="">{L('أحتاج مساعدة في الاختيار', 'I need help choosing')}</option>
-          <option value="4r">{O('OTONOM 4R — أربع قنوات', 'OTONOM 4R — four channels')}</option>
-          <option value="6r">{O('OTONOM 6R — ست قنوات', 'OTONOM 6R — six channels')}</option>
-          <option value="16r">{O('OTONOM 16R — ست عشرة قناة', 'OTONOM 16R — sixteen channels')}</option>
+          {PRODUCTS.map((product) => (
+            <option key={product.model} value={product.model}>
+              {isolateText(`OTONOM ${product.model.toUpperCase()} — ${productChannelLabel(product, locale)}`, locale)}
+            </option>
+          ))}
         </select>
         <span className="small muted">{L('الاختيار المبدئي لا يعني اعتماد الملاءمة الهندسية.', 'This initial choice does not confirm engineering fit.')}</span>
       </label>
@@ -314,7 +317,7 @@ export function RfqForm({ locale, kind }: { locale: Locale; kind: Kind }) {
         <span>
           <input type="checkbox" {...fp('consentProcessing')} style={{ width: 'auto' }} />{' '}
           {L('أوافق على معالجة بياناتي للرد على طلبي وفقًا لـ', 'I agree to the processing of my data to answer this request per the')}{' '}
-          <a href={`/${locale}/legal/privacy`}>{L('سياسة الخصوصية', 'privacy policy')}</a> *
+          {L('سياسة الخصوصية', 'privacy policy')} *
         </span>
         {e('consentProcessing')}
       </label>

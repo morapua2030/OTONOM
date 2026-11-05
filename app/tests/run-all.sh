@@ -28,20 +28,14 @@ if [ -e "$LOCK" ] && kill -0 "$(cat "$LOCK")" 2>/dev/null; then echo "another ru
 echo $$ > "$LOCK"
 : > "$OUT/steps.tsv"
 rm -f "$OUT"/*.log "$OUT/summary.json" "$OUT"/otonom_e2e_*.dump
-for s in acceptance surface journey cms portal security csp-edge e2e visual; do rm -f "$APP/tests/results/$s-latest.json"; done
-step() { # name, command...
-  local name=$1; shift
-  local t0=$(date +%s)
-  ( "$@" ) > "$OUT/$name.log" 2>&1
-  local rc=$?
-  echo -e "$name\t$rc\t$(( $(date +%s) - t0 ))" >> "$OUT/steps.tsv"
-  echo "[$name] exit=$rc ($(( $(date +%s) - t0 ))s)"
-}
+for s in acceptance surface journey cms portal security csp-edge e2e visual final-release final-shots; do rm -f "$APP/tests/results/$s-latest.json"; done
+# step() and run_all_verdict() are shared with the exit-code self-test (src/run-all-exit.test.ts).
+. "$SCRIPT_DIR/run-all-lib.sh"
 stop_server() { powershell.exe -NoProfile -Command "\$c = Get-NetTCPConnection -LocalPort 3301 -State Listen -ErrorAction SilentlyContinue; if (\$c) { Stop-Process -Id \$c.OwningProcess -Force }" > /dev/null 2>&1 || true; }
 archive_evidence() {
   mkdir -p "$ARCHIVE"
   for f in "$OUT"/*.log "$OUT"/steps.tsv "$OUT"/summary.json; do [ -f "$f" ] && cp -f "$f" "$ARCHIVE"/; done
-  for s in acceptance surface journey cms portal security csp-edge e2e visual; do
+  for s in acceptance surface journey cms portal security csp-edge e2e visual final-release final-shots; do
     f="$APP/tests/results/$s-latest.json"; [ -f "$f" ] && cp -f "$f" "$ARCHIVE"/;
   done
 }
@@ -54,16 +48,22 @@ cleanup() {
   archive_evidence
   rm -f "$LOCK"
 }
-trap cleanup EXIT INT TERM
+# INT/TERM end the run (130/143); the EXIT trap then cleans up once. A cleanup-only INT/TERM trap used to let the
+# script carry on after the lock was removed.
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 cd "$APP/packages/domain" && step domain pnpm test
 cd "$APP/web" && step web-unit node --import tsx --test test/*.test.ts
 cd "$APP/tests" && step release-gate pnpm run test:release-gate
+cd "$APP/tests" && step run-all-selftest pnpm run test:run-all-exit
 stop_server
 cd "$APP/web" && step build npx --no-install next build
 # Clone the known synthetic development database into a unique disposable target. All HTTP/browser suites and
 # their server write only to this clone; the source database is never reset or cleaned by the regression run.
 export PGHOST=127.0.0.1 PGPORT=5433 PGUSER=spike_admin PGPASSWORD="$(cat "$PG_PW_FILE")"
+CLONE_T0=$(date +%s)
 "$PG/pg_dump.exe" -Fc -d otonom_dev -f "$CLONE_DUMP" > "$OUT/database-clone.log" 2>&1
 "$PG/psql.exe" -q -d postgres -c "CREATE DATABASE $E2E_DB" >> "$OUT/database-clone.log" 2>&1
 CLONE_READY=1
@@ -71,6 +71,7 @@ CLONE_READY=1
 # cluster; preserving ownership is required for Payload's schema access and is safe inside the disposable DB.
 "$PG/pg_restore.exe" -d "$E2E_DB" "$CLONE_DUMP" >> "$OUT/database-clone.log" 2>&1
 rm -f "$CLONE_DUMP"
+CLONE_COPY_S=$(( $(date +%s) - CLONE_T0 ))
 export OTONOM_DB="$E2E_DB"
 # Apply forward-only domain migrations only inside the disposable clone. The source otonom_dev and hosted databases
 # remain untouched; the pg_dump above is the verified restore point for this isolated run.
@@ -79,13 +80,28 @@ if ! npx --no-install tsx -e "import('./src/migrate.ts').then(async (m) => conso
   echo "disposable database migration failed"
   exit 2
 fi
+# Final release: Payload migrations and the idempotent site-content seed, applied to the disposable clone ONLY (exactly
+# what the production release does after its verified backup), so every suite reads the published admin content.
+cd "$APP/web"
+if ! OTONOM_DB="$E2E_DB" npx --no-install payload migrate < /dev/null > "$OUT/payload-migrate.log" 2>&1; then
+  echo "disposable database Payload migration failed"
+  exit 2
+fi
+if ! OTONOM_DB="$E2E_DB" npx --no-install tsx scripts/seed-site-content.ts < /dev/null > "$OUT/content-seed.log" 2>&1; then
+  echo "disposable database content seed failed"
+  exit 2
+fi
+# Clone timing (seconds): copy = pg_dump + restore of otonom_dev; total = copy + domain/Payload migrations + seed.
+echo -e "copy\t$CLONE_COPY_S\ntotal\t$(( $(date +%s) - CLONE_T0 ))" > "$OUT/database-clone-seconds.tsv"
+echo "disposable clone $E2E_DB ready: copy ${CLONE_COPY_S}s, total $(( $(date +%s) - CLONE_T0 ))s"
 # Test-only: clear shared rate-limit buckets in the disposable clone (they persist across server restarts).
 "$PG/psql.exe" -q -d "$E2E_DB" -c 'DELETE FROM domain.rate_limits' > /dev/null
-cd "$APP/web" && (OTONOM_TRUST_PROXY=1 OTONOM_TEST_PAGES=1 OTONOM_ENABLE_SYNTHETIC_COMMERCIAL_TESTS=1 OTONOM_ENABLE_SYNTHETIC_RFQ_TESTS=1 OTONOM_OWNER_EMAIL_OTP_REQUIRED=1 OTONOM_OWNER_EMAIL_OTP_ACCOUNT=otp-owner@otonom.local OTONOM_EMAIL_OTP_ALLOWED_RECIPIENT=otp-owner@otonom.local OTONOM_EMAIL_OTP_PEPPER=synthetic-email-otp-pepper-for-tests-2026 OTONOM_EMAIL_PROVIDER=test OTONOM_EMAIL_TEST_MODE=1 OTONOM_EMAIL_OTP_TEST_CODE=483921 npx --no-install next start -H 127.0.0.1 -p 3301 > "$OUT/server.log" 2>&1 &)
+cd "$APP/web" && (OTONOM_TRUST_PROXY=1 OTONOM_TEST_PAGES=1 OTONOM_ENABLE_SYNTHETIC_COMMERCIAL_TESTS=1 OTONOM_ENABLE_SYNTHETIC_RFQ_TESTS=1 OTONOM_OWNER_EMAIL_OTP_REQUIRED=1 OTONOM_OWNER_EMAIL_OTP_ACCOUNT=otp-owner@otonom.local OTONOM_EMAIL_OTP_ALLOWED_RECIPIENT=otp-owner@otonom.local OTONOM_EMAIL_OTP_PEPPER=synthetic-email-otp-pepper-for-tests-2026 OTONOM_EMAIL_PROVIDER=test OTONOM_EMAIL_TEST_MODE=1 OTONOM_EMAIL_OTP_TEST_CODE=483921 CRON_SECRET=synthetic-cron-secret-for-local-tests-only-2026 OTONOM_LEADS_NOTIFY_TO=team@otonom.local npx --no-install next start -H 127.0.0.1 -p 3301 > "$OUT/server.log" 2>&1 &)
 for i in $(seq 1 90); do c=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3301/api/ready); [ "$c" = 200 ] && break; sleep 1; done
 echo "server ready=$c"
 cd "$APP/tests"
-for s in acceptance surface journey cms portal security csp-edge e2e visual; do step "$s" npx --no-install tsx "src/$s.ts"; done
+for s in acceptance surface journey cms portal security csp-edge e2e visual final-release final-shots; do step "$s" env OTONOM_TEST_CRON_SECRET=synthetic-cron-secret-for-local-tests-only-2026 npx --no-install tsx "src/$s.ts"; done
+inject_selftest_failure
 stop_server
 node -e "
 const fs=require('fs'),path=require('path');
@@ -95,10 +111,15 @@ const count=(f)=>{const t=fs.readFileSync(path.join(out,f+'.log'),'utf8');const 
 const suites={};
 suites.domain=count('domain');suites['web-unit']=count('web-unit');
 const exitOf=Object.fromEntries(steps.map(x=>[x.name,x.exit]));
-suites['release-gate']=count('release-gate');
-for (const s of ['acceptance','surface','journey','cms','portal','security','csp-edge','e2e','visual']){try{const j=JSON.parse(fs.readFileSync(path.join(out,'..',s+'-latest.json'),'utf8'));suites[s]={tests:j.total,pass:j.total-j.failed,fail:j.failed,exit:exitOf[s],at:j.at};}catch(e){suites[s]={tests:0,pass:0,fail:1,exit:exitOf[s],error:'NO FRESH RESULT (suite crashed or did not run)'};}}
+suites['release-gate']=count('release-gate');suites['run-all-selftest']=count('run-all-selftest');
+for (const s of ['acceptance','surface','journey','cms','portal','security','csp-edge','e2e','visual','final-release','final-shots']){try{const j=JSON.parse(fs.readFileSync(path.join(out,'..',s+'-latest.json'),'utf8'));suites[s]={tests:j.total,pass:j.total-j.failed,fail:j.failed,exit:exitOf[s],at:j.at};}catch(e){suites[s]={tests:0,pass:0,fail:1,exit:exitOf[s],error:'NO FRESH RESULT (suite crashed or did not run)'};}}
 const total=Object.values(suites).reduce((a,s)=>({tests:a.tests+(s.tests||0),pass:a.pass+(s.pass||0),fail:a.fail+(s.fail||0)}),{tests:0,pass:0,fail:0});
 const summary={at:new Date().toISOString(),environment:'local Windows, 127.0.0.1, synthetic data',database:'$E2E_DB (disposable clone of otonom_dev; dropped after run)',steps,suites,total};
 fs.writeFileSync(path.join(out,'summary.json'),JSON.stringify(summary,null,2));
 console.log(JSON.stringify(total), JSON.stringify(steps.map(s=>s.name+':'+s.exit)));
 "
+# Release gate: the exit code is non-zero when any step failed, the summary counts a failure, or a suite has no
+# fresh result (steps.tsv and summary.json above keep their format). The early exits stay: 3 = another run is
+# active, 2 = the disposable-database migration failed.
+run_all_verdict
+exit $?

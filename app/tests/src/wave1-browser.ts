@@ -8,8 +8,9 @@ const EVIDENCE = process.env.OTONOM_WAVE1_EVIDENCE_DIR ?? path.resolve(APP_ROOT,
 const SHOTS = path.join(EVIDENCE, 'screenshots', 'candidate-local');
 const PROFILE = path.join(EVIDENCE, '.edge-wave1-profile');
 const WIDTHS = [320, 360, 375, 390, 430, 768, 1024, 1280, 1440, 1920];
-const PATHS = ['', '/services', '/services/iot-embedded', '/services/software-engineering', '/services/smart-home-automation', '/services/custom-engineering', '/solutions', '/projects', '/products', '/about', '/engineering-process', '/build-with-us', '/contact', '/support'];
-const SCREENSHOT_PATHS = new Set(['', '/services', '/build-with-us', '/products']);
+const PATHS = ['', '/services', '/services/iot-embedded', '/services/software-engineering', '/services/smart-home-automation', '/services/custom-engineering', '/smart-home/packages', '/projects', '/products', '/products/16r', '/about', '/start-project', '/business/developers', '/business/contractors', '/contact', '/support', '/try'];
+// D8-C v3 (DR-107): /solutions, /engineering-process and /build-with-us are 308 redirects to /services, /about and /start-project.
+const SCREENSHOT_PATHS = new Set(['', '/services', '/start-project', '/products']);
 const SCREENSHOT_WIDTHS = new Set([390, 1440]);
 
 type Check = { id: string; pass: boolean; detail?: unknown };
@@ -61,7 +62,7 @@ async function main() {
           add(`${id}:csp`, scriptDirective.includes("'strict-dynamic'") && /'nonce-[^']+'/.test(scriptDirective) && !scriptDirective.includes("'unsafe-inline'"), scriptDirective);
           add(`${id}:nonce`, facts.nonceValues.length > 0 && facts.nonceValues.every((nonce) => nonce === requestNonce), facts.nonceValues);
           add(`${id}:issues`, page.issues.length === 0, page.issues);
-          if (route === '/contact' || route === '/build-with-us' || route === '/support') add(`${id}:no-public-form`, facts.formCount === 0, facts.formCount);
+          if (route === '/contact' || route === '/start-project' || route === '/support' || route === '/try' || route.startsWith('/business/')) add(`${id}:no-public-form`, facts.formCount === 0, facts.formCount);
           if (route === '/support') add(`${id}:warranty-disabled`, /disabled|معطلة|معطّل/.test(facts.text), facts.text.slice(0, 300));
           if (SCREENSHOT_PATHS.has(route) && SCREENSHOT_WIDTHS.has(width)) await page.screenshot(`${locale}${route.replaceAll('/', '_') || '_home'}-${width}.png`);
           await page.close();

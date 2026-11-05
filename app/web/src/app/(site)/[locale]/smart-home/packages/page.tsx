@@ -3,6 +3,9 @@ import type { Metadata } from 'next';
 import { isLocale, type Locale } from '@/lib/i18n.ts';
 import { pageMetadata } from '@/lib/seo.ts';
 import { SmartHomePackages } from '@/components/SmartHomePackages.tsx';
+import { loadSiteContent } from '@/lib/site-content.ts';
+import { Bidi, isolateText } from '@/components/bidi.tsx';
+import { SwashText } from '@/components/v2.tsx';
 
 export const dynamic = 'force-dynamic';
 type P = { params: Promise<{ locale: string }> };
@@ -24,6 +27,7 @@ export default async function SmartHomePackagesPage({ params }: P) {
   const { locale: value } = await params;
   if (!isLocale(value)) notFound();
   const locale = value as Locale;
+  const content = await loadSiteContent();
   return (
     <>
       <nav className="breadcrumbs" aria-label={locale === 'ar' ? 'مسار الصفحة' : 'Breadcrumb'}>
@@ -31,18 +35,14 @@ export default async function SmartHomePackagesPage({ params }: P) {
         <a href={`/${locale}/services/smart-home-automation`}>{locale === 'ar' ? 'المنزل الذكي' : 'Smart home'}</a>
         <span aria-current="page">{locale === 'ar' ? 'الباقات' : 'Packages'}</span>
       </nav>
-      <section className="hero compact-hero package-hero">
-        <p className="eyebrow">OTONOM SMART HOME 2026</p>
-        <h1>{locale === 'ar' ? 'ثلاث باقات واضحة، وبداية هندسية مسؤولة' : 'Three clear packages, one responsible engineering start'}</h1>
-        <p className="lead">
-          {locale === 'ar'
-            ? 'قارن المكونات والأسعار المعتمدة، ثم استخدم أداة بناء المشروع لتوثيق احتياجاتك. الباقة المختارة نقطة بداية وليست تأكيدًا للملاءمة أو عرضًا نهائيًا.'
-            : 'Compare approved contents and prices, then use the Project Builder to document your needs. A selected package is a starting point, not a fit confirmation or final quotation.'}
-        </p>
+      <section className="v2-page-head package-hero">
+        <span className="v2-eyebrow" dir="ltr">OTONOM Smart Home · 2026</span>
+        <h1><SwashText text={locale === 'ar' ? 'باقات المنزل الذكي' : 'Smart Home Packages'} word={locale === 'ar' ? 'باقات' : 'Packages'} locale={locale} /></h1>
+        <p className="v2-lead">{locale === 'ar' ? 'ثلاث باقات، لكل باقة مكوناتها وسعرها الإجمالي.' : 'Three packages, each with its included items and total price.'}</p>
       </section>
-      <section className="section" aria-labelledby="package-list-title">
-        <h2 id="package-list-title">{locale === 'ar' ? 'Premium وPlus وEssential' : 'Premium, Plus and Essential'}</h2>
-        <SmartHomePackages locale={locale} />
+      <section className="v2-section" aria-labelledby="package-list-title">
+        <h2 id="package-list-title" className="sr-only">{isolateText(locale === 'ar' ? 'Premium وPlus وEssential' : 'Premium, Plus and Essential', locale)}</h2>
+        <SmartHomePackages locale={locale} comparison packages={content.packages} />
       </section>
     </>
   );

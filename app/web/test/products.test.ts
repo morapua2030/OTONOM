@@ -49,9 +49,13 @@ test('public product notice uses launch-safe wording', () => {
   assert.match(PRODUCT_REVIEW_NOTICE.en, /public information site/i);
 });
 
-test('website chrome uses the original reviewed logo asset', () => {
+test('website chrome uses the approved Hybrid 03 logo assets', () => {
   const chrome = readFileSync(path.join(webRoot, 'src', 'components', 'site.tsx'), 'utf8');
-  assert.match(chrome, /\/brand\/otonom-logo\.png/);
-  assert.ok(existsSync(path.join(webRoot, 'public', 'brand', 'otonom-logo.png')));
+  const brand = readFileSync(path.join(webRoot, 'src', 'components', 'BrandLogo.tsx'), 'utf8');
+  assert.match(brand, /\/brand\/otonom\/assets\/svg\/primary_light\.svg/);
+  assert.match(brand, /\/brand\/otonom\/assets\/svg\/primary_dark\.svg/);
+  assert.ok(existsSync(path.join(webRoot, 'public', 'brand', 'otonom', 'assets', 'svg', 'primary_light.svg')));
+  assert.ok(existsSync(path.join(webRoot, 'public', 'brand', 'otonom', 'assets', 'svg', 'primary_dark.svg')));
+  assert.doesNotMatch(chrome, /\/brand\/otonom-logo\.png/);
   assert.doesNotMatch(chrome, /brand-mark/);
 });

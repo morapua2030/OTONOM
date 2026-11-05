@@ -1,0 +1,35 @@
+# OTONOM — Open owner approvals
+
+Do not treat any open item as agreed. Ask only about the items relevant to the task in hand.
+
+| # | Decision needed | Status | Blocks what | Who |
+|---|---|---|---|---|
+| 1 | Team-lead approval of, or feedback on, the Hybrid 03 design | `BLOCKED` | PR #16 merge; public Hybrid launch | Team lead, then BO |
+| 2 | Final go/no-go for Production promotion | `BLOCKED` | Canonical promotion (DR-093) | BO, with a fresh G01–G16 verdict |
+| 3 | Verified product specs, images, accessories, stock and device prices | `CONTENT PENDING` | Spec rows, definitive selection or availability claims (DR-097) | BO and ENG |
+| 4 | Package inclusions and exclusions (installation, shipping, tax, site prep, wiring, commissioning, price validity, zones) | `CONTENT PENDING` | Any all-inclusive or binding-quote wording | BO, OPS, LEG |
+| 5 | Intake privacy policy, consent text, retention and deletion | `PARTIAL` (DR-114: draft text in the admin, consent required, 12-month retention; the OWNER approves the text with «اعتماد نص الخصوصية») | Public personal-data submission | BO and LEG |
+| 6 | Lead ownership, recipients, SLA, notification provider or ClickUp runbook | `PARTIAL` (DR-114: leads in the admin for SALES, alerts to `team@otonomiot.com` via Resend once the owner sets it up (S1); SLA still open) | Claims of a working lead workflow | BO and OPS |
+| 7 | Case-study consent, originals and measurable outcomes | `DEFERRED` (DR-098) | Public project stories | BO and the client |
+| 8 | SKU, VAT, shipping, COD, returns and payment rules | `BLOCKED` | Commerce activation | BO, FIN, OPS, LEG |
+| 9 | Warranty start, duration, exclusions, RMA and service SLA | `BLOCKED` | D7 live warranty and service features | BO, LEG, OPS |
+| 10 | North Star, attribution and finance definitions | `BLOCKED` | Operational dashboards and incentives | BO and FIN |
+| 11 | Any new paid provider, capacity or billing | `BLOCKED` | Creating billable resources | BO |
+| 12 | Retire the temporary reviewer access once the Shareable Link works | `PLANNED` (DR-095) | Closing the review-access item | BO (handled privately) |
+| 13 | Turn on the marketing-only mode at release (recommended: makes the site indexable and closes API/private routes on the public host) | `RESOLVED` (DR-114: on, with the admin on its own host) | Release configuration; indexing | BO |
+| 14 | Where staff/admin is served after marketing-only, and how gates G05–G11 are evidenced there | `RESOLVED` (DR-114: on `OTONOM_ADMIN_URL`; G05–G11 evidenced on that host, `RELEASE_CHECKLIST.md`) | Release gates; admin access | BO and ENG |
+| 15 | Confirm in the Vercel UI: uploads disabled, preview-lock flag unset, site URL = canonical origin (agent never reads values) | `PROPOSED` (D8-D) | Release configuration | BO |
+| 16 | Production database plan: migrations after a verified backup (domain 011/012, Payload final_release_content) and the idempotent seed, run by the owner (`RELEASE_CHECKLIST.md` §2) | `PROPOSED` (final release) | G04/G15 | BO and ENG |
+| 17 | Performance budgets for the release (proposal in `RELEASE_CHECKLIST.md`) | `PROPOSED` (D8-D) | Post-release acceptance | BO |
+| 18 | Monitoring minimum (scheduled GitHub Actions page check, no new vendor: `.github/workflows/uptime.yml`) | `RESOLVED` (DR-114; needs the repository variables) | Post-release watch | BO |
+| 19 | Approved privacy text (still open, **release blocker**; no text is generated). The `/legal/privacy` page is removed and redirects to `/contact` (DR-108), and every privacy link is gone. Contact channel: phone/WhatsApp `RESOLVED` by DR-101; address `RESOLVED` by DR-106 (Creativa Damanhour); social links still not provided | `PARTIAL` | Public release content | BO and LEG |
+| 20 | Legacy `public/brand/otonom-logo.png` (unused, still served): keep or retire | `PROPOSED` (D8-D) | Asset hygiene | BO |
+
+## Resolved
+
+| Decision | Resolution |
+|---|---|
+| R16 in the package brochure vs the OTONOM 16R controller | `RESOLVED` — DR-094: R16 is the 16R controller |
+| How D6 commits reach review | `RESOLVED` — DR-096: fast-forward onto PR #16 after the pre-push audit and full QA; running it is S4 |
+| Visual direction, home page, contact channel, package claims, 16R display name, fonts | `RESOLVED` — DR-099–DR-104 (owner chat 2026-11-03); implementation is D8-C |
+| Inner pages, public address, retired routes, privacy page, `/products` selector, `/services` index | `RESOLVED` — DR-106–DR-109 (owner chat 2026-11-03); specs, privacy text and real projects stay out of scope; implementation is D8-C v3 |

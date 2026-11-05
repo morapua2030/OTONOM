@@ -39,8 +39,10 @@ export function Bidi({ text, locale }: { text: string | null | undefined; locale
   if (!text) return null;
   // LTR pages and pure-Latin strings need no isolation
   if (locale !== 'ar' || !ARABIC.test(text)) return <>{text}</>;
+  // One inline wrapper: inside a flex container (pill, button) every bare text fragment would otherwise become its
+  // own flex item and lose the space next to the isolate (Arabic word glued to "16R"). Spaces stay outside the <bdi>.
   return (
-    <>
+    <span className="bidi-text">
       {isolateRuns(text).map((r, k) =>
         r.ltr ? (
           <bdi dir="ltr" key={k} className={r.s.length <= NOWRAP_MAX ? 'ltr nowrap' : 'ltr'}>
@@ -50,7 +52,7 @@ export function Bidi({ text, locale }: { text: string | null | undefined; locale
           <Fragment key={k}>{r.s}</Fragment>
         ),
       )}
-    </>
+    </span>
   );
 }
 

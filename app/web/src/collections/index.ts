@@ -7,6 +7,8 @@ import { Media } from './Media.ts';
 import { Pages } from './Pages.ts';
 import { PrivateFiles } from './PrivateFiles.ts';
 import { Users } from './Users.ts';
+import { Leads } from './Leads.ts';
+import { siteContentCollections } from './SiteContent.ts';
 
 /** Single source of truth for Payload registration and generated-surface probes. */
 export const collections: CollectionConfig[] = [
@@ -21,6 +23,8 @@ export const collections: CollectionConfig[] = [
   Opportunities,
   PrivateFiles,
   Media,
+  Leads,
+  ...siteContentCollections,
 ];
 
 export const collectionSlugs = collections.map((collection) => collection.slug);

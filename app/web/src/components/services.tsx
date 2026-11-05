@@ -3,8 +3,10 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { Locale } from '@/lib/i18n.ts';
 import type { ServiceItem, ServicePageContent } from '@/lib/services.ts';
+import { requireProductByModel } from '@/lib/products.ts';
 import { Bidi } from './bidi.tsx';
 import { EngineeringLayerExplorer, StartingPointFinder } from './ServiceExplorer.tsx';
+import { SwashText } from './v2.tsx';
 
 function LocalLink({ locale, href, className, children }: { locale: Locale; href: string; className?: string; children: ReactNode }) {
   return <Link className={className} href={`/${locale}${href}`}>{children}</Link>;
@@ -28,7 +30,7 @@ export function ServiceHero({ locale, page }: { locale: Locale; page: ServicePag
     <section className="service-hero">
       <div className="service-hero-copy">
         <p className="eyebrow">{page.eyebrow}</p>
-        <h1><Bidi text={page.title} locale={locale} /></h1>
+        <h1><SwashText text={page.title} locale={locale} /></h1>
         <p className="wave-lead"><Bidi text={page.summary} locale={locale} /></p>
         <div className="actions">
           <a className="btn" href="#capabilities">{locale === 'ar' ? 'استكشف الخدمة' : 'Explore the service'}</a>
@@ -85,7 +87,7 @@ export function ServiceFAQ({ locale, page }: { locale: Locale; page: ServicePage
     <section className="service-section service-faq">
       <SectionHead eyebrow="FAQ" title={page.faqTitle} locale={locale} />
       <div>
-        {page.faqs.map((item) => <details key={item.question}><summary>{item.question}</summary><p>{item.answer}</p></details>)}
+        {page.faqs.map((item) => <details key={item.question}><summary><Bidi text={item.question} locale={locale} /></summary><p><Bidi text={item.answer} locale={locale} /></p></details>)}
       </div>
     </section>
   );
@@ -118,14 +120,14 @@ function ProductProof({ locale }: { locale: Locale }) {
     <section className="service-section service-product-proof">
       <div>
         <p className="eyebrow">{locale === 'ar' ? 'منتجات قائمة' : 'Existing products'}</p>
-        <h2>{locale === 'ar' ? 'عائلة وحدات OTONOM الفعلية' : 'The real OTONOM controller family'}</h2>
-        <p>{locale === 'ar' ? 'تربط خدمة الأتمتة إلى صفحات 4R و6R و16R الحالية. تظل المواصفات الكهربائية والتوافقات مقيدة بالأدلة المنشورة والمراجعة الخاصة بالمشروع.' : 'The automation service connects to the current 4R, 6R and 16R pages. Electrical specifications and compatibility remain limited to published evidence and project-specific review.'}</p>
+        <h2><Bidi text={locale === 'ar' ? 'عائلة وحدات OTONOM الفعلية' : 'The real OTONOM controller family'} locale={locale} /></h2>
+        <p><Bidi text={locale === 'ar' ? 'تربط خدمة الأتمتة إلى صفحات 4R و6R و16R الحالية. تظل المواصفات الكهربائية والتوافقات مقيدة بالأدلة المنشورة والمراجعة الخاصة بالمشروع.' : 'The automation service connects to the current 4R, 6R and 16R pages. Electrical specifications and compatibility remain limited to published evidence and project-specific review.'} locale={locale} /></p>
         <div className="actions">
           <LocalLink className="btn secondary" locale={locale} href="/products">{locale === 'ar' ? 'استكشف عائلة وحدات التحكم' : 'Explore the controller family'}</LocalLink>
           <LocalLink className="btn" locale={locale} href="/smart-home/packages">{locale === 'ar' ? 'قارن الباقات' : 'Compare packages'}</LocalLink>
         </div>
       </div>
-      <div className="service-product-image"><Image src="/products/otonom-16r.png" alt={locale === 'ar' ? 'وحدة تحكم OTONOM 16R — صورة منتج فعلية' : 'OTONOM 16R controller — genuine product image'} width={1254} height={1254} sizes="(max-width: 760px) 88vw, 440px" /></div>
+      <div className="service-product-image"><Image src={requireProductByModel('16r').image} alt={locale === 'ar' ? 'وحدة تحكم OTONOM 16R — صورة منتج فعلية' : 'OTONOM 16R controller — genuine product image'} width={1254} height={1254} sizes="(max-width: 760px) 88vw, 440px" /></div>
     </section>
   );
 }

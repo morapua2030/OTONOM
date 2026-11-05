@@ -2,8 +2,10 @@ import Image from 'next/image';
 import type { Locale } from '../lib/i18n.ts';
 import { disciplines, portfolioCopy, relatedProjects, type PortfolioQuery, type PublicProject } from '../lib/portfolio.ts';
 import { Bidi } from './bidi.tsx';
+import { requireProductByModel } from '../lib/products.ts';
 import { ProjectExplorer } from './ProjectExplorer.tsx';
 import { ProjectCard } from './ProjectCard.tsx';
+import { SwashText } from './v2.tsx';
 
 export function PortfolioCTA({ locale }: { locale: Locale }) {
   const d = portfolioCopy[locale];
@@ -13,12 +15,12 @@ export function PortfolioOverview({ locale, projects, query }: { locale: Locale;
   const d = portfolioCopy[locale];
   const featured = projects.filter((project) => project.featured).slice(0, 2);
   return <div className="pf-page">
-    <section className="pf-hero"><p className="eyebrow"><Bidi text={d.eyebrow} locale={locale} /></p><h1>{d.title}</h1><div className="pf-hero-foot"><p>{d.intro}</p><div className="pf-actions"><a className="btn" href="#project-explorer">{d.explore}<span aria-hidden="true"> ↓</span></a><a href={`/${locale}/start-project`}>{d.start}</a></div></div></section>
+    <section className="pf-hero"><p className="eyebrow"><Bidi text={d.eyebrow} locale={locale} /></p><h1><SwashText text={d.title} locale={locale} /></h1><div className="pf-hero-foot"><p>{d.intro}</p><div className="pf-actions"><a className="btn" href="#project-explorer">{d.explore}<span aria-hidden="true"> ↓</span></a><a href={`/${locale}/start-project`}>{d.start}</a></div></div></section>
     {featured.length > 0 && <section className="pf-featured" aria-labelledby="pf-featured-title"><h2 id="pf-featured-title">{d.featured}</h2>{featured.map((project) => <ProjectCard key={project.slug} project={project} locale={locale} featured />)}</section>}
     <ProjectExplorer projects={projects} locale={locale} initialQuery={query} />
     <section className="pf-product" aria-labelledby="pf-product-title">
       <div className="pf-product-copy"><p className="eyebrow"><Bidi text={d.productLabel} locale={locale} /></p><h2 id="pf-product-title">{d.productTitle}</h2><p><Bidi text={d.productBody} locale={locale} /></p><a className="pf-text-link" href={`/${locale}/products`}>{d.productLink}<span aria-hidden="true"> ↗</span></a></div>
-      <figure><div className="pf-product-photos"><Image src="/products/otonom-16r.png" width={1254} height={1254} alt={locale === 'ar' ? 'صورة منتج OTONOM 16R' : 'OTONOM 16R product image'} sizes="(max-width: 760px) 90vw, 50vw" /><div><Image src="/products/otonom-4r.png" width={1254} height={1254} alt={locale === 'ar' ? 'صورة منتج OTONOM 4R' : 'OTONOM 4R product image'} sizes="(max-width: 760px) 40vw, 20vw" /><Image src="/products/otonom-6r.png" width={1254} height={1254} alt={locale === 'ar' ? 'صورة منتج OTONOM 6R' : 'OTONOM 6R product image'} sizes="(max-width: 760px) 40vw, 20vw" /></div></div><figcaption><Bidi text={d.productNote} locale={locale} /></figcaption></figure>
+      <figure><div className="pf-product-photos"><Image src={requireProductByModel('16r').image} width={1254} height={1254} alt={locale === 'ar' ? 'صورة منتج OTONOM 16R' : 'OTONOM 16R product image'} sizes="(max-width: 760px) 90vw, 50vw" /><div><Image src={requireProductByModel('4r').image} width={1254} height={1254} alt={locale === 'ar' ? 'صورة منتج OTONOM 4R' : 'OTONOM 4R product image'} sizes="(max-width: 760px) 40vw, 20vw" /><Image src={requireProductByModel('6r').image} width={1254} height={1254} alt={locale === 'ar' ? 'صورة منتج OTONOM 6R' : 'OTONOM 6R product image'} sizes="(max-width: 760px) 40vw, 20vw" /></div></div><figcaption><Bidi text={d.productNote} locale={locale} /></figcaption></figure>
     </section>
     <section className="pf-disciplines"><div><h2>{d.together}</h2><p>{d.togetherBody}</p></div><ul>{Object.entries(disciplines).map(([key, category], i) => <li key={key}><a href={`/${locale}${category.service}`}><span aria-hidden="true">0{i + 1}</span>{category[locale]}<span aria-hidden="true">↗</span></a></li>)}</ul></section>
     <PortfolioCTA locale={locale} />

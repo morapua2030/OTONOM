@@ -28,7 +28,9 @@ async function staff(role: string): Promise<Client> {
 }
 
 const denied = (st: number) => st === 401 || st === 403;
-const PUBLIC_COLLECTIONS = new Set(['pages', 'case-studies', 'claims', 'media']);
+// final release (DR-114): admin-managed site content is public once PUBLISHED (drafts never; checked below)
+const SITE_CONTENT_COLLECTIONS = ['catalog-packages', 'catalog-controllers', 'sim-routines', 'service-faqs'];
+const PUBLIC_COLLECTIONS = new Set(['pages', 'case-studies', 'claims', 'media', ...SITE_CONTENT_COLLECTIONS]);
 const HIDDEN_FIELDS = /totpSecret|recoveryCodes|mfaVerifiedSids|lastTotpStep|passwordResetToken|idempotencyKey/;
 
 async function main() {
@@ -40,6 +42,13 @@ async function main() {
   for (const [who, c] of Object.entries(ids)) {
     // Every configured collection is probed automatically. A newly registered collection is
     // denied to anonymous callers unless it is explicitly classified as public here.
+    if (who === 'ANON') {
+      for (const slug of SITE_CONTENT_COLLECTIONS) {
+        const r = await c.get(`/api/${slug}?limit=100&depth=0&draft=true`);
+        const docs: any[] = Array.isArray(r.json?.docs) ? r.json.docs : [];
+        rec.add(`SURF-ANON-PUBLISHED-ONLY-${slug}`, 'GENERATED-SURFACE', `ANON: ${slug} returns published entries only, even with draft=true`, r.status === 200 && docs.every((d) => d._status === 'published'), { status: r.status, statuses: [...new Set(docs.map((d) => d._status))] });
+      }
+    }
     for (const slug of collectionSlugs) {
       const r = await c.get(`/api/${slug}?limit=1&depth=0`);
       const anonymousPrivate = denied(r.status) || (r.status === 200 && Array.isArray(r.json?.docs) && r.json.docs.length === 0);

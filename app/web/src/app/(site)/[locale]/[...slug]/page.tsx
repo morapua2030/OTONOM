@@ -1,9 +1,15 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+import { loadSiteContent, type SiteContent } from '@/lib/site-content.ts';
 import { isLocale, t, type Locale } from '@/lib/i18n.ts';
 import { publishedDoc, publishableClaims } from '@/lib/public.ts';
 import { Placeholder, Section } from '@/components/site.tsx';
 import { Bidi } from '@/components/bidi.tsx';
+import { SwashText } from '@/components/v2.tsx';
+import type { ReactNode } from 'react';
+import { SITE_COPY } from '@/lib/site-copy.ts';
+import { INNER } from '@/lib/site-copy-inner.ts';
+import { BusinessV3, CompanyV3, isV3ServicePath, ServicesIndex, ServiceV3, SmartHomeLanding, SupportV3, V3_SERVICE_KEYS } from '@/components/v3-pages.tsx';
 import { Cards, Checklist, CtaBand, Faq, Steps } from '@/components/blocks.tsx';
 import { c } from '@/lib/content.ts';
 import { pageMetadata, summarise } from '@/lib/seo.ts';
@@ -39,12 +45,37 @@ const ROUTES: Record<string, keyof ReturnType<typeof t>['pages']> = {
   'legal/privacy': 'privacy',
 };
 
+/**
+ * Placeholder or "coming soon" pages (owner decision D8-C #7): kept out of the sitemap and noindex until approved
+ * content is published in the CMS. /technology/controllers has real registry content and is indexed instead.
+ */
+const PLACEHOLDER_ROUTES = new Set(['solutions/villas', 'solutions/apartments', 'solutions/scenarios', 'technology/documentation', 'insights', 'support/service', 'legal/privacy']);
+
+const PARENT_CRUMBS: Record<string, 'solutions' | 'technology' | 'support'> = { solutions: 'solutions', technology: 'technology', support: 'support' };
+
 type P = { params: Promise<{ locale: string; slug: string[] }> };
+
+/** Design v3.1 pages served by this catch-all (they take precedence over the earlier templates on the same paths). */
+function v3Page(locale: Locale, path: string, content?: SiteContent): { title: string; description: string; node: ReactNode } | null {
+  const c = SITE_COPY[locale];
+  const t = INNER[locale];
+  const join = (parts: readonly string[]) => parts.join('').trim();
+  if (path === 'services') return { title: c.nav.svc, description: t.servicesLead, node: <ServicesIndex locale={locale} /> };
+  if (isV3ServicePath(path)) { const svc = c.svc[V3_SERVICE_KEYS[path]]; return { title: svc.name, description: svc.lead, node: <ServiceV3 locale={locale} path={path} faqs={content?.faqs[V3_SERVICE_KEYS[path]]} /> }; }
+  if (path === 'services/smart-home-automation') return { title: c.nav.smart, description: t.smart.lead, node: <SmartHomeLanding locale={locale} packages={content?.packages} /> };
+  if (path === 'about') return { title: join(t.companyH1), description: t.companyLead, node: <CompanyV3 locale={locale} /> };
+  if (path === 'support') return { title: c.doc.support.title, description: t.supportLine, node: <SupportV3 locale={locale} /> };
+  if (path === 'business/developers') return { title: c.biz.dev.h1, description: c.biz.dev.lead, node: <BusinessV3 locale={locale} kind="dev" /> };
+  if (path === 'business/contractors') return { title: c.biz.contr.h1, description: c.biz.contr.lead, node: <BusinessV3 locale={locale} kind="contr" /> };
+  return null;
+}
 
 export async function generateMetadata({ params }: P): Promise<Metadata> {
   const { locale, slug } = await params;
   if (!isLocale(locale)) return {};
   const path = slug.join('/');
+  const v3 = v3Page(locale, path);
+  if (v3) return pageMetadata({ locale, path: `/${path}`, title: v3.title, description: v3.description });
   const service = servicePage(locale, path);
   if (service) return pageMetadata({ locale, path: `/${path}`, title: service.title, description: summarise(service.summary) });
   const corporate = wavePage(locale, path);
@@ -53,13 +84,15 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
   if (!key) return {};
   const cms = await publishedDoc('pages', slug.join('-'), locale);
   const pg = t(locale).pages[key];
-  return pageMetadata({ locale, path: `/${slug.join('/')}`, title: cms?.seoTitle ?? cms?.title ?? pg.title, description: cms?.seoDescription ?? summarise(cms?.summary ?? pg.body) });
+  return pageMetadata({ locale, path: `/${slug.join('/')}`, title: cms?.seoTitle ?? cms?.title ?? pg.title, description: cms?.seoDescription ?? summarise(cms?.summary ?? pg.body), noindex: !cms && PLACEHOLDER_ROUTES.has(path) ? true : undefined });
 }
 
 export default async function MarketingPage({ params }: P) {
   const { locale: l, slug } = await params;
   if (!isLocale(l)) notFound();
   const path = slug.join('/');
+  const v3 = v3Page(l, path, await loadSiteContent());
+  if (v3) return v3.node;
   const service = servicePage(l, path);
   if (service) {
     const locale = l as Locale;
@@ -100,13 +133,14 @@ export default async function MarketingPage({ params }: P) {
     <>
       <nav className="breadcrumbs" aria-label={locale === 'ar' ? 'مسار الصفحة' : 'Breadcrumb'}>
         <a href={L('')}>{locale === 'ar' ? 'الرئيسية' : 'Home'}</a>
-        {slug.length > 1 && <a href={L(`/${slug[0]}`)}>{d.nav[slug[0] === 'business' ? 'business' : slug[0] === 'technology' ? 'technology' : slug[0] === 'solutions' ? 'solutions' : 'support']}</a>}
+        {/* Parent crumb only where the parent page exists (/business and /legal have no landing page). */}
+        {slug.length > 1 && PARENT_CRUMBS[slug[0]] && <a href={L(`/${slug[0]}`)}>{d.nav[PARENT_CRUMBS[slug[0]]]}</a>}
         <span aria-current="page"><Bidi text={cms?.title ?? d.pages[key].title} locale={locale} /></span>
       </nav>
       <section className="hero">
         {!cms && !publicRelease && <Placeholder locale={locale} />}
         <h1>
-          <Bidi text={cms?.title ?? d.pages[key].title} locale={locale} />
+          <SwashText text={cms?.title ?? d.pages[key].title} locale={locale} />
         </h1>
         <p className="lead">
           <Bidi text={cms?.summary ?? d.pages[key].body} locale={locale} />
