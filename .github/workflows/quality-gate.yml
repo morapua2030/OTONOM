@@ -25,10 +25,33 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Scan tracked files and reachable history
-        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+      # gitleaks itself, pinned and checksum-verified. The previous gitleaks action scanned only the first 30 commits of a
+      # pull request (one page of the commits API); this scans every commit of the pull request or push.
+      - name: Install gitleaks 8.24.3 (pinned, checksum-verified)
+        run: |
+          set -euo pipefail
+          f=gitleaks_8.24.3_linux_x64.tar.gz
+          curl -sSfL -o "$RUNNER_TEMP/$f" "https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/$f"
+          echo "9991e0b2903da4c8f6122b5c3186448b927a5da4deef1fe45271c3793f4ee29c  $RUNNER_TEMP/$f" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/$f" -C "$RUNNER_TEMP" gitleaks
+      - name: Scan every commit of the pull request or push
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          case "$EVENT" in
+            pull_request) range="$PR_BASE..$PR_HEAD" ;;
+            push)
+              if [ -z "$PUSH_BEFORE" ] || [ "$PUSH_BEFORE" = "0000000000000000000000000000000000000000" ]; then range="$PUSH_AFTER"; else range="$PUSH_BEFORE..$PUSH_AFTER"; fi ;;
+            *) range="HEAD" ;;
+          esac
+          echo "event=$EVENT range=$range commits=$(git rev-list --count --no-merges "$range")"
+          # .gitleaksignore (exact fingerprints only) is read from the repository root.
+          "$RUNNER_TEMP/gitleaks" detect --source . --redact --no-banner --exit-code=1 --log-opts="--no-merges $range"
 
   application:
     name: Unit, dependency and build checks
