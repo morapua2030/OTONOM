@@ -590,6 +590,9 @@ export interface Lead {
   id: number;
   ref: string;
   name: string;
+  /**
+   * Egyptian mobile, stored as +20…
+   */
   phone: string;
   package: 'premium' | 'plus' | 'essential' | 'unsure';
   /**
