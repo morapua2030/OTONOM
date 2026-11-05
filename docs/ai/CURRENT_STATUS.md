@@ -2,16 +2,16 @@
 
 | Field | Value |
 |---|---|
-| Checked at (Cairo) | 2026-11-04 (final release, admin integration) |
+| Checked at (Cairo) | 2026-11-05 (final release live) |
 | Repository | `morapua2030/OTONOM` (public) |
-| Local branch / code head | `codex/d6-products-smarthome-20261102`. Up to `624b70b2` (D8-C v4) is in PR #16. The D8-C v5 commits (`d9c75bd7` onward) are pushed only if their full verification on one SHA passes (owner pre-authorization 2026-11-04). |
-| `origin/main` | `b6181212` (contains D5); `git ls-remote`, checked now |
-| PR #16 | `OPEN`, draft, head `624b70b2` on `codex/hybrid03-redesign-20261028` (Hybrid 03 + D6 + design v2 + v3.1 inner pages + v4 simulator, added by fast-forward on 2026-11-03). GitHub Quality Gate on that head: PASS. |
-| Public canonical | `https://otonom-smart-home-web.vercel.app` serves the D4-era build. Source fingerprint `57f72bc` is HISTORICAL (2026-11-02 project map). Route fingerprint re-verified now with anonymous GET: `/en`, `/ar`, `/en/products`, `/en/products/16r`, `/en/projects` → 200; `/en/start-project`, `/en/smart-home/packages` → 404 |
-| Protected Preview | Preview of `624b70b2` (D8-C v4): READY, Preview target, Vercel Authentication on; the owner creates its Shareable Link. Earlier Previews (including `0dabf70a`) are preserved. URLs, IDs and links are kept in private evidence. |
+| Release SHA | `ce970c05` on `main`: PR #16 squash-merged at head `1ecdd0ae` (same tree), then PR #17 (an obviously fake test-fixture key and one exact gitleaks ignore). The application code is identical to the verified `1ecdd0ae` |
+| `origin/main` | `ce970c05` at release; later docs-only commits do not change the deployed code |
+| PR #16 | MERGED 2026-11-05 (squash; GitHub cannot rebase-merge 109 commits). PR #17 merged (rebase) |
+| Public canonical | `https://otonom-smart-home-web.vercel.app` serves the final release (marketing-only). The admin host `https://otonom-admin.vercel.app` serves the same deployment on the same Production database |
+| Protected Preview | Not used for the final release (owner decision 2026-11-04); older Previews are preserved |
 | Brand Guardian | `validate_brand.py --project app/web` PASS on the D8-A candidate (2026-11-03, 0 legacy references) |
-| Release gates | Production is frozen (DR-093); canonical unchanged (`/en` 200, D5/D6 routes 404). There is no G01–G16 verdict for any D6 candidate. |
-| Latest owner decisions | DR-092..DR-114, recorded 2026-11-03 and 2026-11-04 |
+| Release gates | 2026-11-05: `PROMOTION_ALLOWED=true` (G01–G15) on the staged deployment, then `RELEASE_HEALTHY=true` (G01–G16) after the domains moved. Evidence is private |
+| Latest owner decisions | DR-092..DR-115, recorded 2026-11-03 to 2026-11-05 |
 
 ## Phase status
 
@@ -26,7 +26,7 @@
 | D8-C design v2 (Claude Design, option A) | `PREVIEW` | 2026-11-03: DR-099..DR-105; Home (mix), v2 packages, controllers and contact, inner template, self-hosted fonts, published phone/WhatsApp (no form), brochure photos, D8-A carry-overs. PR #16 head `1a7a1b9a` and its protected Preview; its background full chain was stopped on the owner's instruction because v3 supersedes it |
 | D8-C v3 inner pages (Claude Design v3.1) | `PREVIEW` | 2026-11-03: DR-106..DR-109; header, drawer, footer and address; service template, smart-home landing, services index, company, support, business, product, Our work (empty state) and Start a project (chips → one WhatsApp message); `/products` without the selector; 308 redirects for routes outside the design; privacy page removed. Verification on this head: private evidence `execution/evidence/d8c-v3-2026-11-03/` |
 | D8-C v4 simulator + restored selector (Claude Design v4) | `PREVIEW` | 2026-11-03: DR-110..DR-112; "Try your smart home" at `/try` (four stages, demo only, `?demo=` allow-list) with entry points on Home, Smart Home, Packages, Controllers, 16R, drawer and footer; the Smart Product Selector is back on `/products`, restyled to v3. Pushed to PR #16 on «ارفع» (head `624b70b2`) with its protected Preview. Verification: private evidence `execution/evidence/d8c-v4-2026-11-03/` |
-| Final release: admin integration (DR-114) | `IMPLEMENTED` (local; release on S2 only) | 2026-11-04. **Hosts:** public site marketing-only; admin on its own host. **Admin-managed content:** packages, controllers, contact, announcement, routines, rules, FAQs, privacy text; seeded with today's values. **Booking requests:** shown only when the OWNER has approved the privacy text AND enabled intake. Simplified form (owner, 2026-11-04): two equal options (WhatsApp / form) plus Call; name, mobile, package, consent and an optional note; area and preferred time removed; the simulator attaches the plan read-only. **First paint** (owner, 2026-11-04): the fonts are inside the main stylesheet (same stylesheets as v4) and the metrics code loads after the page load event. **Also:** privacy-first metrics, Resend alerts and digests, staff invitations, SALES role. **Verification:** `final-release`, `hosts` and `final-shots` suites; private evidence in `execution/evidence/final-2026-11-04/` |
+| Final release: admin integration (DR-114) | `LIVE` (2026-11-05) | Both hosts serve the release; Production migrations (domain 012, Payload `20261104_135512`) and the content seed applied after a verified Neon branch backup; booking requests stay off until the OWNER approves the privacy text and enables intake |
 | D8-C v5 polish + release-gate hardening | `IMPLEMENTED` | 2026-11-04: DR-113; run-all exit code (self-tested), plain-text titles/meta, localized 404 title, footer "English" / "عربي", lighter Arabic fonts (same look; font preload measured and reverted). Verification and push status: private evidence `execution/evidence/d8c-v5-2026-11-04/` |
 | D6 products and smart home | `PREVIEW` | Commits below are in PR #16 and the protected Preview of `025d382b`; full local QA on `16c2b42a` plus d4 on `025d382b` |
 | D7 customer account, devices, service, warranty | `PARTIAL` | Local backend foundations only; no customer UI; not authorized live |

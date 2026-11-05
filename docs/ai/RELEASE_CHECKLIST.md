@@ -31,7 +31,11 @@ Then run the idempotent seed: `pnpm --filter @otonom/web seed:content`. It publi
 **Who runs it:** migrations need the Production database credential, which the agent never handles. The owner (or Attia) runs the commands in a terminal where the Production env is loaded. Exact steps:
 1. Vercel → project → Storage/Neon → create a backup branch or snapshot.
 2. Note its name and time (private).
-3. In the repo `app/` folder, with the Production env exported: `pnpm --filter @otonom/domain migrate`, then `pnpm --filter @otonom/web payload migrate`, then `pnpm --filter @otonom/web seed:content`.
+3. In the repo `app/` folder, with the connection values set only in that terminal session:
+   - **Domain migrations:** in `app/packages/domain`, run only `migrate()` (`npx --no-install tsx -e "import('./src/migrate.ts').then(async (m) => console.log(JSON.stringify(await m.migrate())))"`), with the owner-role URL in `OTONOM_ADMIN_DATABASE_URL` and the Production target guards (`OTONOM_ALLOW_REMOTE_MIGRATIONS=ISOLATED_PRODUCTION_ONLY`, expected host, database and Neon project id, `OTONOM_FORCE_PRODUCTION=1`).
+     **Never run `pnpm --filter @otonom/domain migrate` against Production.** Its entry point first runs `ensureRoles()`, which resets the `otonom_domain` and `otonom_cms` passwords from local files. If those files are missing, it creates new passwords, and the Production database URLs stop working.
+   - **Payload migrations and the seed** must run as the `otonom_cms` role (`OTONOM_CMS_DATABASE_URL`), so the new tables are owned by the role the site uses: `npx --no-install payload migrate`, then `npx --no-install tsx scripts/seed-site-content.ts` (try `--dry-run` first).
+   - Running Payload locally regenerates `app/web/src/payload-types.ts`; commit any difference separately.
 4. Send the agent the three command outputs, with no values in them.
 
 Never copy development users, test data or MFA material into Production.
@@ -78,3 +82,11 @@ It needs the repository variables `OTONOM_PUBLIC_URL` and `OTONOM_ADMIN_URL`, wh
 3. Turn on booking requests.
 4. Invite the team: each person gets their own account; `team@` receives notifications only.
 5. Revoke the old Shareable Links and retire the temporary reviewer account (GATE-R, private).
+
+## 8. Lessons from the 2026-11-05 release
+
+- **Source identity (G01):** deploy from a clean clone of the exact `main` SHA (the repository's `.vercelignore` uploads only `app/`), using `vercel deploy --prod --skip-domain --force`. A deployment uploaded from a folder that is not a Git checkout carries no commit SHA, and G01 stays blocked.
+- **`main` is protected:** pull request required, linear history, two required checks. A 100+-commit branch cannot be rebase-merged on GitHub, and a squash produces a new SHA with the same tree. The release SHA is the resulting `main` SHA.
+- **Promotion:** `vercel promote` answered 409 ("already the current production deployment") for the staged deployment, so the two production domains were assigned with `vercel alias set`. Vercel's production pointer and the cron registration did not move with them. The next release uses `vercel promote`, or a normal production deployment, so the daily cron is registered.
+- **Backup (G15):** `pg_dump` 17 cannot dump the Neon 18 server. The backup is a Neon branch taken before any change; a fingerprint (row counts and column definitions) is recorded, and a restore-drill branch made from the backup must show the same fingerprint.
+- **Secret scan:** the previous gitleaks action scanned only the first 30 commits of a pull request. The Quality Gate now runs gitleaks over the full pull-request and push ranges. A historical finding is ignored only by its exact fingerprint in `.gitleaksignore`.
