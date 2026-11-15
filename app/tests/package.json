@@ -25,7 +25,8 @@
     "release:verify": "tsx src/release-gate.ts",
     "release:promote": "tsx src/release-promote.ts",
     "test:release-gate": "tsx --test src/release-gate.test.ts",
-    "test:run-all-exit": "tsx --test src/run-all-exit.test.ts"
+    "test:run-all-exit": "tsx --test src/run-all-exit.test.ts",
+    "pool-production": "tsx src/pool-production.ts"
   },
   "dependencies": {
     "@otonom/domain": "workspace:*",

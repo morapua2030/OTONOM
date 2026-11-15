@@ -28,14 +28,14 @@ if [ -e "$LOCK" ] && kill -0 "$(cat "$LOCK")" 2>/dev/null; then echo "another ru
 echo $$ > "$LOCK"
 : > "$OUT/steps.tsv"
 rm -f "$OUT"/*.log "$OUT/summary.json" "$OUT"/otonom_e2e_*.dump
-for s in acceptance surface journey cms portal security csp-edge e2e visual final-release final-shots fixes-20261115; do rm -f "$APP/tests/results/$s-latest.json"; done
+for s in acceptance surface journey cms portal security csp-edge e2e visual final-release final-shots fixes-20261115 pool-production; do rm -f "$APP/tests/results/$s-latest.json"; done
 # step() and run_all_verdict() are shared with the exit-code self-test (src/run-all-exit.test.ts).
 . "$SCRIPT_DIR/run-all-lib.sh"
 stop_server() { powershell.exe -NoProfile -Command "\$c = Get-NetTCPConnection -LocalPort 3301 -State Listen -ErrorAction SilentlyContinue; if (\$c) { Stop-Process -Id \$c.OwningProcess -Force }" > /dev/null 2>&1 || true; }
 archive_evidence() {
   mkdir -p "$ARCHIVE"
   for f in "$OUT"/*.log "$OUT"/steps.tsv "$OUT"/summary.json; do [ -f "$f" ] && cp -f "$f" "$ARCHIVE"/; done
-  for s in acceptance surface journey cms portal security csp-edge e2e visual final-release final-shots fixes-20261115; do
+  for s in acceptance surface journey cms portal security csp-edge e2e visual final-release final-shots fixes-20261115 pool-production; do
     f="$APP/tests/results/$s-latest.json"; [ -f "$f" ] && cp -f "$f" "$ARCHIVE"/;
   done
 }
@@ -101,6 +101,14 @@ for i in $(seq 1 90); do c=$(curl -s -o /dev/null -w "%{http_code}" http://127.0
 echo "server ready=$c"
 cd "$APP/tests"
 for s in acceptance surface journey cms portal security csp-edge e2e visual final-release final-shots fixes-20261115; do step "$s" env OTONOM_TEST_CRON_SECRET=synthetic-cron-secret-for-local-tests-only-2026 npx --no-install tsx "src/$s.ts"; done
+# Production pool regression (2026-11-15 incident): a second server with the Production pool setting
+# (OTONOM_PG_POOL_MAX=2) on the same clone; every admin save must finish, concurrent saves must not deadlock.
+stop_server
+cd "$APP/web" && (OTONOM_PG_POOL_MAX=2 OTONOM_TRUST_PROXY=1 OTONOM_TEST_PAGES=1 OTONOM_ENABLE_SYNTHETIC_COMMERCIAL_TESTS=1 OTONOM_ENABLE_SYNTHETIC_RFQ_TESTS=1 OTONOM_OWNER_EMAIL_OTP_REQUIRED=1 OTONOM_OWNER_EMAIL_OTP_ACCOUNT=otp-owner@otonom.local OTONOM_EMAIL_OTP_ALLOWED_RECIPIENT=otp-owner@otonom.local OTONOM_EMAIL_OTP_PEPPER=synthetic-email-otp-pepper-for-tests-2026 OTONOM_EMAIL_PROVIDER=test OTONOM_EMAIL_TEST_MODE=1 OTONOM_EMAIL_OTP_TEST_CODE=483921 CRON_SECRET=synthetic-cron-secret-for-local-tests-only-2026 OTONOM_LEADS_NOTIFY_TO=team@otonom.local npx --no-install next start -H 127.0.0.1 -p 3301 > "$OUT/server-pool-production.log" 2>&1 &)
+for i in $(seq 1 90); do c=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3301/api/ready); [ "$c" = 200 ] && break; sleep 1; done
+echo "pool-production server ready=$c"
+cd "$APP/tests"
+step pool-production env OTONOM_PG_POOL_MAX=2 npx --no-install tsx src/pool-production.ts
 inject_selftest_failure
 stop_server
 node -e "
@@ -112,7 +120,7 @@ const suites={};
 suites.domain=count('domain');suites['web-unit']=count('web-unit');
 const exitOf=Object.fromEntries(steps.map(x=>[x.name,x.exit]));
 suites['release-gate']=count('release-gate');suites['run-all-selftest']=count('run-all-selftest');
-for (const s of ['acceptance','surface','journey','cms','portal','security','csp-edge','e2e','visual','final-release','final-shots','fixes-20261115']){try{const j=JSON.parse(fs.readFileSync(path.join(out,'..',s+'-latest.json'),'utf8'));suites[s]={tests:j.total,pass:j.total-j.failed,fail:j.failed,exit:exitOf[s],at:j.at};}catch(e){suites[s]={tests:0,pass:0,fail:1,exit:exitOf[s],error:'NO FRESH RESULT (suite crashed or did not run)'};}}
+for (const s of ['acceptance','surface','journey','cms','portal','security','csp-edge','e2e','visual','final-release','final-shots','fixes-20261115','pool-production']){try{const j=JSON.parse(fs.readFileSync(path.join(out,'..',s+'-latest.json'),'utf8'));suites[s]={tests:j.total,pass:j.total-j.failed,fail:j.failed,exit:exitOf[s],at:j.at};}catch(e){suites[s]={tests:0,pass:0,fail:1,exit:exitOf[s],error:'NO FRESH RESULT (suite crashed or did not run)'};}}
 const total=Object.values(suites).reduce((a,s)=>({tests:a.tests+(s.tests||0),pass:a.pass+(s.pass||0),fail:a.fail+(s.fail||0)}),{tests:0,pass:0,fail:0});
 const summary={at:new Date().toISOString(),environment:'local Windows, 127.0.0.1, synthetic data',database:'$E2E_DB (disposable clone of otonom_dev; dropped after run)',steps,suites,total};
 fs.writeFileSync(path.join(out,'summary.json'),JSON.stringify(summary,null,2));
