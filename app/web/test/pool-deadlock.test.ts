@@ -34,3 +34,10 @@ test('document locking is off for every collection and global (its lock read ran
   // the generated types no longer contain the locked-documents collection
   assert.doesNotMatch(src('../src/payload-types.ts'), /'payload-locked-documents': PayloadLockedDocument;/);
 });
+
+test('/admin/login hides Payload\'s "Forgot password?" link while reset e-mail is off (owner 2026-11-15)', () => {
+  const notice = src('../src/components/StaffLoginNotice.tsx');
+  assert.match(notice, /passwordResetEmailEnabled\(\) \? null : <style data-testid="hide-forgot-link">\{'a\[href\$="\/admin\/forgot"\]\{display:none!important\}'\}<\/style>/);
+  const config = src('../src/payload.config.ts');
+  assert.match(config, /beforeLogin: \['\/components\/StaffLoginNotice#StaffLoginNotice'\]/);
+});

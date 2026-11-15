@@ -210,6 +210,8 @@ async function main() {
   const adminForgot = await anon.get('/admin/forgot');
   const staffForgot = await anon.get('/staff/forgot');
   const staffLogin = await anon.get('/staff/login');
+  const adminLogin = await anon.get('/admin/login');
+  rec.add('E-ADMIN-LOGIN-NO-FORGOT-LINK', 'AUTH', 'Payload\'s /admin/login hides its "Forgot password?" link while reset e-mail is off (owner 2026-11-15)', adminLogin.status === 200 && adminLogin.text.includes('hide-forgot-link') && adminLogin.text.includes('{display:none!important}'), { status: adminLogin.status });
   const noMail = (await su.query(`SELECT count(*) FROM cms.users WHERE reset_password_token IS NOT NULL`)).rows[0].count;
   rec.add('E-FORGOT-HONEST', 'AUTH', 'without e-mail: the reset request answers 503 "contact the operator" (same for unknown accounts), /admin/forgot leads to the explanation, no reset token is created and the sign-in page shows no forgot link',
     forgot.status === 503 && forgotUnknown.status === 503 && forgot.text.includes('Contact the operator') && adminForgot.status === 307 && (adminForgot.headers.get('location') ?? '').endsWith('/staff/forgot') &&
