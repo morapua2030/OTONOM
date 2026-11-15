@@ -66,13 +66,35 @@ export function connString(role: DbRole, database = DB_NAME): string {
   return `postgres://${encodeURIComponent(String(c.user))}:${encodeURIComponent(String(c.password))}@${c.host}:${c.port}/${database}`;
 }
 
+/**
+ * Waiting for a free pool connection fails after this long instead of forever, so an exhausted pool returns an error
+ * (and the open transaction is rolled back) rather than hanging every request until the function is killed.
+ */
+export const POOL_CONNECT_TIMEOUT_MS = 10_000;
+
+/**
+ * Pool size for Payload (2026-11-15 incident). Payload's Postgres adapter keeps ONE connection of its pool checked out
+ * for its whole life (db-postgres `connectWithReconnect` never releases it), and a REST/admin update reads the
+ * document lock OUTSIDE its transaction, so one save needs two free connections at the same time. With
+ * OTONOM_PG_POOL_MAX=2 the CMS pool had a single usable connection and every admin save deadlocked. The CMS pool
+ * therefore gets the configured size (never below 4, so concurrent saves still fit) plus the connection Payload keeps.
+ */
+export const PAYLOAD_KEPT_CONNECTIONS = 1;
+export const CMS_MIN_USABLE_CONNECTIONS = 4;
+export function cmsPoolMax(env: NodeJS.ProcessEnv = process.env): number {
+  const configured = env.OTONOM_PG_POOL_MAX ?? (env.VERCEL === '1' ? '2' : undefined);
+  const usable = configured === undefined ? 10 : Number(configured);
+  if (!Number.isInteger(usable) || usable < 1 || usable > 20) throw new Error('OTONOM_PG_POOL_MAX must be an integer from 1 to 20');
+  return Math.max(usable, CMS_MIN_USABLE_CONNECTIONS) + PAYLOAD_KEPT_CONNECTIONS;
+}
+
 export function makePool(role: DbRole, max = 10, database = DB_NAME): pg.Pool {
   const configured = process.env.OTONOM_PG_POOL_MAX ?? (process.env.VERCEL === '1' ? '2' : undefined);
   const effectiveMax = configured === undefined ? max : Number(configured);
   if (!Number.isInteger(effectiveMax) || effectiveMax < 1 || (configured !== undefined && effectiveMax > 20)) {
     throw new Error('OTONOM_PG_POOL_MAX must be an integer from 1 to 20');
   }
-  const pool = new pg.Pool({ ...connConfig(role, database), max: effectiveMax, idleTimeoutMillis: 5000 });
+  const pool = new pg.Pool({ ...connConfig(role, database), max: effectiveMax, idleTimeoutMillis: 5000, connectionTimeoutMillis: POOL_CONNECT_TIMEOUT_MS });
   // an idle client error (e.g. server restart) must not crash the process
   pool.on('error', (e) => console.error('[pg pool] idle client error:', e.message));
   return pool;

@@ -150,6 +150,18 @@ async function main() {
       }
     }
 
+    // Payload's own sign-in page: its "Forgot password?" link is hidden while reset e-mail is off (owner 2026-11-15)
+    {
+      const login = await browser.newPage(1440, 900);
+      await login.goto('/admin/login');
+      await login.waitFor(`!!document.querySelector('input[name="password"]')`, 15000).catch(() => null);
+      await sleep(800);
+      const f = await login.eval<any>(`(() => { const a = document.querySelector('a[href$="/admin/forgot"]'); return { form: !!document.querySelector('input[name="password"]'), linkInDom: !!a, display: a ? getComputedStyle(a).display : null, visible: !!a && a.offsetParent !== null }; })()`);
+      await login.screenshot('admin-1440-login-no-forgot-link.png');
+      rec.add('S-ADMIN-LOGIN-NO-FORGOT-LINK', 'ADMIN', '/admin/login (Payload) shows the sign-in form without a visible "Forgot password?" link while reset e-mail is off', f.form && (!f.linkInDom || (f.display === 'none' && !f.visible)), f);
+      await login.close();
+    }
+
     // admin views as the OWNER (session cookie injected into the browser)
     const adminPages: Array<[string, string]> = [['leads-list', '/admin/collections/leads'], ['lead', `/admin/collections/leads/${leadId}`], ['sales-kpi', '/admin/sales'], ['content-editor', `/admin/collections/catalog-packages/${pkgId}`], ['privacy-approval', '/admin/globals/privacy-policy']];
     for (const [name, url] of adminPages) {

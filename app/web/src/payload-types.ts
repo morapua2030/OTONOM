@@ -84,7 +84,6 @@ export interface Config {
     'sim-routines': SimRoutine;
     'service-faqs': ServiceFaq;
     'payload-kv': PayloadKv;
-    'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
     'payload-migrations': PayloadMigration;
   };
@@ -107,7 +106,6 @@ export interface Config {
     'sim-routines': SimRoutinesSelect<false> | SimRoutinesSelect<true>;
     'service-faqs': ServiceFaqsSelect<false> | ServiceFaqsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
-    'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
   };
@@ -769,85 +767,6 @@ export interface PayloadKv {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "payload-locked-documents".
- */
-export interface PayloadLockedDocument {
-  id: number;
-  document?:
-    | ({
-        relationTo: 'users';
-        value: number | User;
-      } | null)
-    | ({
-        relationTo: 'pages';
-        value: number | Page;
-      } | null)
-    | ({
-        relationTo: 'case-studies';
-        value: number | CaseStudy;
-      } | null)
-    | ({
-        relationTo: 'claims';
-        value: number | Claim;
-      } | null)
-    | ({
-        relationTo: 'consents';
-        value: number | Consent;
-      } | null)
-    | ({
-        relationTo: 'organisations';
-        value: number | Organisation;
-      } | null)
-    | ({
-        relationTo: 'contacts';
-        value: number | Contact;
-      } | null)
-    | ({
-        relationTo: 'rfqs';
-        value: number | Rfq;
-      } | null)
-    | ({
-        relationTo: 'opportunities';
-        value: number | Opportunity;
-      } | null)
-    | ({
-        relationTo: 'private-files';
-        value: number | PrivateFile;
-      } | null)
-    | ({
-        relationTo: 'media';
-        value: number | Media;
-      } | null)
-    | ({
-        relationTo: 'leads';
-        value: number | Lead;
-      } | null)
-    | ({
-        relationTo: 'catalog-packages';
-        value: number | CatalogPackage;
-      } | null)
-    | ({
-        relationTo: 'catalog-controllers';
-        value: number | CatalogController;
-      } | null)
-    | ({
-        relationTo: 'sim-routines';
-        value: number | SimRoutine;
-      } | null)
-    | ({
-        relationTo: 'service-faqs';
-        value: number | ServiceFaq;
-      } | null);
-  globalSlug?: string | null;
-  user: {
-    relationTo: 'users';
-    value: number | User;
-  };
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-preferences".
  */
 export interface PayloadPreference {
@@ -1280,17 +1199,6 @@ export interface ServiceFaqsSelect<T extends boolean = true> {
 export interface PayloadKvSelect<T extends boolean = true> {
   key?: T;
   data?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "payload-locked-documents_select".
- */
-export interface PayloadLockedDocumentsSelect<T extends boolean = true> {
-  document?: T;
-  globalSlug?: T;
-  user?: T;
-  updatedAt?: T;
-  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
