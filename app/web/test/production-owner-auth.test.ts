@@ -70,7 +70,9 @@ test('hosted flow exposes a separate policy decision and keeps MFA endpoints una
   const provision = readFileSync(new URL('../scripts/provision-production-owner.ts', import.meta.url), 'utf8');
   assert.match(endpoints, /mfaVerified:\s*mfaSessionVerified\(u\)/);
   assert.match(endpoints, /passwordOnlyAuthorized/);
-  assert.equal((endpoints.match(/code: 'MFA_NOT_AVAILABLE'/g) ?? []).length, 6);
+  // 6 MFA endpoints + the re-enrollment gate shared by /mfa/reenroll and /mfa/reenroll/verify (2026-11-15)
+  assert.equal((endpoints.match(/code: 'MFA_NOT_AVAILABLE'/g) ?? []).length, 7);
+  assert.match(endpoints, /async function reenrollGate[\s\S]{0,200}productionOwnerPasswordOnly\(u\)\) return jsonRes\(404, \{ code: 'MFA_NOT_AVAILABLE' \}\)/);
   assert.match(login, /data\.passwordOnlyAuthorized === true && data\.authorized === true/);
   assert.match(users, /staff-login-account-fast/);
   assert.match(users, /staff-login-account-cooldown/);

@@ -161,10 +161,44 @@ async function main() {
     !leadCols.some((c: string) => /area|preferred_time/.test(c)) && legacy.status === 201 && legacyRow?.phone === '+201012345678' && legacyRow?.plan === null && legacyRow?.source === 'contact',
     { formNames, leadCols: leadCols.filter((c: string) => /area|preferred|plan|message/.test(c)), legacy: legacy.status, legacyRow });
   rec.add('F-BOOKING-AUDITED', 'LEADS', 'every new lead is audited', (await audit('lead.created', t0)) >= 1, null);
-  const rlIp = ip();
-  const statuses: number[] = [];
-  for (let i = 0; i < 6; i++) statuses.push((await anon.post('/api/booking', lead(fresh, { phone: '01012345678' }), { 'x-forwarded-for': rlIp })).status);
-  rec.add('F-BOOKING-RATE-LIMIT', 'LEADS', 'the 6th request from one client within the hour is refused', statuses[5] === 429 && statuses.slice(0, 5).every((s) => s === 201), statuses);
+  // Owner 2026-11-15: two keys. A generous ceiling per network (30/hour: carrier NAT puts many customers behind one
+  // address) and the real per-customer limit on the normalised phone (3/day), counted only after the token, the
+  // validation and the idempotent replay.
+  const phoneOf = () => `010${String(randomBytes(4).readUInt32BE() % 100_000_000).padStart(8, '0')}`;
+  const natIp = ip();
+  const nat: number[] = [];
+  for (let i = 0; i < 6; i++) nat.push((await anon.post('/api/booking', lead(fresh, { phone: phoneOf() }), { 'x-forwarded-for': natIp })).status);
+  rec.add('F-BOOKING-RATE-LIMIT', 'LEADS', 'carrier NAT: 6 quick requests from one IP with different phones are all accepted', nat.every((s) => s === 201), nat);
+  const spamPhone = phoneOf();
+  const spam: Array<{ status: number; code?: string }> = [];
+  for (let i = 0; i < 5; i++) {
+    const r = await anon.post('/api/booking', lead(fresh, { phone: spamPhone }), { 'x-forwarded-for': ip() });
+    spam.push({ status: r.status, code: r.json?.code });
+  }
+  rec.add('F-BOOKING-PHONE-LIMIT', 'LEADS', 'one phone: 3 requests a day are accepted; the 4th and 5th are refused with PHONE_LIMITED, even from other IPs',
+    spam.slice(0, 3).every((x) => x.status === 201) && spam.slice(3).every((x) => x.status === 429 && x.code === 'PHONE_LIMITED'), spam);
+  const rejPhone = phoneOf();
+  const rejected: Array<{ status: number; code?: string }> = [];
+  for (let i = 0; i < 4; i++) {
+    const r = await anon.post('/api/booking', lead(fresh, { phone: rejPhone, consent: false }), { 'x-forwarded-for': ip() });
+    rejected.push({ status: r.status, code: r.json?.code });
+  }
+  const expired = await anon.post('/api/booking', lead(`${Date.now() - 60_000}.${'A'.repeat(43)}`, { phone: rejPhone }), { 'x-forwarded-for': ip() });
+  rejected.push({ status: expired.status, code: expired.json?.code });
+  const afterRejected: number[] = [];
+  for (let i = 0; i < 3; i++) afterRejected.push((await anon.post('/api/booking', lead(fresh, { phone: rejPhone }), { 'x-forwarded-for': ip() })).status);
+  rec.add('F-BOOKING-422-NOT-COUNTED', 'LEADS', 'validation and token rejections (422) never count against the phone: 5 rejected requests, then 3 accepted',
+    rejected.every((x) => x.status === 422) && afterRejected.every((x) => x === 201), { rejected, afterRejected });
+  const ceilIp = ip();
+  const ceiling: number[] = [];
+  for (let i = 0; i < 25; i++) ceiling.push((await anon.post('/api/booking', lead(fresh, { phone: phoneOf(), consent: false }), { 'x-forwarded-for': ceilIp })).status);
+  for (let i = 0; i < 5; i++) ceiling.push((await anon.post('/api/booking', lead(fresh, { phone: phoneOf() }), { 'x-forwarded-for': ceilIp })).status);
+  const over = await anon.post('/api/booking', lead(fresh, { phone: phoneOf() }), { 'x-forwarded-for': ceilIp });
+  rec.add('F-BOOKING-IP-CEILING', 'LEADS', 'the network ceiling counts every request, rejected ones too: the 31st within the hour from one IP is refused with RATE_LIMITED and retry-after',
+    ceiling.slice(0, 25).every((x) => x === 422) && ceiling.slice(25).every((x) => x === 201) && over.status === 429 && over.json?.code === 'RATE_LIMITED' && Number(over.headers.get('retry-after')) > 0,
+    { rejected: ceiling.slice(0, 25).filter((x) => x === 422).length, accepted: ceiling.slice(25), over: over.status, code: over.json?.code });
+  const leaked = Number((await su.query(`SELECT count(*) AS n FROM domain.rate_limits WHERE bucket LIKE '%' || $1 || '%' OR bucket LIKE '%' || $2 || '%'`, [spamPhone.slice(1), rejPhone.slice(1)])).rows[0].n);
+  rec.add('F-BOOKING-PHONE-KEY-PSEUDONYMOUS', 'LEADS', 'the phone limit stores no phone number (rate-limit buckets are keyed digests)', leaked === 0, { leaked });
   const cross = await new Client(BASE, 'evil').post('/api/booking', lead(fresh), { origin: 'https://evil.example', 'x-forwarded-for': ip() });
   rec.add('F-BOOKING-CSRF', 'LEADS', 'a cross-origin submission is refused', cross.status === 403, cross.status);
 
