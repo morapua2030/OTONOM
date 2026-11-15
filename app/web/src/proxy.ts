@@ -33,6 +33,17 @@ export function proxy(request: NextRequest) {
     noindex = decision.noindex;
   }
 
+  // Payload's own "forgot password" page would report a fake success without e-mail: the staff page explains instead.
+  if (request.nextUrl.pathname === '/admin/forgot' || request.nextUrl.pathname.startsWith('/admin/forgot/')) {
+    const destination = request.nextUrl.clone();
+    destination.pathname = '/staff/forgot';
+    destination.search = '';
+    const response = NextResponse.redirect(destination, 307);
+    response.headers.set('cache-control', 'no-store');
+    response.headers.set('x-robots-tag', 'noindex');
+    return secured(response, policy);
+  }
+
   if (adminPathRequiresSessionCookie(request.nextUrl.pathname, request.cookies.has('payload-token'))) {
     const destination = request.nextUrl.clone();
     destination.pathname = '/staff/login';

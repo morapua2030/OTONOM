@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState, type FormEvent } from 'react';
 
-type Step = 'password' | 'email' | 'enroll' | 'totp' | 'done';
+type Step = 'password' | 'email' | 'enroll' | 'totp' | 'reenroll' | 'done';
 type Locale = 'ar' | 'en';
 
 const copy = {
@@ -17,6 +17,8 @@ const copy = {
     authenticatorCode: 'Authenticator code', recoveryCode: 'Recovery code', verifyFinish: 'Verify and finish', verify: 'Verify',
     useAuthenticator: 'Use authenticator code', useRecovery: 'Use a recovery code', mfaInvalid: 'Code not accepted. Wait for the next code and try again.', recoveryInvalid: 'Recovery code not accepted.',
     verified: 'Verified. Opening the admin panel…', saveRecovery: 'Save these one-time recovery codes securely. They will not be shown again.', recoveryCodes: 'Recovery codes', admin: 'Continue to admin',
+    forgot: 'Forgot your password?', reenrollTitle: 'Signed in with a recovery code', reenrollText: 'Lost your phone? Set up a new authenticator now. The old one stops working, your other sessions are signed out, and you get new recovery codes.',
+    reenrollStart: 'Set up a new authenticator', reenrollLater: 'Not now, continue to admin', reenrollExpired: 'This setup expired. Start again.',
   },
   ar: {
     title: 'تسجيل دخول فريق OTONOM', language: 'English', email: 'البريد الإلكتروني', password: 'كلمة المرور', continue: 'متابعة', working: 'جارٍ التنفيذ…',
@@ -30,17 +32,20 @@ const copy = {
     authenticatorCode: 'رمز تطبيق المصادقة', recoveryCode: 'رمز الاسترداد', verifyFinish: 'تحقق وأكمل', verify: 'تحقق',
     useAuthenticator: 'استخدام تطبيق المصادقة', useRecovery: 'استخدام رمز استرداد', mfaInvalid: 'الرمز غير مقبول. انتظر الرمز التالي وحاول مرة أخرى.', recoveryInvalid: 'رمز الاسترداد غير مقبول.',
     verified: 'تم التحقق. جارٍ فتح لوحة الإدارة…', saveRecovery: 'احفظ رموز الاسترداد أحادية الاستخدام بأمان. لن تظهر مرة أخرى.', recoveryCodes: 'رموز الاسترداد', admin: 'متابعة إلى لوحة الإدارة',
+    forgot: 'نسيت كلمة المرور؟', reenrollTitle: 'تم الدخول برمز استرداد', reenrollText: 'فقدت هاتفك؟ اربط تطبيق مصادقة جديداً الآن. سيتوقف التطبيق القديم، وستُغلق جلساتك الأخرى، وستحصل على رموز استرداد جديدة.',
+    reenrollStart: 'ربط تطبيق مصادقة جديد', reenrollLater: 'ليس الآن، المتابعة إلى لوحة الإدارة', reenrollExpired: 'انتهت صلاحية الإعداد. ابدأ من جديد.',
   },
 } as const;
 
 /** Password, email OTP and existing TOTP/recovery verification bound to one Payload session. */
-export function StaffLogin() {
+export function StaffLogin({ forgotPasswordEnabled = false }: { forgotPasswordEnabled?: boolean }) {
   const [step, setStep] = useState<Step>('password');
   const [locale, setLocale] = useState<Locale>('en');
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [useRecovery, setUseRecovery] = useState(false);
   const [enrollmentSecret, setEnrollmentSecret] = useState<string | null>(null);
+  const [reenrollToken, setReenrollToken] = useState<string | null>(null);
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
   const [destination, setDestination] = useState('your inbox');
   const [expiresAt, setExpiresAt] = useState(0);
@@ -166,9 +171,45 @@ export function StaffLogin() {
     const data = response?.ok ? await response.json().catch(() => null) : null;
     setBusy(false);
     if (response?.ok && data?.mfaVerified === true) {
+      if (useRecovery && data?.reenrollAvailable === true) {
+        setStep('reenroll');
+        return;
+      }
       setStep('done');
       window.location.assign('/admin');
     } else setErr(useRecovery ? t.recoveryInvalid : t.mfaInvalid);
+  }
+
+  async function beginReenrollment() {
+    setBusy(true);
+    setErr(null);
+    const response = await fetch('/api/mfa/reenroll', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).catch(() => null);
+    const data = response?.ok ? await response.json().catch(() => null) : null;
+    setBusy(false);
+    if (response?.ok && typeof data?.secret === 'string' && typeof data?.enrollToken === 'string') {
+      setEnrollmentSecret(data.secret);
+      setReenrollToken(data.enrollToken);
+    } else setErr(t.statusFailed);
+  }
+
+  async function finishReenrollment(ev: FormEvent<HTMLFormElement>) {
+    ev.preventDefault();
+    setBusy(true);
+    setErr(null);
+    const code = String(new FormData(ev.currentTarget).get('code') ?? '').trim();
+    const response = await fetch('/api/mfa/reenroll/verify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code, enrollToken: reenrollToken }) }).catch(() => null);
+    const data = response ? await response.json().catch(() => null) : null;
+    setBusy(false);
+    if (response?.ok && Array.isArray(data?.recoveryCodes)) {
+      setRecoveryCodes(data.recoveryCodes);
+      setEnrollmentSecret(null);
+      setReenrollToken(null);
+      setStep('done');
+    } else if (data?.code === 'MFA_REENROLLMENT_EXPIRED') {
+      setEnrollmentSecret(null);
+      setReenrollToken(null);
+      setErr(t.reenrollExpired);
+    } else setErr(t.mfaInvalid);
   }
 
   return (
@@ -182,6 +223,7 @@ export function StaffLogin() {
           <label>{t.email}<input name="email" type="email" dir="ltr" autoComplete="username" required /></label>
           <label>{t.password}<input name="password" type="password" dir="ltr" autoComplete="current-password" required /></label>
           <button className="btn" disabled={busy}>{busy ? t.working : t.continue}</button>
+          {forgotPasswordEnabled ? <a href="/staff/forgot" data-testid="staff-forgot-link">{t.forgot}</a> : null}
         </form>
       )}
       {step === 'email' && (
@@ -209,6 +251,21 @@ export function StaffLogin() {
           <label>{useRecovery ? t.recoveryCode : t.authenticatorCode}<input name="code" dir="ltr" inputMode={useRecovery ? 'text' : 'numeric'} autoComplete="one-time-code" required /></label>
           <button className="btn" disabled={busy}>{busy ? t.working : t.verify}</button>
           <button type="button" className="btn secondary" onClick={() => setUseRecovery(!useRecovery)}>{useRecovery ? t.useAuthenticator : t.useRecovery}</button>
+        </form>
+      )}
+      {step === 'reenroll' && !enrollmentSecret && (
+        <div className="auth-card" data-testid="staff-reenroll">
+          <h2>{t.reenrollTitle}</h2>
+          <p>{t.reenrollText}</p>
+          <button className="btn" disabled={busy} onClick={beginReenrollment}>{busy ? t.working : t.reenrollStart}</button>
+          <button type="button" className="btn secondary" onClick={() => window.location.assign('/admin')}>{t.reenrollLater}</button>
+        </div>
+      )}
+      {step === 'reenroll' && enrollmentSecret && (
+        <form className="rfq" onSubmit={finishReenrollment}>
+          <p>{t.setupText}</p><output className="staff-secret" dir="ltr" aria-label={t.setupKey}>{enrollmentSecret}</output>
+          <label>{t.authenticatorCode}<input name="code" dir="ltr" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" minLength={6} maxLength={6} required /></label>
+          <button className="btn" disabled={busy}>{busy ? t.working : t.verifyFinish}</button>
         </form>
       )}
       {step === 'done' && recoveryCodes.length === 0 && <p role="status">{t.verified}</p>}

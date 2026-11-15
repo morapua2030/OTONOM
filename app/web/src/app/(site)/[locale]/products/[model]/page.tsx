@@ -5,6 +5,7 @@ import { pageMetadata } from '@/lib/seo.ts';
 import { ProductV3 } from '@/components/v3-pages.tsx';
 import { SITE_COPY } from '@/lib/site-copy.ts';
 import { productByModel } from '@/lib/products.ts';
+import { loadSiteContent } from '@/lib/site-content.ts';
 
 export const dynamic = 'force-dynamic';
 type P = { params: Promise<{ locale: string; model: string }> };
@@ -22,5 +23,6 @@ export default async function ProductPage({ params }: P) {
   const product = productByModel(model);
   if (!isLocale(value) || !product) notFound();
   const locale = value as Locale;
-  return <ProductV3 locale={locale} model={product.model} />;
+  const content = await loadSiteContent();
+  return <ProductV3 locale={locale} model={product.model} photo={content.controllers[product.model]?.photo ?? null} />;
 }

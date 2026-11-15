@@ -3,7 +3,8 @@ import { exposeDomainErrorCodes } from '../lib/errors.ts';
 import { type CollectionConfig, type FieldAccess } from 'payload';
 import { can, classifyUpload } from '@otonom/domain';
 import { mfaOk, nobody, perm } from '../lib/access.ts';
-import { PRIVATE_UPLOAD_DIR, uploadsDisabled } from '../lib/server.ts';
+import { PRIVATE_UPLOAD_DIR } from '../lib/server.ts';
+import { privateUploadsEnabled } from '../lib/media-storage.ts';
 
 const scanFieldAccess: FieldAccess = ({ req }) => !!req.user && mfaOk(req.user as any) && can((req.user as any).role, 'file.scan_result');
 
@@ -27,7 +28,7 @@ export const PrivateFiles: CollectionConfig = {
   },
   admin: { group: 'Projects' },
   access: {
-    create: ({ req }) => !uploadsDisabled() && !!req.user && mfaOk(req.user as any),
+    create: ({ req }) => privateUploadsEnabled() && !!req.user && mfaOk(req.user as any),
     read: ({ req }) => {
       const u = req.user as any;
       if (!u || !mfaOk(u)) return false;
@@ -45,7 +46,7 @@ export const PrivateFiles: CollectionConfig = {
     afterError: [exposeDomainErrorCodes],
     beforeOperation: [
       async ({ req, operation }) => {
-        if (uploadsDisabled() && (operation === 'create' || req.file)) throw new BusinessRuleError('UPLOADS_DISABLED_IN_PREVIEW', 503);
+        if (!privateUploadsEnabled() && (operation === 'create' || req.file)) throw new BusinessRuleError('UPLOADS_DISABLED_IN_PREVIEW', 503);
         if ((operation === 'create' || operation === 'update') && req.file) {
           const cls = classifyUpload(req.file.name, req.file.data as Buffer);
           if (!cls.ok) throw new BusinessRuleError(`UPLOAD_REJECTED:${cls.reason}`, 415);

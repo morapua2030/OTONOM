@@ -11,6 +11,7 @@ import { HomeItemsSection, HomePackagesSection } from './home-mix.tsx';
 import type { SmartHomePackage } from '@/lib/smart-home-packages.ts';
 import { ItemVisual } from './package-items.tsx';
 import { SIM_ENTRY } from '@/lib/simulator/copy.ts';
+import type { MediaImage } from '@/lib/site-content.ts';
 
 const L = (locale: Locale, p: string) => `/${locale}${p}`;
 
@@ -158,7 +159,7 @@ export function SmartHomeLanding({ locale, packages }: { locale: Locale; package
 const MODEL_KEY: Record<ProductModel, '16R' | '4R' | '6R'> = { '16r': '16R', '4r': '4R', '6r': '6R' };
 
 /** Design v3.1 "06 Product" (no spec table: specs are out of scope, DR-106). */
-export function ProductV3({ locale, model }: { locale: Locale; model: ProductModel }) {
+export function ProductV3({ locale, model, photo }: { locale: Locale; model: ProductModel; photo?: MediaImage | null }) {
   const t = INNER[locale];
   const copy = SITE_COPY[locale].prod;
   const p = copy[MODEL_KEY[model]];
@@ -180,7 +181,12 @@ export function ProductV3({ locale, model }: { locale: Locale; model: ProductMod
           </div>
         </div>
         <div className="v2-img-panel v3-product-photo">
-          <Image src={product.image} alt={localProductText(product.alt, locale)} width={1254} height={1254} sizes="(max-width: 900px) 80vw, 460px" priority />
+          {photo ? (
+            // An approved photo uploaded in the admin (Controllers → photo) replaces the built-in product image.
+            <img src={photo.url} alt={photo.alt[locale]} width={photo.width} height={photo.height} decoding="async" fetchPriority="high" data-testid="product-admin-photo" />
+          ) : (
+            <Image src={product.image} alt={localProductText(product.alt, locale)} width={1254} height={1254} sizes="(max-width: 900px) 80vw, 460px" priority />
+          )}
         </div>
       </section>
       <section className="v2-section" aria-label={p.ch}>

@@ -56,6 +56,8 @@ export const PERMISSIONS = {
   'intake.settings': ['OWNER'],
   'privacy.approve': ['OWNER'],
   'staff.invite': ['OWNER'],
+  // Owner 2026-11-15: removing another staff member's authenticator (forces enrollment at their next sign-in).
+  'staff.mfa_reset': ['OWNER'],
 } as const satisfies Record<string, readonly Role[]>;
 export type Permission = keyof typeof PERMISSIONS;
 

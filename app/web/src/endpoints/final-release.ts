@@ -19,6 +19,9 @@ import { protectedAdminOrigin, publicMarketingOnly } from '../lib/deployment.ts'
 const B32 = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const randomRef = (prefix: string) => `${prefix}-${new Date().getUTCFullYear()}-${Array.from(randomBytes(6), (b) => B32[b % 32]).join('')}`;
 const noStore = { 'cache-control': 'no-store' };
+/** Booking limits (owner 2026-11-15): a generous ceiling per network, and the real per-customer limit on the phone. */
+export const BOOKING_IP_LIMIT = 30;
+export const BOOKING_PHONE_LIMIT = 3;
 const adminOrigin = () => (publicMarketingOnly() && protectedAdminOrigin()) || SITE_URL;
 
 /** Both audited switches (privacy approved, intake enabled) read fresh from the database, never from a cache. */
@@ -64,7 +67,9 @@ export const finalReleaseEndpoints: Endpoint[] = [
       if (!bookingVisible(settings)) return jsonRes(404, { code: 'BOOKING_DISABLED' });
       const csrf = mutationOriginGuard(req);
       if (csrf) return csrf;
-      const rl = await rateLimit(`booking:${cairoDay()}:${clientIp(req.headers)}`, 5, 60 * 60_000);
+      // Abuse ceiling per network (owner 2026-11-15): carrier NAT puts many customers behind one IP, so the IP key is
+      // generous and the per-customer limit is on the normalized phone (below, after validation).
+      const rl = await rateLimit(`booking-ip:${clientIp(req.headers)}`, BOOKING_IP_LIMIT, 60 * 60_000);
       if (!rl.allowed) return Response.json({ code: 'RATE_LIMITED', retryAfterSec: rl.retryAfterSec }, { status: 429, headers: { 'retry-after': String(rl.retryAfterSec), ...noStore } });
       const b = await body(req);
       // honeypot and too-fast submissions: answered like a success, nothing is stored or sent
@@ -77,6 +82,10 @@ export const finalReleaseEndpoints: Endpoint[] = [
       const i = v.value;
       const existing = await req.payload.find({ collection: 'leads' as any, where: { idempotencyKey: { equals: i.idempotencyKey } }, overrideAccess: true, depth: 0, limit: 1, req });
       if (existing.docs[0]) return jsonRes(200, { ref: (existing.docs[0] as any).ref, replay: true });
+      // Per-customer limit on the normalized phone. Only well-formed, token-valid, non-replayed requests reach this point,
+      // so validation/token rejections (422) and idempotent replays never count against a customer's phone.
+      const pl = await rateLimit(`booking-phone:${createHash('sha256').update(i.phone).digest('hex').slice(0, 32)}`, BOOKING_PHONE_LIMIT, 24 * 60 * 60_000);
+      if (!pl.allowed) return Response.json({ code: 'PHONE_LIMITED', retryAfterSec: pl.retryAfterSec }, { status: 429, headers: { 'retry-after': String(pl.retryAfterSec), ...noStore } });
       const ref = randomRef('BK');
       const now = new Date().toISOString();
       let created: any;

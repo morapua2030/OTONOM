@@ -6,6 +6,7 @@ import { domainDb, payloadSecret, siteUsesHttps } from '../lib/server.ts';
 import { clientIp, rateLimit, rateLimitStatus } from '../lib/ratelimit.ts';
 import { isUsersLoginRequest, loginIdentityDigest, normalizeLoginIdentity } from '../lib/login-security.ts';
 import { productionOwnerPasswordOnly } from '../lib/production-owner-auth.ts';
+import { PASSWORD_RESET_TOKEN_TTL_MS, passwordResetEmail, passwordResetEmailEnabled } from '../lib/password-reset.ts';
 
 const ROLES = [...STAFF_ROLES, 'CUSTOMER'];
 const ownerOnlyField: FieldAccess = ({ req }) => !!req.user && mfaOk(req.user as any) && can((req.user as any).role, 'user.role_change');
@@ -21,6 +22,12 @@ export const Users: CollectionConfig = {
     removeTokenFromResponses: true,
     // Secure cookies whenever the site runs over HTTPS (local development is plain HTTP on 127.0.0.1)
     cookies: { sameSite: 'Lax', secure: siteUsesHttps() },
+    // Sent only when e-mail is configured (lib/password-reset.ts); the link opens Payload's reset page on the admin host.
+    forgotPassword: {
+      expiration: PASSWORD_RESET_TOKEN_TTL_MS,
+      generateEmailSubject: () => passwordResetEmail('').subject,
+      generateEmailHTML: (args) => passwordResetEmail(`${args?.req?.payload?.config?.serverURL ?? ''}/admin/reset/${encodeURIComponent(String(args?.token ?? ''))}`).html,
+    },
   },
   admin: { useAsTitle: 'email', group: 'System' },
   access: {
@@ -58,6 +65,21 @@ export const Users: CollectionConfig = {
   hooks: {
     beforeOperation: [
       async ({ args, operation, req }) => {
+        if (operation === 'forgotPassword') {
+          // No silent fake success (owner 2026-11-15): until e-mail is configured the request says "contact the operator".
+          if (!passwordResetEmailEnabled()) {
+            throw new APIError('Password reset by e-mail is not available yet. Contact the operator.', 503, { code: 'PASSWORD_RESET_EMAIL_NOT_CONFIGURED' }, true);
+          }
+          if (mutationOriginGuard(req)) throw new APIError('Request refused.', 403, { code: 'FORBIDDEN' }, true);
+          const identity = loginIdentityDigest((args as any).data?.email, payloadSecret());
+          const limits = await Promise.all([
+            rateLimit(`password-reset-ip:${clientIp(req.headers)}`, 10, 60 * 60_000),
+            rateLimit(`password-reset-account:${identity}`, 3, 60 * 60_000),
+          ]);
+          // The same answer whether or not the account exists (no account discovery).
+          if (limits.some((limit) => !limit.allowed)) throw new APIError('Too many requests. Try again later.', 429, { code: 'RATE_LIMITED' }, true);
+          return args;
+        }
         if (operation !== 'login' || !isUsersLoginRequest(req.method, req.url)) return args;
 
         if (mutationOriginGuard(req)) {

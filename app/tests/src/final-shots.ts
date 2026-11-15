@@ -19,6 +19,8 @@ const BASE = process.env.OTONOM_BASE ?? 'http://127.0.0.1:3301';
 const SHOTS = process.env.OTONOM_FINAL_SHOTS_DIR ?? path.resolve(APP_ROOT, '..', 'execution', 'evidence', 'final-2026-11-04', 'shots');
 const AXE = readFileSync(createRequire(import.meta.url).resolve('axe-core/axe.min.js'), 'utf8');
 const rec = new Recorder();
+/** A synthetic mobile that reaches the per-phone daily limit in the setup (Fix B, owner 2026-11-15). */
+const LIMITED_PHONE = '+20 101 234 5699';
 const owner = JSON.parse(readFileSync(path.join(SECRETS_DIR, 'dev_users.json'), 'utf8')).find((u: any) => u.role === 'OWNER');
 
 async function axe(page: Page) {
@@ -44,7 +46,10 @@ async function main() {
   const html = (await new Client(BASE).get('/ar/contact')).text;
   const t = html.match(/\d{13}\.[A-Za-z0-9_-]{43}/)?.[0] ?? '';
   await sleep(3200);
-  const created = await new Client(BASE, 'visitor', true).post('/api/booking', { name: 'عميل تجريبي', phone: '+20 101 234 5678', package: 'premium', message: 'طلب تجريبي للمراجعة', plan: 'خطة تجريبية: شقة، 4 أوض، 14 قناة، باقة Premium', consent: true, website: '', t, idempotencyKey: randomUUID().replace(/-/g, ''), source: 'simulator', locale: 'ar' }, { 'x-forwarded-for': '10.250.0.1' });
+  // Each flow uses its own synthetic mobile: the per-phone limit allows 3 requests a day (owner 2026-11-15), and the
+  // earlier suites on the same clone already used +20 101 234 5678. LIMITED_PHONE reaches that limit here on purpose.
+  for (let i = 0; i < 3; i++) await new Client(BASE, 'visitor', true).post('/api/booking', { name: 'عميل تجريبي', phone: LIMITED_PHONE, package: 'plus', message: '', plan: '', consent: true, website: '', t, idempotencyKey: randomUUID().replace(/-/g, ''), source: 'contact', locale: 'ar' }, { 'x-forwarded-for': `10.250.9.${i + 1}` });
+  const created = await new Client(BASE, 'visitor', true).post('/api/booking', { name: 'عميل تجريبي', phone: '+20 101 234 5600', package: 'premium', message: 'طلب تجريبي للمراجعة', plan: 'خطة تجريبية: شقة، 4 أوض، 14 قناة، باقة Premium', consent: true, website: '', t, idempotencyKey: randomUUID().replace(/-/g, ''), source: 'simulator', locale: 'ar' }, { 'x-forwarded-for': '10.250.0.1' });
   const leadId = (await c.get('/api/leads?limit=1&sort=-createdAt')).json?.docs?.[0]?.id;
   const pkgId = (await c.get('/api/catalog-packages?where[packageId][equals]=premium&draft=true')).json?.docs?.[0]?.id;
   rec.add('S-SETUP', 'SETUP', 'switches on, one synthetic lead created for the admin screenshots', created.status === 201 && !!leadId && !!pkgId, { created: created.status, leadId, pkgId });
@@ -96,7 +101,7 @@ async function main() {
           await sleep(300);
           const e2 = await contact.eval<any>(`({ focus: document.activeElement?.getAttribute('name'), errors: [...document.querySelectorAll('[data-testid="booking-form-contact"] .booking-error')].map((e) => e.textContent) })`);
           rec.add(`S-FORM-PHONE-ERROR-${locale}`, 'PUBLIC', `${locale}: a wrong mobile number explains the expected form (01012345678) and takes the focus`, e2.focus === 'phone' && e2.errors.some((t: string) => t.includes('01012345678')), e2);
-          await contact.fill('[data-testid="booking-form-contact"] input[name="phone"]', '+20 101 234 5678');
+          await contact.fill('[data-testid="booking-form-contact"] input[name="phone"]', locale === 'ar' ? '+20 101 234 5601' : '+20 101 234 5602');
           await contact.click('[data-testid="booking-note-toggle"]');
           await sleep(200);
           const note = await contact.eval<any>(`({ expanded: document.querySelector('[data-testid="booking-note-toggle"]').getAttribute('aria-expanded'), focus: document.activeElement?.getAttribute('name') })`);
@@ -109,6 +114,24 @@ async function main() {
           await contact.screenshot(`${locale}-390-contact-form-success.png`);
           const thanks = locale === 'ar' ? 'وصلنا طلبك! هنكلمك قريب.' : 'We got your request! We’ll call you soon.';
           rec.add(`S-FORM-SUCCESS-${locale}`, 'PUBLIC', `${locale}: the note opens on demand; a valid request shows «${thanks}» with a WhatsApp button carrying the request number; focus moves to the message`, note.expanded === 'true' && note.focus === 'message' && done.heading === thanks && done.focused && /^BK-\d{4}-[A-Z2-9]{6}$/.test(done.ref) && done.wa.startsWith('https://wa.me/') && decodeURIComponent(done.wa).includes(done.ref), { note, done });
+          // Fix B (owner 2026-11-15): a number that already sent 3 requests today gets a plain message and a WhatsApp way out
+          const lim = await browser.newPage(width, 900);
+          await lim.setHeaders({ 'x-forwarded-for': `10.250.3.${locale === 'ar' ? 1 : 2}` });
+          await lim.goto(`/${locale}/contact?package=premium`);
+          await lim.waitHydrated('[data-testid="booking-form-contact"] input[name="name"]').catch(() => null);
+          await lim.fill('[data-testid="booking-form-contact"] input[name="name"]', locale === 'ar' ? 'عميل تجريبي' : 'Synthetic Visitor');
+          await lim.fill('[data-testid="booking-form-contact"] input[name="phone"]', LIMITED_PHONE);
+          await lim.click('[data-testid="booking-form-contact"] input[name="consent"]');
+          await sleep(3300);
+          await lim.click('[data-testid="booking-submit"]');
+          await lim.waitFor(`!!document.querySelector('[data-testid="booking-limited-whatsapp"]')`, 10000).catch(() => null);
+          const limited = await lim.eval<any>(`(() => { const f = document.querySelector('[data-testid="booking-form-contact"]'); const a = document.querySelector('[data-testid="booking-limited-whatsapp"]'); const text = (f?.closest('section,div')?.textContent ?? document.body.textContent ?? ''); return { wa: a?.getAttribute('href') ?? '', label: a?.textContent ?? '', text: text.slice(0, 4000), thanks: !!document.querySelector('[data-testid="booking-thanks"]') }; })()`);
+          const lv = await axe(lim);
+          await lim.screenshot(`${locale}-390-contact-form-phone-limited.png`);
+          const limitedCopy = locale === 'ar' ? 'اتبعت طلبات كتير بالرقم ده النهارده. ابعتلنا على واتساب دلوقتي' : 'Several requests were already sent with this number today. Message us on WhatsApp now';
+          rec.add(`S-FORM-PHONE-LIMITED-${locale}`, 'PUBLIC', `${locale}: a number over its daily limit sees «${limitedCopy}» and a WhatsApp button to the configured number; no raw code; axe 0`,
+            limited.text.includes(limitedCopy) && limited.wa.startsWith('https://wa.me/') && !limited.thanks && !/PHONE_LIMITED|RATE_LIMITED|\b429\b/.test(limited.text) && lv.length === 0, { wa: limited.wa.slice(0, 40), label: limited.label, thanks: limited.thanks, axe: lv });
+          await lim.close();
         }
         await contact.close();
         const sim = await browser.newPage(width, 900);

@@ -10,6 +10,7 @@ import { ProductDraftsView as ProductDraftsView_4b5ed9de17a411a0756c39d8be000287
 import { AccountSecurityView as AccountSecurityView_3cb9f6abf7e0ca5b8b9ba5fd88383603 } from '../../../components/admin/AccountSecurityView'
 import { SalesView as SalesView_07d97a633555f085224e700a7e7eead5 } from '../../../components/admin/SalesView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
+import { VercelBlobClientUploadHandler as VercelBlobClientUploadHandler_16c82c5e25f430251a3e3ba57219ff4e } from '@payloadcms/storage-vercel-blob/client'
 
 /** @type import('payload').ImportMap */
 export const importMap = {
@@ -24,5 +25,6 @@ export const importMap = {
   "/components/admin/ProductDraftsView#ProductDraftsView": ProductDraftsView_4b5ed9de17a411a0756c39d8be000287,
   "/components/admin/AccountSecurityView#AccountSecurityView": AccountSecurityView_3cb9f6abf7e0ca5b8b9ba5fd88383603,
   "/components/admin/SalesView#SalesView": SalesView_07d97a633555f085224e700a7e7eead5,
-  "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
+  "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1,
+  "@payloadcms/storage-vercel-blob/client#VercelBlobClientUploadHandler": VercelBlobClientUploadHandler_16c82c5e25f430251a3e3ba57219ff4e
 }

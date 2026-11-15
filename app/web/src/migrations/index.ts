@@ -5,6 +5,7 @@ import * as migration_20261014_230507_north_star_setting from './20261014_230507
 import * as migration_20261015_000822_crm_lookup_indexes from './20261015_000822_crm_lookup_indexes';
 import * as migration_20261016_111606_review_notes from './20261016_111606_review_notes';
 import * as migration_20261104_135512_final_release_content from './20261104_135512_final_release_content';
+import * as migration_20261115_114957_media_blob_storage from './20261115_114957_media_blob_storage';
 
 export const migrations = [
   {
@@ -40,6 +41,11 @@ export const migrations = [
   {
     up: migration_20261104_135512_final_release_content.up,
     down: migration_20261104_135512_final_release_content.down,
-    name: '20261104_135512_final_release_content'
+    name: '20261104_135512_final_release_content',
+  },
+  {
+    up: migration_20261115_114957_media_blob_storage.up,
+    down: migration_20261115_114957_media_blob_storage.down,
+    name: '20261115_114957_media_blob_storage'
   },
 ];

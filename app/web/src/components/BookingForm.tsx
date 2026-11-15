@@ -2,7 +2,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import type { Locale } from '@/lib/i18n.ts';
 import { Bidi } from './bidi.tsx';
-import { bookingFollowUpMessage, EXTERNAL_LINK, whatsappHref } from '@/lib/contact.ts';
+import { bookingFollowUpMessage, bookVisitMessage, EXTERNAL_LINK, whatsappHref } from '@/lib/contact.ts';
 import { LEAD_LIMITS, validateLead, type LeadErrors } from '@/lib/leads.ts';
 
 type Pkg = { id: string; label: string };
@@ -57,7 +57,7 @@ export function BookingForm(props: {
   const [pkg, setPkg] = useState<string>(props.initialPackage && known.has(props.initialPackage) ? props.initialPackage : '');
   const [noteOpen, setNoteOpen] = useState(false);
   const [errors, setErrors] = useState<LeadErrors>({});
-  const [state, setState] = useState<'idle' | 'sending' | 'done' | 'failed' | 'limited' | 'expired' | 'closed'>('idle');
+  const [state, setState] = useState<'idle' | 'sending' | 'done' | 'failed' | 'limited' | 'phone-limited' | 'expired' | 'closed'>('idle');
   const [ref, setRef] = useState<string | null>(null);
   const refs = { name: useRef<HTMLInputElement>(null), phone: useRef<HTMLInputElement>(null), package: useRef<HTMLInputElement>(null), message: useRef<HTMLTextAreaElement>(null), consent: useRef<HTMLInputElement>(null) };
   const thanks = useRef<HTMLHeadingElement>(null);
@@ -119,7 +119,7 @@ export function BookingForm(props: {
         setState('idle');
         focusFirst(data.fieldErrors ?? {});
       } else if (res.status === 422) setState('expired');
-      else if (res.status === 429) setState('limited');
+      else if (res.status === 429) setState(data.code === 'PHONE_LIMITED' ? 'phone-limited' : 'limited');
       else if (res.status === 404) setState('closed');
       else setState('failed');
     } catch {
@@ -139,7 +139,8 @@ export function BookingForm(props: {
 
   const status =
     state === 'failed' ? tx(locale, 'حصلت مشكلة في الإرسال. جرّب تاني؛ الطلب مش هيتكرر.', 'Sending failed. Please try again; the request will not be duplicated.')
-    : state === 'limited' ? tx(locale, 'طلبات كتير من نفس الجهاز. جرّب بعد شوية أو كلّمنا على واتساب.', 'Too many requests from this device. Try again later or message us on WhatsApp.')
+    : state === 'limited' ? tx(locale, 'طلبات كتير من نفس الشبكة. ابعتلنا على واتساب دلوقتي', 'Too many requests from this network. Message us on WhatsApp now')
+    : state === 'phone-limited' ? tx(locale, 'اتبعت طلبات كتير بالرقم ده النهارده. ابعتلنا على واتساب دلوقتي', 'Several requests were already sent with this number today. Message us on WhatsApp now')
     : state === 'expired' ? tx(locale, 'الصفحة فاتت عليها مدة طويلة. حدّث الصفحة وابعت تاني.', 'This page has been open too long. Reload it and send again.')
     : state === 'closed' ? tx(locale, 'الحجز من الموقع متوقف حاليًا. كلّمنا أو ابعتلنا على واتساب.', 'Online booking is paused right now. Call us or message us on WhatsApp.')
     : '';
@@ -202,6 +203,9 @@ export function BookingForm(props: {
         {errorLine('consent')}
       </div>
       <p className="booking-status" role="status" aria-live="polite">{status ? <Bidi text={status} locale={locale} /> : null}</p>
+      {state === 'limited' || state === 'phone-limited' ? (
+        <a className="btn booking-wa" href={whatsappHref(bookVisitMessage(locale, (pkg || null) as Parameters<typeof bookVisitMessage>[1]), contact.whatsappE164)} {...EXTERNAL_LINK} data-testid="booking-limited-whatsapp">{tx(locale, 'ابعتلنا على واتساب', 'Message us on WhatsApp')}</a>
+      ) : null}
       <button type="submit" className="btn booking-submit" disabled={state === 'sending'} aria-busy={state === 'sending'} data-testid="booking-submit">
         {state === 'sending' ? tx(locale, 'بيتبعت…', 'Sending…') : tx(locale, 'احجز زيارة', 'Book a visit')}
       </button>

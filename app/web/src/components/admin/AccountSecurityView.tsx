@@ -6,6 +6,7 @@ import { accountSecurityProjection } from '@/lib/security-display.ts';
 import { StaffShell, staffOf } from './shell.tsx';
 import s from './staff.module.css';
 import { InviteStaff } from './InviteStaff.tsx';
+import { ResetStaffMfa } from './ResetStaffMfa.tsx';
 
 /** Read-only security posture. Passwords, TOTP material, recovery codes and session tokens are never selected. */
 export async function AccountSecurityView(props: AdminViewServerProps) {
@@ -79,7 +80,11 @@ export async function AccountSecurityView(props: AdminViewServerProps) {
             <a className={s.btn} href="/admin/collections/users">Open OWNER user management</a>
           </div>
         </section>
-      ) : (
+      ) : null}
+
+      {isOwner ? <ResetStaffMfa users={directory.filter((user) => user.id !== String(currentRaw.id ?? ''))} /> : null}
+
+      {isOwner ? null : (
         <section className={`${s.banner} ${s.denied}`} data-testid="security-directory-denied" role="status">
           <strong>OWNER-only directory / دليل خاص بالمالك</strong>
           <p>Your own security state is visible above. Staff directory and role-management data were not exposed.</p>

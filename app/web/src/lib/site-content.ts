@@ -19,12 +19,14 @@ import { PRIVACY_DRAFT } from './privacy-draft.ts';
 import { SITE_CONTENT_TAG } from './content-workflow.ts';
 
 export type Pair = { ar: string; en: string };
+/** An approved admin-uploaded image (owner 2026-11-15): its URL, bilingual alt text and intrinsic size. */
+export type MediaImage = { url: string; alt: Pair; width: number; height: number };
 export type ServiceKey = 'iot' | 'soft' | 'custom';
 export const SERVICE_KEYS: readonly ServiceKey[] = ['iot', 'soft', 'custom'];
 
 export type SiteContent = {
   packages: SmartHomePackage[];
-  controllers: Record<ProductModel, { name: Pair; channels: number; note: Pair | null; inPackages: boolean }>;
+  controllers: Record<ProductModel, { name: Pair; channels: number; note: Pair | null; inPackages: boolean; photo?: MediaImage | null }>;
   contact: { phoneE164: string; whatsappE164: string; email: string | null; address: Pair; hours: Pair | null; socials: Array<{ network: string; url: string }> };
   announcement: { text: Pair; link: string | null } | null;
   routines: Array<{ id: RoutineId; title: Pair; trigger: Pair; actions: { ar: string[]; en: string[] }; premium: boolean }>;
@@ -97,6 +99,28 @@ export function packagesFrom(docs: any[]): SmartHomePackage[] | null {
   return out.sort((a, b) => a.order - b.order).map(({ order: _order, ...p }) => p);
 }
 
+const BLOB_MEDIA_URL = /^https:\/\/[a-z\d]+\.public\.blob\.vercel-storage\.com\/[^\s"'<>\\]+$/;
+const LOCAL_MEDIA_URL = /^(?:https?:\/\/[^/\s"'<>\\]+)?(\/api\/media\/file\/[^\s"'<>\\?#]+)$/;
+
+/** This project's Blob URL as is; the local file route (development, tests) reduced to a same-origin path. */
+function publicMediaUrl(v: unknown): string | null {
+  if (typeof v !== 'string' || v.length > 1000) return null;
+  if (BLOB_MEDIA_URL.test(v)) return v;
+  return LOCAL_MEDIA_URL.exec(v)?.[1] ?? null;
+}
+
+/**
+ * A populated media document that the public may see: APPROVED, served from this project's Blob store (or the local
+ * file route in development), with alt text in both languages. Anything else shows the built-in product photo.
+ */
+export function mediaImageFrom(m: any): MediaImage | null {
+  if (!m || typeof m !== 'object' || m.status !== 'APPROVED') return null;
+  const url = publicMediaUrl(m.url);
+  const ar = s(m.alt?.ar, 300), en = s(m.alt?.en, 300);
+  const width = int(m.width, 16, 10_000) ?? 1254, height = int(m.height, 16, 10_000) ?? 1254;
+  return url && ar && en ? { url, alt: { ar, en }, width, height } : null;
+}
+
 export function controllersFrom(docs: any[]): SiteContent['controllers'] | null {
   const base = { ...DEFAULT_SITE_CONTENT.controllers };
   let any = false;
@@ -106,7 +130,7 @@ export function controllersFrom(docs: any[]): SiteContent['controllers'] | null 
     const name = pairOf(d, 'name', 60);
     const channels = int(d?.channels, 1, 64);
     if (!name || !channels) return null;
-    base[model] = { name, channels, note: pairOf(d, 'note', 400), inPackages: !!d.inPackages };
+    base[model] = { name, channels, note: pairOf(d, 'note', 400), inPackages: !!d.inPackages, photo: mediaImageFrom(d.photo) };
     any = true;
   }
   return any ? base : null;
@@ -191,12 +215,15 @@ const READ_TIMEOUT_MS = 6000;
 async function readPublished(): Promise<SiteContent> {
   const [{ getPayload }, { default: config }] = await Promise.all([import('payload'), import('@payload-config')]);
   const payload = await getPayload({ config });
-  const list = (collection: string) =>
-    payload.find({ collection: collection as any, draft: false, overrideAccess: false, depth: 0, limit: 200, pagination: false } as any).then((r: any) => r.docs as any[]);
+  const list = (collection: string, withMedia = false) =>
+    payload
+      // Controllers populate their photo (read access applies: only APPROVED media) with both alt languages.
+      .find({ collection: collection as any, draft: false, overrideAccess: false, depth: withMedia ? 1 : 0, ...(withMedia ? { locale: 'all' } : {}), limit: 200, pagination: false } as any)
+      .then((r: any) => r.docs as any[]);
   const global = (slug: string, overrideAccess = false) => payload.findGlobal({ slug: slug as any, draft: false, overrideAccess, depth: 0 } as any).catch(() => null);
   const [pk, ct, rt, fq, contact, ann, rules, privacy, intake] = await Promise.all([
     list('catalog-packages'),
-    list('catalog-controllers'),
+    list('catalog-controllers', true),
     list('sim-routines'),
     list('service-faqs'),
     global('contact-settings'),
