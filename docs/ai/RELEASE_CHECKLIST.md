@@ -92,3 +92,21 @@ It needs the repository variables `OTONOM_PUBLIC_URL` and `OTONOM_ADMIN_URL`, wh
 - **Promotion:** `vercel promote` answered 409 ("already the current production deployment") for the staged deployment, so the two production domains were assigned with `vercel alias set`. Vercel's production pointer and the cron registration did not move with them. The next release uses `vercel promote`, or a normal production deployment, so the daily cron is registered.
 - **Backup (G15):** `pg_dump` 17 cannot dump the Neon 18 server. The backup is a Neon branch taken before any change; a fingerprint (row counts and column definitions) is recorded, and a restore-drill branch made from the backup must show the same fingerprint.
 - **Secret scan:** the previous gitleaks action scanned only the first 30 commits of a pull request. The Quality Gate now runs gitleaks over the full pull-request and push ranges. A historical finding is ignored only by its exact fingerprint in `.gitleaksignore`.
+
+## 7. Database pool and document locking (2026-11-15 incident)
+
+- **What happened:** on a staged deployment every admin save (REST `PATCH`) hung for about 5 minutes. All authenticated requests on that instance hung with it.
+- **Why:**
+  - Payload's Postgres adapter keeps one CMS pool connection checked out for its whole life.
+  - Payload 3.90.2 reads the document lock *outside* the save's transaction.
+  - With `OTONOM_PG_POOL_MAX=2` only one connection was left, and the lock read waited for it forever.
+  - The same code runs in Production since the first release; it was not caught locally because the local pool has 10 connections.
+- **Fix:**
+  - The CMS pool size is `max(OTONOM_PG_POOL_MAX, 4) + 1` (`cmsPoolMax`).
+  - Every pool fails a connection wait after 10 s instead of waiting forever.
+  - Document locking is off for every collection and global, so a save uses only its own transaction. The admin no longer warns that someone else is editing a document.
+- **Regression:** `run-all` runs `tests/src/pool-production.ts` on a second server with `OTONOM_PG_POOL_MAX=2`. It covers saves, uploads, publishing, concurrent saves and more saves than connections.
+- **Do not drop `cms.payload_locked_documents` / `_rels` yet:**
+  - A new `payload migrate:create` will propose dropping them, because locking is off.
+  - Any rollback target from before this fix still uses them.
+  - Remove that statement from a generated migration until no rollback target needs the tables.

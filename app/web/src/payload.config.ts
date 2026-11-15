@@ -4,6 +4,7 @@ import { buildConfig } from 'payload';
 import { postgresAdapter } from '@payloadcms/db-postgres';
 import { resendAdapter } from '@payloadcms/email-resend';
 import { vercelBlobStorage } from '@payloadcms/storage-vercel-blob';
+import { cmsPoolMax, POOL_CONNECT_TIMEOUT_MS } from '@otonom/domain';
 import { collections } from './collections/index.ts';
 import { Settings } from './globals/Settings.ts';
 import { siteContentGlobals } from './collections/SiteContent.ts';
@@ -46,8 +47,12 @@ export default buildConfig({
     // never call gravatar.com: it would send a hash of every staff e-mail to a third party (privacy)
     avatar: 'default',
   },
-  collections,
-  globals: [Settings, ...siteContentGlobals],
+  // Document locking is off everywhere (2026-11-15 incident): Payload 3.90.2 reads the lock OUTSIDE the save's
+  // transaction (checkDocumentLockStatus calls payload.db.find without req), so every save needed a second pool
+  // connection and concurrent saves could deadlock the pool. Without locking a save uses only its own transaction.
+  // Trade-off: the admin no longer warns that someone else is editing the same document.
+  collections: collections.map((collection) => ({ ...collection, lockDocuments: false as const })),
+  globals: [Settings, ...siteContentGlobals].map((global) => ({ ...global, lockDocuments: false as const })),
   endpoints: [...endpoints, ...finalReleaseEndpoints],
   // expected business-rule refusals are not server faults (see lib/errors.ts BusinessRuleError)
   // custom error name (not in Payload's ErrorName union) — matched at runtime by err.name in logError
@@ -61,7 +66,9 @@ export default buildConfig({
     fallback: false,
   },
   db: postgresAdapter({
-    pool: { connectionString: cmsConnString(), max: Number(process.env.OTONOM_PG_POOL_MAX ?? (process.env.VERCEL === '1' ? 2 : 10)) },
+    // Payload keeps one connection for itself and an admin save needs two more at once (lib: cmsPoolMax); waiting for a
+    // connection fails after 10 s instead of hanging (2026-11-15 incident: every admin save deadlocked with 2).
+    pool: { connectionString: cmsConnString(), max: cmsPoolMax(), connectionTimeoutMillis: POOL_CONNECT_TIMEOUT_MS },
     schemaName: 'cms',
     push: false,
     migrationDir: path.resolve(dirname, 'migrations'),
