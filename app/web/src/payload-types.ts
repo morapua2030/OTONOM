@@ -570,6 +570,8 @@ export interface Media {
    */
   privacyScreened?: boolean | null;
   approvedBy?: string | null;
+  prefix?: string | null;
+  _objectKey?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -1136,6 +1138,8 @@ export interface MediaSelect<T extends boolean = true> {
   consent?: T;
   privacyScreened?: T;
   approvedBy?: T;
+  prefix?: T;
+  _objectKey?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;

@@ -23,6 +23,7 @@ also authorizes merging PR #16 into `main`. Deployment identities, URLs, values 
 | 1 | Domain `011_staff_email_otp.sql` | if not yet applied | creates the owner e-mail OTP tables | restore from the backup |
 | 2 | Domain `012_site_metrics_invites_jobs.sql` | new | `site_metrics`, `staff_invites`, `job_runs` (append-only grant) | restore from the backup (tables are new and hold no business data) |
 | 3 | Payload `20261104_135512_final_release_content` | new | 26 tables for content and leads, 5 globals, the `SALES` role value, `users.can_publish_content` | `payload migrate:down` (verified on a clone: up → down → up). It fails while any user still has the SALES role: reassign them first |
+| 4 | Payload `20261115_114957_media_blob_storage` (2026-11-15 fixes) | new | `prefix` and `_objectkey` on `media` and `_media_v` (additive, nullable: the previous deployment keeps working) | `payload migrate:down` |
 
 Then run the idempotent seed: `pnpm --filter @otonom/web seed:content`. It publishes the current values, never overwrites admin edits, and leaves the privacy text unapproved and intake off.
 
@@ -43,7 +44,8 @@ Never copy development users, test data or MFA material into Production.
 ## 3. Configuration checks (names only; the agent never reads values)
 
 - `OTONOM_PUBLIC_MARKETING_ONLY=1`; `OTONOM_SITE_URL` = canonical origin; `OTONOM_ADMIN_URL` = admin origin; `OTONOM_CSRF_ORIGINS` contains both.
-- `OTONOM_DISABLE_UPLOADS=1`.
+- Uploads (2026-11-15, `MEDIA_STORAGE.md`): a Blob store connected to Production (`BLOB_READ_WRITE_TOKEN`) and `OTONOM_DISABLE_UPLOADS=0`. Without a Blob store, media uploads stay refused on Vercel; private files are always refused there.
+- Password-reset e-mail (`PASSWORD_RESET_EMAIL-ar.md`): on only with `OTONOM_EMAIL_PROVIDER=resend`, `RESEND_API_KEY`, `OTONOM_EMAIL_FROM` and `OTONOM_EMAIL_FROM_VERIFIED=1`. Until then the operator resets accounts (`OPERATOR_RESET.md`).
 - Unset on Production: `OTONOM_FORCE_PREVIEW`, `OTONOM_TEST_PAGES`, `OTONOM_EMAIL_TEST_MODE`, `OTONOM_ENABLE_SYNTHETIC_*`.
 - E-mail: `OTONOM_EMAIL_PROVIDER=resend`, `RESEND_API_KEY`, `OTONOM_EMAIL_FROM`, `OTONOM_LEADS_NOTIFY_TO`.
 - Daily job: `CRON_SECRET` (at least 32 characters).

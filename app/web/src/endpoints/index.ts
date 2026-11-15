@@ -60,7 +60,9 @@ import {
   STAFF_ROLES,
 } from '@otonom/domain';
 import { body, guard, jsonRes, mfaOk, mfaSessionVerified, mutationOriginGuard } from '../lib/access.ts';
-import { commercialOperationsEnabled, domainDb, internalCommerceLabEnabled, publicRfqEnabled } from '../lib/server.ts';
+import { commercialOperationsEnabled, domainDb, internalCommerceLabEnabled, payloadSecret, publicRfqEnabled } from '../lib/server.ts';
+import { keepOnlySession, openReenrollToken, REENROLL_RECOVERY_WINDOW_SECONDS, reenrollToken } from '../lib/mfa-reenroll.ts';
+import { mfaResetFields } from '../lib/operator-reset.ts';
 import { validateRfq } from '../lib/rfq-validate.ts';
 import { clientIp, rateLimit } from '../lib/ratelimit.ts';
 import { chunksOf, collectPages } from '../lib/pagination.ts';
@@ -330,6 +332,24 @@ async function completeStrongFactor(req: PayloadRequest, user: any, factor: Excl
   }
   await recordStaffFactor(req, user, factor);
   return authorizeStaffSession(req, user);
+}
+
+/** Re-enrollment needs this session to be MFA-verified with a recovery code used here in the last few minutes. */
+async function reenrollGate(req: PayloadRequest, u: any): Promise<Response | null> {
+  if (!u || !u._sid) return jsonRes(401, { code: 'UNAUTHENTICATED' });
+  if (productionOwnerPasswordOnly(u)) return jsonRes(404, { code: 'MFA_NOT_AVAILABLE' });
+  if (!(STAFF_ROLES as readonly string[]).includes(String(u.role))) return jsonRes(403, { code: 'FORBIDDEN' });
+  if (!mfaSessionVerified(u)) return jsonRes(401, { code: 'MFA_REQUIRED' });
+  const fresh = await domainDb().query(
+    `SELECT 1 FROM domain.staff_auth_factors
+      WHERE user_id=$1 AND session_digest=$2 AND factor='RECOVERY' AND expires_at > now()
+        AND verified_at > now() - ($3 * interval '1 second')`,
+    [String(u.id), emailOtpSessionDigest(String(u._sid)), REENROLL_RECOVERY_WINDOW_SECONDS],
+  );
+  if (!fresh.rowCount) return jsonRes(403, { code: 'RECOVERY_SESSION_REQUIRED' });
+  const full = await loadUserSecrets(req, u.id);
+  if (!full?.mfaEnabled || !full?.totpSecret) return jsonRes(409, { code: 'MFA_NOT_ENROLLED' });
+  return null;
 }
 
 const B32 = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -647,8 +667,108 @@ export const endpoints: Endpoint[] = [
         `INSERT INTO domain.audit_events(actor_type, actor_id, action, entity_type, entity_id, correlation_id) VALUES ('user',$1,'mfa.recovery_code_used','user',$1,$2)`,
         [String(u.id), cid(req)],
       );
+      // Remember that this session was opened with password + recovery code: it may enroll a new authenticator.
+      await recordStaffFactor(req, u, 'RECOVERY');
       const mfaVerified = await completeStrongFactor(req, u, 'RECOVERY', sids);
-      return jsonRes(200, { mfaVerified });
+      return jsonRes(200, { mfaVerified, reenrollAvailable: mfaVerified });
+    },
+  },
+  // Lost phone (owner 2026-11-15): a session opened with password + a recovery code replaces the authenticator.
+  {
+    path: '/mfa/reenroll',
+    method: 'post',
+    handler: async (req) => {
+      const csrf = mutationOriginGuard(req);
+      if (csrf) return csrf;
+      const u = req.user as any;
+      const gate = await reenrollGate(req, u);
+      if (gate) return gate;
+      const rl = await rateLimit(`mfa-reenroll:${u.id}`, 5, 10 * 60_000);
+      if (!rl.allowed) return jsonRes(429, { code: 'RATE_LIMITED' });
+      const secret = generateSecret();
+      await domainDb().query(
+        `INSERT INTO domain.audit_events(actor_type, actor_id, action, entity_type, entity_id, correlation_id) VALUES ('user',$1,'mfa.reenrollment_started','user',$1,$2)`,
+        [String(u.id), cid(req)],
+      );
+      return Response.json(
+        { secret, uri: generateURI({ issuer: 'OTONOM', label: String(u.email), secret }), enrollToken: reenrollToken(payloadSecret(), String(u.id), String(u._sid), secret) },
+        { headers: { 'cache-control': 'no-store' } },
+      );
+    },
+  },
+  {
+    path: '/mfa/reenroll/verify',
+    method: 'post',
+    handler: async (req) => {
+      const csrf = mutationOriginGuard(req);
+      if (csrf) return csrf;
+      const u = req.user as any;
+      const gate = await reenrollGate(req, u);
+      if (gate) return gate;
+      const rl = await rateLimit(`mfa-reenroll-verify:${u.id}`, 10, 10 * 60_000);
+      if (!rl.allowed) return jsonRes(429, { code: 'RATE_LIMITED' });
+      const b = await body(req);
+      const secret = openReenrollToken(payloadSecret(), String(u.id), String(u._sid), b.enrollToken);
+      if (!secret) return jsonRes(409, { code: 'MFA_REENROLLMENT_EXPIRED' });
+      const res = await totpVerify({ secret, token: String(b.code ?? ''), epochTolerance: 30 }).catch(() => null);
+      const step = res && res.valid && 'timeStep' in res ? Number(res.timeStep) : undefined;
+      if (step === undefined) return jsonRes(401, { code: 'MFA_INVALID' });
+      const full = await loadUserSecrets(req, u.id);
+      const kept = keepOnlySession(full?.sessions, String(u._sid));
+      const revoked = (Array.isArray(full?.sessions) ? full.sessions.length : 0) - kept.length;
+      const recoveryCodes = Array.from({ length: 8 }, () => randomBytes(9).toString('base64url'));
+      await req.payload.update({
+        collection: 'users',
+        id: u.id,
+        data: {
+          totpSecret: secret,
+          mfaEnabled: true,
+          lastTotpStep: step,
+          recoveryCodes: recoveryCodes.map((code) => createHash('sha256').update(code).digest('hex')),
+          mfaVerifiedSids: [u._sid],
+          sessions: kept,
+        } as any,
+        overrideAccess: true,
+        req,
+      });
+      // Factors of other sessions die with them; this session's recovery permission is used up.
+      await domainDb().query(
+        `UPDATE domain.staff_auth_factors SET expires_at=now()
+          WHERE user_id=$1 AND expires_at > now() AND (session_digest<>$2 OR factor='RECOVERY')`,
+        [String(u.id), emailOtpSessionDigest(String(u._sid))],
+      );
+      await domainDb().query(
+        `INSERT INTO domain.audit_events(actor_type, actor_id, action, entity_type, entity_id, after, correlation_id) VALUES ('user',$1,'mfa.reenrolled_after_recovery','user',$1,$2,$3)`,
+        [String(u.id), JSON.stringify({ otherSessionsRevoked: Math.max(0, revoked), recoveryCodesReplaced: true }), cid(req)],
+      );
+      return Response.json({ mfaVerified: true, recoveryCodes }, { headers: { 'cache-control': 'no-store' } });
+    },
+  },
+  // OWNER removes another staff member's authenticator: all their sessions end and their next sign-in must enroll.
+  {
+    path: '/staff/users/:id/mfa-reset',
+    method: 'post',
+    handler: async (req) => {
+      const g = guard(req, 'staff.mfa_reset');
+      if (g) return g;
+      const actorId = String((req.user as any).id);
+      const targetId = param(req, 'id');
+      if (!targetId || targetId === actorId) return jsonRes(422, { code: 'SELF_RESET_NOT_ALLOWED' });
+      const rl = await rateLimit(`staff-mfa-reset:${actorId}`, 10, 60 * 60_000);
+      if (!rl.allowed) return jsonRes(429, { code: 'RATE_LIMITED' });
+      const b = await body(req);
+      const target = await loadUserSecrets(req, targetId).catch(() => null);
+      if (!target || !(STAFF_ROLES as readonly string[]).includes(String(target.role))) return jsonRes(404, { code: 'NOT_FOUND' });
+      const confirm = typeof b.confirmEmail === 'string' ? b.confirmEmail.trim().toLowerCase() : '';
+      if (confirm !== String(target.email).toLowerCase()) return jsonRes(422, { code: 'VALIDATION_FAILED', fieldErrors: { confirmEmail: 'MISMATCH' } });
+      const sessionsRevoked = Array.isArray(target.sessions) ? target.sessions.length : 0;
+      await req.payload.update({ collection: 'users', id: target.id, data: { ...mfaResetFields(), sessions: [] } as any, overrideAccess: true, req });
+      await domainDb().query(`UPDATE domain.staff_auth_factors SET expires_at=now() WHERE user_id=$1 AND expires_at > now()`, [String(target.id)]);
+      await domainDb().query(
+        `INSERT INTO domain.audit_events(actor_type, actor_id, action, entity_type, entity_id, after, correlation_id) VALUES ('user',$1,'user.mfa_reset_by_owner','user',$2,$3,$4)`,
+        [actorId, String(target.id), JSON.stringify({ role: target.role, sessionsRevoked, enrollmentRequiredNext: true }), cid(req)],
+      );
+      return jsonRes(200, { ok: true, sessionsRevoked, enrollmentRequiredNext: true });
     },
   },
   // ---------------- Public intake: RFQ / consultation / partner inquiry (P-A, no files) ----------------

@@ -4,11 +4,15 @@ import { can } from '@otonom/domain';
 import { exposeDomainErrorCodes } from '../lib/errors.ts';
 import { auditRow } from '../lib/audit.ts';
 import { mfaOk, nobody, perm, staffOnly } from '../lib/access.ts';
-import { MEDIA_UPLOAD_DIR, uploadsDisabled } from '../lib/server.ts';
+import { MEDIA_UPLOAD_DIR } from '../lib/server.ts';
+import { MEDIA_MIME_TYPES, mediaUploadProblem, mediaUploadsEnabled } from '../lib/media-storage.ts';
+import { revalidateSiteContent } from '../lib/content-workflow.ts';
 
 /**
  * Public-site media (WAVE 4). Rules:
- * - images only (PNG/JPEG/WebP, ≤ 5 MB); SVG excluded (script risk); VIDEO is BLOCKED (hosting + consent decisions pending)
+ * - images only (PNG/JPEG/WebP checked by their first bytes, ≤ 4 MB: Vercel's request limit); SVG excluded (script risk);
+ *   VIDEO is BLOCKED (hosting + consent decisions pending)
+ * - stored in Vercel Blob on Vercel (owner 2026-11-15, payload.config.ts), on local disk in development and tests
  * - bilingual alt text required before approval
  * - photos of a client's property need a VALID signed consent covering PHOTOS and a privacy screening
  *   (keypads/locks, addresses, faces/children, Wi-Fi names, serials — planning doc 14 §5)
@@ -22,7 +26,7 @@ export const Media: CollectionConfig = {
   versions: { maxPerDoc: 50 },
   upload: {
     staticDir: MEDIA_UPLOAD_DIR,
-    mimeTypes: ['image/png', 'image/jpeg', 'image/webp'],
+    mimeTypes: [...MEDIA_MIME_TYPES],
     filesRequiredOnCreate: true,
     modifyResponseHeaders: ({ headers }) => {
       headers.set('x-content-type-options', 'nosniff');
@@ -31,7 +35,7 @@ export const Media: CollectionConfig = {
   },
   access: {
     read: ({ req }) => (req.user && mfaOk(req.user as any) && staffOnly({ req } as any) ? true : { status: { equals: PUBLIC_STATUS } }),
-    create: ({ req }) => !uploadsDisabled() && !!req.user && mfaOk(req.user as any) && can((req.user as any).role, 'content.edit'),
+    create: ({ req }) => mediaUploadsEnabled() && !!req.user && mfaOk(req.user as any) && can((req.user as any).role, 'content.edit'),
     update: ({ req }) => !!req.user && mfaOk(req.user as any) && (can((req.user as any).role, 'content.edit') || can((req.user as any).role, 'content.publish')),
     delete: nobody,
   },
@@ -47,7 +51,10 @@ export const Media: CollectionConfig = {
     afterError: [exposeDomainErrorCodes],
     beforeOperation: [
       async ({ req, operation }) => {
-        if (uploadsDisabled() && (operation === 'create' || req.file)) throw new BusinessRuleError('UPLOADS_DISABLED_IN_PREVIEW', 503);
+        if (!mediaUploadsEnabled() && (operation === 'create' || req.file)) throw new BusinessRuleError('UPLOADS_DISABLED_IN_PREVIEW', 503);
+        const problem = req.file ? mediaUploadProblem(req.file as any) : null;
+        if (problem === 'TOO_LARGE') throw new BusinessRuleError('UPLOAD_REJECTED:TOO_LARGE', 413);
+        if (problem) throw new BusinessRuleError('UPLOAD_REJECTED:TYPE', 415);
       },
     ],
     beforeChange: [
@@ -89,6 +96,8 @@ export const Media: CollectionConfig = {
     afterChange: [
       async ({ doc, previousDoc, req, operation }) => {
         if (operation === 'create' || previousDoc?.status !== doc.status) await auditRow(req, `media.${String(doc.status).toLowerCase()}`, 'media', doc.id, previousDoc ? { status: previousDoc.status } : undefined, { status: doc.status });
+        // Public pages show approved images only: approving or withdrawing one refreshes them on the next request.
+        if (operation === 'update' && (previousDoc?.status === 'APPROVED' || doc.status === 'APPROVED')) revalidateSiteContent();
         return doc;
       },
     ],
