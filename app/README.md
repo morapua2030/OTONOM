@@ -77,3 +77,11 @@ Remote migrations are never automatic during a Vercel build or runtime start. A 
 ## Production OWNER authentication (DR-063)
 
 One owner-approved exception permits password-only authorization for the exact immutable Production `team@otonomiot.com` OWNER record. It is evaluated server-side after genuine Payload login and requires exact Vercel Production, enable flag, canonical email, OWNER role and configured immutable subject ID; Preview, local, a recreated user or any mismatch still requires normal MFA. Actual MFA status is reported separately. Login is protected by shared account/IP throttles, Payload lockout, the 14–128 character password policy, secure cookies, origin checks, session revocation and append-only audit. The one-time provisioning script reads the owner-entered password only from stdin and must be run against the explicitly guarded Production Neon target.
+
+## Dependency audit exceptions
+
+CI runs `pnpm audit --prod` and fails on any advisory. An advisory may be ignored (`package.json` → `pnpm.auditConfig.ignoreGhsas`) only when no fixed version is published **and** the vulnerable code cannot receive request input. Remove the entry as soon as a fixed version exists.
+
+| Advisory | Package and path | Why it is ignored | Re-check |
+| --- | --- | --- | --- |
+| GHSA-fc5q-39xc-vjpf (ReDoS through repeated extglobs) | `picomatch` ≤ 4.0.7, via `sass` → `@parcel/watcher` and `@payloadcms/plugin-cloud-storage` → `find-node-modules` | No fixed version is published (2026-11-18). `@parcel/watcher` is only used by `sass` in watch mode, and `plugin-cloud-storage` declares `find-node-modules` but never imports it. No glob pattern comes from a request. | Every dependency update; remove when `pnpm audit` lists a patched version |
