@@ -2,16 +2,33 @@
 
 | Field | Value |
 |---|---|
-| Checked at (Cairo) | 2026-11-05 (final release live) |
+| Checked at (Cairo) | 2026-11-18 (Release R1 live) |
 | Repository | `morapua2030/OTONOM` (public) |
-| Release SHA | `ce970c05` on `main`: PR #16 squash-merged at head `1ecdd0ae` (same tree), then PR #17 (an obviously fake test-fixture key and one exact gitleaks ignore). The application code is identical to the verified `1ecdd0ae` |
-| `origin/main` | `ce970c05` at release; later docs-only commits do not change the deployed code |
-| PR #16 | MERGED 2026-11-05 (squash; GitHub cannot rebase-merge 109 commits). PR #17 merged (rebase) |
-| Public canonical | `https://otonom-smart-home-web.vercel.app` serves the final release (marketing-only). The admin host `https://otonom-admin.vercel.app` serves the same deployment on the same Production database |
+| Release SHA | `de0e6dde` on `main` (Release R1, 2026-11-18): PRs #20 and #21 (2026-11-15 fixes) plus PRs #22–#26 (audit fixes), all squash-merged. Earlier release: `ce970c05`/`b47c5569` (2026-11-05) |
+| `origin/main` | `de0e6dde` at release; later docs-only commits do not change the deployed code |
+| PRs | #16/#17 merged 2026-11-05; #20/#21 merged 2026-11-15; #22–#26 squash-merged 2026-11-18, each with its required checks green on the PR and on `main` |
+| Public canonical | `https://otonom-smart-home-web.vercel.app` serves Release R1 (marketing-only). The admin host `https://otonom-admin.vercel.app` serves the same deployment on the same Production database. The daily cron is registered on this deployment |
 | Protected Preview | Not used for the final release (owner decision 2026-11-04); older Previews are preserved |
 | Brand Guardian | `validate_brand.py --project app/web` PASS on the D8-A candidate (2026-11-03, 0 legacy references) |
-| Release gates | 2026-11-05: `PROMOTION_ALLOWED=true` (G01–G15) on the staged deployment, then `RELEASE_HEALTHY=true` (G01–G16) after the domains moved. Evidence is private |
-| Latest owner decisions | DR-092..DR-115, recorded 2026-11-03 to 2026-11-05 |
+| Release gates | 2026-11-18 (Release R1): `PROMOTION_ALLOWED=true` (G01–G15) on the staged deployment, then `RELEASE_HEALTHY=true` (G01–G16) after promotion. G10 passes with the note accepted on 2026-11-05 (a request without an `Origin` header gets no session). Evidence is private |
+| Latest owner decisions | DR-092..DR-123, recorded 2026-11-03 to 2026-11-18 |
+
+## Release R1 (2026-11-18, DR-121)
+
+| # | Item | Verified |
+|---|---|---|
+| 1 | Booking limits (DR-116) | Isolated suites and probes; on the staged deployment 3 accepted and the 4th refused; after promotion one TEST booking and the limited-phone WhatsApp fallback on the public form |
+| 2 | Admin save deadlock fix (DR-117) | `pool-production`; 20 parallel saves; a forced database stall fails after 10 s instead of hanging |
+| 3 | Admin media in Vercel Blob (DR-118) | Isolated upload/approve/publish; the owner's real-photo upload on Blob was waived before the release (open check) |
+| 4 | MFA re-enrolment after a recovery code (DR-119) | `fixes-20261115` suite |
+| 5 | Forgot-password link hidden, operator reset (DR-120) | Suites and post-promotion check of `/staff/login` |
+| 6 | Next.js 16.4.5 (PR #22, DR-122) | Version, `pnpm audit --prod`, two clean builds without the build stop |
+| 7 | Domain import cycle removed (PR #23) | `madge` 0 cycles; the guard test fails when the cycle is reintroduced |
+| 8 | Browser profiles git-ignored (PR #24) | `git check-ignore` |
+| 9 | Image metadata stripped (PR #25, DR-123) | JPEG/PNG/WebP fixtures: no GPS/EXIF, orientation kept |
+| 10 | Role read matrix can fail (PR #26) | `surface` and `final-release` pass; a forbidden SALES read makes them fail |
+
+Full regression on the release SHA: 3,325 / 3,325 checks pass. Open after R1: see `NEXT_ACTIONS.md`.
 
 ## Phase status
 

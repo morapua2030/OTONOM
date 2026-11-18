@@ -1,30 +1,22 @@
 # OTONOM — Next actions
 
-The final version (DR-114) is live since 2026-11-05: the marketing-only public site and the admin host serve one Production deployment on the Production database. Gates: `RELEASE_HEALTHY=true` (G01–G16).
+Release R1 (DR-121) is live since 2026-11-18. The marketing-only public site and the admin host serve one Production deployment of `de0e6dde` on the Production database. Gates: `RELEASE_HEALTHY=true` (G01–G16).
 
 ## Next steps
 
-1. **Owner, in the admin (Settings):** approve the privacy text and turn booking requests on. Then one clearly marked test booking is sent and marked as cancelled.
-2. **Owner, in Vercel/Neon:**
-   - rotate the Neon owner-role password (the site uses the `otonom_domain` and `otonom_cms` roles and is not affected);
-   - revoke the old Shareable Links and the automation bypass secret;
-   - remove the old team alias;
-   - delete the restore-drill branch (keep the backup branch).
-3. **Daily job:** register the cron. The next release is promoted with `vercel promote`, or a normal production deployment, so Vercel's production pointer and the cron move with the domains (`RELEASE_CHECKLIST.md` §8).
-4. **Owner:**
-   - change the admin password;
-   - invite the team (one account each);
-   - give the final WhatsApp/contact number;
-   - Resend and DNS (Attia), then e-mail notifications and, if wanted, owner e-mail codes;
-   - later, the company-domain move (`DOMAIN_MOVE.md`).
-5. **Small fix:** the admin host has no `/favicon.ico` (a 404 in the browser console on `/staff/login`).
+1. **Owner, in the admin:** mark the clearly named test bookings of 2026-11-18 (`TEST-AUDIT-…` and `TEST-R1-…`) as "Not interested".
+2. **Owner, accounts and settings:** complete the credential-hygiene items listed in the private audit report of 2026-11-18, in the order given there.
+3. **Daily job:** confirm that each 07:00 UTC run leaves rows in `domain.job_runs`. The run itself answers 200, but this was not yet confirmed in the database (open check from the audit).
+4. **Admin photo on Vercel Blob:** upload, approve and publish one real product photo, then confirm that the public file has no GPS/EXIF (waived before R1; open check).
+5. **Company domain:** the owner decides on the company domain and the claims shown there (`DOMAIN_MOVE.md`).
+6. **Engineering backlog from the audit (private report):** a stronger test safety net in CI, mobile page speed, metrics-endpoint hardening and smaller items. Each lands as its own small PR.
 
 ## Still open (public summary)
 
 - **Vercel plan:** Hobby for now (DR-115); re-checked before any commercial use.
 - **Daily job timing:** the job runs at 07:00 UTC, which is 09:00 Cairo in winter and 10:00 during Egypt's summer time.
 - **Lead SLA:** response-time target not yet set (`OPEN_APPROVALS.md` item 6).
-- **GATE-R:** revoke old Shareable Links and retire the temporary reviewer account (owner, private).
+- **E-mail:** booking alerts and the password-reset e-mail wait for the e-mail provider (DR-120).
 - Owner decisions still open in `OPEN_APPROVALS.md`.
 
 ## In parallel, from the owner
