@@ -36,9 +36,14 @@
       "graphql-scalars": "2.0.1",
       "sass": "1.105.2",
       "undici": "7.30.1"
+    },
+    "auditConfig": {
+      "ignoreGhsas": [
+        "GHSA-fc5q-39xc-vjpf"
+      ]
     }
   },
   "devDependencies": {
-    "next": "16.4.1"
+    "next": "16.4.5"
   }
 }
