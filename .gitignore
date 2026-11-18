@@ -24,8 +24,9 @@
 *.db
 **/.private-uploads/
 **/.media-uploads/
-**/.edge-profile*/
-**/.edge-csp-profile/
+# Browser profiles made by the test tools hold sign-in cookies (Edge signs new profiles in with the Windows account).
+**/.edge-*/
+**/edge-profile*/
 **/tests/results/
 
 # Generated and local-only artifacts

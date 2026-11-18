@@ -5,7 +5,7 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import type pg from 'pg';
 import { randomRef } from './commerce.ts';
-import { checkOrderToken } from './orders.ts';
+import { checkOrderToken } from './order-token.ts';
 import { audit, DomainError, tx, type Ctx } from './tx.ts';
 import { coverageStatus, normalizeSerial } from './warranty.ts';
 

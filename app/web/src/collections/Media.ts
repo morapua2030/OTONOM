@@ -6,6 +6,7 @@ import { auditRow } from '../lib/audit.ts';
 import { mfaOk, nobody, perm, staffOnly } from '../lib/access.ts';
 import { MEDIA_UPLOAD_DIR } from '../lib/server.ts';
 import { MEDIA_MIME_TYPES, mediaUploadProblem, mediaUploadsEnabled } from '../lib/media-storage.ts';
+import { cleanUploadedFile } from '../lib/image-metadata.ts';
 import { revalidateSiteContent } from '../lib/content-workflow.ts';
 
 /**
@@ -55,6 +56,8 @@ export const Media: CollectionConfig = {
         const problem = req.file ? mediaUploadProblem(req.file as any) : null;
         if (problem === 'TOO_LARGE') throw new BusinessRuleError('UPLOAD_REJECTED:TOO_LARGE', 413);
         if (problem) throw new BusinessRuleError('UPLOAD_REJECTED:TYPE', 415);
+        // Phone photos carry GPS, serial numbers and thumbnails: strip them before the file is stored (audit 2026-11-18).
+        cleanUploadedFile(req.file as { data?: Buffer; size?: number; mimetype?: string } | undefined);
       },
     ],
     beforeChange: [

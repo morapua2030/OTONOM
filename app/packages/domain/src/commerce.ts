@@ -4,7 +4,7 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { IdempotencyKeyReuseError } from './inventory.ts';
-import { orderAccessToken } from './orders.ts';
+import { orderAccessToken } from './order-token.ts';
 import { addMinor, minorUnits, multiplyMinor } from './money.ts';
 import { audit, DomainError, tx, type Ctx } from './tx.ts';
 
