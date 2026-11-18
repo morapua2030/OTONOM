@@ -8,6 +8,7 @@ import pg from 'pg';
 import { APP_ROOT, connConfig, SECRETS_DIR } from '@otonom/domain';
 import { collectionSlugs } from '../../web/src/collections/index.ts';
 import { Client, Recorder, sleep } from './http-client.ts';
+import { checkReadMatrix, READ_ALL, readMatchesAccessMap } from './read-matrix.ts';
 
 const BASE = process.env.OTONOM_BASE ?? 'http://127.0.0.1:3301';
 const rec = new Recorder();
@@ -49,18 +50,23 @@ async function main() {
         rec.add(`SURF-ANON-PUBLISHED-ONLY-${slug}`, 'GENERATED-SURFACE', `ANON: ${slug} returns published entries only, even with draft=true`, r.status === 200 && docs.every((d) => d._status === 'published'), { status: r.status, statuses: [...new Set(docs.map((d) => d._status))] });
       }
     }
+    // Staff: every collection outside the explicit matrix must match the server's own access map (permitted → 200,
+    // not permitted → 401/403; a 5xx never passes). The personal/private collections are checked row by row against
+    // the hand-written matrix in read-matrix.ts (AI2-02, audit 2026-11-18).
+    const accessMap = who === 'ANON' ? null : (await c.get('/api/access')).json;
     for (const slug of collectionSlugs) {
-      const r = await c.get(`/api/${slug}?limit=1&depth=0`);
-      const anonymousPrivate = denied(r.status) || (r.status === 200 && Array.isArray(r.json?.docs) && r.json.docs.length === 0);
-      const expectedStatus = who === 'ANON' && !PUBLIC_COLLECTIONS.has(slug) ? anonymousPrivate : [200, 401, 403].includes(r.status);
-      rec.add(
-        `SURF-${who}-COLLECTION-${slug}`,
-        'GENERATED-SURFACE',
-        `${who}: configured collection ${slug} has an explicit safe read outcome`,
-        expectedStatus && !HIDDEN_FIELDS.test(r.text),
-        { status: r.status },
-      );
+      if (who !== 'ANON' && READ_ALL[slug]) continue;
+      if (who === 'ANON') {
+        const r = await c.get(`/api/${slug}?limit=1&depth=0`);
+        const anonymousPrivate = denied(r.status) || (r.status === 200 && Array.isArray(r.json?.docs) && r.json.docs.length === 0);
+        const expectedStatus = PUBLIC_COLLECTIONS.has(slug) ? [200, 401, 403].includes(r.status) : anonymousPrivate;
+        rec.add(`SURF-${who}-COLLECTION-${slug}`, 'GENERATED-SURFACE', `${who}: configured collection ${slug} has an explicit safe read outcome`, expectedStatus && !HIDDEN_FIELDS.test(r.text), { status: r.status });
+        continue;
+      }
+      const m = await readMatchesAccessMap(c, slug, accessMap);
+      rec.add(`SURF-${who}-COLLECTION-${slug}`, 'GENERATED-SURFACE', `${who}: read of ${slug} matches the access map (${m.permitted ? 'permitted' : 'denied'})`, m.pass && !HIDDEN_FIELDS.test(m.text), { status: m.status, permitted: m.permitted });
     }
+    if (who !== 'ANON') await checkReadMatrix(rec, who, c, users.find((u) => u.role === who)!.id);
     // ---- users: self-registration, escalation, secrets ----
     const u0 = await count(`SELECT count(*)::int n FROM cms.users`);
     const owners0 = await count(`SELECT count(*)::int n FROM cms.users WHERE role='OWNER'`);
@@ -130,10 +136,13 @@ async function main() {
     ];
     for (const [p, perm, allowed] of dom) {
       const r = p.includes('kpi') ? await c.get(p) : await c.post(p, { skuId: 'sku-rc04', delta: 1, reason: 'probe', idempotencyKey: randomUUID() });
-      const ok = allowed.includes(who) ? r.status !== 401 && r.status !== 403 : r.status === 401 || r.status === 403;
+      // "allowed" means reached the handler: anything but 401/403, and never a 5xx.
+      const ok = allowed.includes(who) ? r.status < 500 && !denied(r.status) : denied(r.status);
       rec.add(`SURF-${who}-${perm}`, 'SURFACE', `${who}: ${perm} ${allowed.includes(who) ? 'allowed' : 'denied'}`, ok, r.status);
     }
   }
+  // OWNER is not in the loop above (it may create users and switch stage); its read matrix is checked on its own.
+  await checkReadMatrix(rec, 'OWNER', await staff('OWNER'), victimId);
   // stock adjust by ADMIN above changed synthetic stock by +1: revert to keep the dev DB neutral
   const admin = ids.ADMIN;
   await admin.post('/api/admin/stock/adjust', { skuId: 'sku-rc04', delta: -1, reason: 'revert surface probe', idempotencyKey: randomUUID() });

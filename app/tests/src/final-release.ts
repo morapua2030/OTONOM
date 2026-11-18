@@ -12,6 +12,7 @@ import { generate } from 'otplib';
 import pg from 'pg';
 import { APP_ROOT, connConfig, SECRETS_DIR } from '@otonom/domain';
 import { Client, Recorder, sleep } from './http-client.ts';
+import { checkReadMatrix } from './read-matrix.ts';
 
 const BASE = process.env.OTONOM_BASE ?? 'http://127.0.0.1:3301';
 const CRON = process.env.OTONOM_TEST_CRON_SECRET ?? '';
@@ -99,6 +100,9 @@ async function main() {
   const beforeMfa = await sales.get('/api/leads');
   const enroll = await sales.post('/api/mfa/enroll', {});
   const enrollVerify = await sales.post('/api/mfa/enroll/verify', { code: await code(salesEmail, enroll.json?.secret ?? '') });
+  // SALES read matrix (AI2-02, audit 2026-11-18): the surface suite has no SALES user, so it is checked here.
+  const salesId = (await su.query('SELECT id FROM cms.users WHERE email = $1', [salesEmail])).rows[0]?.id;
+  await checkReadMatrix(rec, 'SALES', sales, salesId);
   rec.add('F-INVITE-MFA-FORCED', 'STAFF', 'the invited person signs in with their own password and must enroll MFA before any staff data', sl.status === 200 && [401, 403].includes(beforeMfa.status) && enroll.status === 200 && enrollVerify.status === 200, { login: sl.status, beforeMfa: beforeMfa.status, enroll: enroll.status, verify: enrollVerify.status });
 
   // ---------------- Booking: hidden and closed until BOTH switches are on ----------------
