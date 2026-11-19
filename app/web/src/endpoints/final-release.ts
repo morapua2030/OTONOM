@@ -5,7 +5,7 @@ import { body, guard, jsonRes, mutationOriginGuard } from '../lib/access.ts';
 import { auditRow } from '../lib/audit.ts';
 import { checkBookingToken } from '../lib/booking-token.ts';
 import { bookingVisible, LEAD_STATUSES, retentionCutoff, validateLead } from '../lib/leads.ts';
-import { cairoDay, countMetric, isBotAgent, isMetricEvent, metricRoute, metricsSummary } from '../lib/metrics.ts';
+import { cairoDay, countMetric, isBotAgent, isMetricEvent, METRIC_IP_LIMIT, metricRoute, metricsSummary, PACKAGE_INTEREST_EVENTS } from '../lib/metrics.ts';
 import { digestEmail, inviteEmail, leadAlertEmail, leadsNotifyTo, notificationsConfigured, sendMail, weeklyEmail } from '../lib/notify-email.ts';
 import { clientIp, rateLimit } from '../lib/ratelimit.ts';
 import { domainDb, previewLocked, SITE_URL } from '../lib/server.ts';
@@ -127,8 +127,14 @@ export const finalReleaseEndpoints: Endpoint[] = [
       const b = await body(req);
       const r = metricRoute(b.r);
       if (!isMetricEvent(b.e) || !r || (b.l !== undefined && b.l !== r.locale)) return jsonRes(400, { code: 'INVALID_EVENT' });
-      const rl = await rateLimit(`metric:${cairoDay()}:${clientIp(req.headers)}`, 240, 10 * 60_000);
+      const ip = clientIp(req.headers);
+      const day = cairoDay();
+      const rl = await rateLimit(`metric:${day}:${ip}`, METRIC_IP_LIMIT, 10 * 60_000);
       if (!rl.allowed) return done; // over the limit: silently not counted
+      if (PACKAGE_INTEREST_EVENTS.includes(b.e)) {
+        const first = await rateLimit(`metric-package:${day}:${ip}:${b.e}`, 1, 24 * 3600_000);
+        if (!first.allowed) return done; // this client already showed interest in this package today
+      }
       await countMetric(domainDb(), b.e, r.route, r.locale);
       return done;
     },
