@@ -21,7 +21,7 @@ test('packageComparisonRows marks unlisted items as null and keeps listed quanti
 
 test('packageComparisonRows is derived from the data it is given', () => {
   const cloned = structuredClone(SMART_HOME_PACKAGES) as SmartHomePackage[];
-  cloned[2].items.push({ name: { en: 'Synthetic Test Item', ar: 'عنصر اختبار' }, quantity: 3 });
+  cloned[2].items.push({ key: 'panel', name: { en: 'Synthetic Test Item', ar: 'عنصر اختبار' }, quantity: 3 });
   cloned[1].items = cloned[1].items.filter((item) => item.name.en !== 'Gas Sensor');
   const rows = new Map(packageComparisonRows(cloned).map((row) => [row.key, row]));
   assert.deepEqual(rows.get('Synthetic Test Item')?.cells, { premium: null, plus: null, essential: 3 });

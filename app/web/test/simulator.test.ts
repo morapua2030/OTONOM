@@ -109,7 +109,7 @@ test('presets, names and the 24-hour day are ported from the design', () => {
   assert.equal(at19.night, true);
   assert.equal(at19.door, false, 'leave/arrive need Premium');
   assert.equal(simAt(19, rooms, true).on['1:l'], true, 'arrive lights the reception with Premium');
-  const gas = ROUT.gas.steps.reduce((st, ops) => simApply(st, rooms, ops), { on: {}, door: false, night: false, gas: false });
+  const gas = ROUT.gas.steps.reduce((st, ops) => simApply(st, rooms, ops), { on: {} as Record<string, boolean>, door: false, night: false, gas: false });
   assert.equal(gas.gas, true);
   assert.equal(gas.on['4:fan0'], true, 'extractor fan on');
   assert.equal(gas.on['4:l'], true, 'kitchen light on');

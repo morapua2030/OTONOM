@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { afterEach, test } from 'node:test';
 import { commercialOperationsEnabled, internalCommerceLabEnabled, previewLocked, publicRfqEnabled, resolveSiteUrl, siteUsesHttps, trustedCsrfOrigins, uploadsDisabled } from '../src/lib/server.ts';
+import { testEnv } from './test-env.ts';
 
 const originalPreview = process.env.OTONOM_FORCE_PREVIEW;
 const originalUploads = process.env.OTONOM_DISABLE_UPLOADS;
@@ -26,56 +27,56 @@ test('preview and upload safety locks require an explicit enabled value', () => 
 });
 
 test('synthetic commerce lab is local-test-only and cannot be enabled on hosted or forced Preview runtimes', () => {
-  assert.equal(internalCommerceLabEnabled({ OTONOM_TEST_PAGES: '1' } as NodeJS.ProcessEnv), true);
-  assert.equal(internalCommerceLabEnabled({ OTONOM_TEST_PAGES: '1', VERCEL: '1' } as NodeJS.ProcessEnv), false);
-  assert.equal(internalCommerceLabEnabled({ OTONOM_TEST_PAGES: '1', OTONOM_FORCE_PREVIEW: '1' } as NodeJS.ProcessEnv), false);
-  assert.equal(internalCommerceLabEnabled({} as NodeJS.ProcessEnv), false);
+  assert.equal(internalCommerceLabEnabled(testEnv({ OTONOM_TEST_PAGES: '1' })), true);
+  assert.equal(internalCommerceLabEnabled(testEnv({ OTONOM_TEST_PAGES: '1', VERCEL: '1' })), false);
+  assert.equal(internalCommerceLabEnabled(testEnv({ OTONOM_TEST_PAGES: '1', OTONOM_FORCE_PREVIEW: '1' })), false);
+  assert.equal(internalCommerceLabEnabled(testEnv({})), false);
 });
 
 test('commerce and warranty operations are hard-disabled on Vercel and require two explicit local test gates', () => {
-  const enabled = { OTONOM_TEST_PAGES: '1', OTONOM_ENABLE_SYNTHETIC_COMMERCIAL_TESTS: '1' } as NodeJS.ProcessEnv;
+  const enabled = testEnv({ OTONOM_TEST_PAGES: '1', OTONOM_ENABLE_SYNTHETIC_COMMERCIAL_TESTS: '1' });
   assert.equal(commercialOperationsEnabled(enabled), true);
-  assert.equal(commercialOperationsEnabled({ ...enabled, VERCEL: '1' } as NodeJS.ProcessEnv), false);
-  assert.equal(commercialOperationsEnabled({ ...enabled, OTONOM_FORCE_PREVIEW: '1' } as NodeJS.ProcessEnv), false);
-  assert.equal(commercialOperationsEnabled({ OTONOM_TEST_PAGES: '1' } as NodeJS.ProcessEnv), false);
-  assert.equal(commercialOperationsEnabled({ OTONOM_ENABLE_SYNTHETIC_COMMERCIAL_TESTS: '1' } as NodeJS.ProcessEnv), false);
+  assert.equal(commercialOperationsEnabled(testEnv({ ...enabled, VERCEL: '1' })), false);
+  assert.equal(commercialOperationsEnabled(testEnv({ ...enabled, OTONOM_FORCE_PREVIEW: '1' })), false);
+  assert.equal(commercialOperationsEnabled(testEnv({ OTONOM_TEST_PAGES: '1' })), false);
+  assert.equal(commercialOperationsEnabled(testEnv({ OTONOM_ENABLE_SYNTHETIC_COMMERCIAL_TESTS: '1' })), false);
 });
 
 test('personal-data RFQ intake is local-synthetic only until policy approval', () => {
-  const enabled = { OTONOM_TEST_PAGES: '1', OTONOM_ENABLE_SYNTHETIC_RFQ_TESTS: '1' } as NodeJS.ProcessEnv;
+  const enabled = testEnv({ OTONOM_TEST_PAGES: '1', OTONOM_ENABLE_SYNTHETIC_RFQ_TESTS: '1' });
   assert.equal(publicRfqEnabled(enabled), true);
-  assert.equal(publicRfqEnabled({ ...enabled, VERCEL: '1' } as NodeJS.ProcessEnv), false);
-  assert.equal(publicRfqEnabled({ ...enabled, OTONOM_FORCE_PREVIEW: '1' } as NodeJS.ProcessEnv), false);
-  assert.equal(publicRfqEnabled({ OTONOM_TEST_PAGES: '1' } as NodeJS.ProcessEnv), false);
+  assert.equal(publicRfqEnabled(testEnv({ ...enabled, VERCEL: '1' })), false);
+  assert.equal(publicRfqEnabled(testEnv({ ...enabled, OTONOM_FORCE_PREVIEW: '1' })), false);
+  assert.equal(publicRfqEnabled(testEnv({ OTONOM_TEST_PAGES: '1' })), false);
 });
 
 test('Vercel URL fallback keeps server URLs and auth cookies on HTTPS', () => {
-  const vercel = { VERCEL: '1', VERCEL_URL: 'protected-preview.vercel.app' } as NodeJS.ProcessEnv;
+  const vercel = testEnv({ VERCEL: '1', VERCEL_URL: 'protected-preview.vercel.app' });
   assert.equal(resolveSiteUrl(vercel), 'https://protected-preview.vercel.app');
   assert.equal(siteUsesHttps(vercel), true);
-  assert.equal(resolveSiteUrl({ OTONOM_SITE_URL: 'https://preview.example.test' } as NodeJS.ProcessEnv), 'https://preview.example.test');
-  assert.equal(resolveSiteUrl({} as NodeJS.ProcessEnv), 'http://127.0.0.1:3301');
-  assert.equal(siteUsesHttps({} as NodeJS.ProcessEnv), false);
+  assert.equal(resolveSiteUrl(testEnv({ OTONOM_SITE_URL: 'https://preview.example.test' })), 'https://preview.example.test');
+  assert.equal(resolveSiteUrl(testEnv({})), 'http://127.0.0.1:3301');
+  assert.equal(siteUsesHttps(testEnv({})), false);
 });
 
 test('Payload CSRF origins include only exact explicit aliases and the immutable Vercel deployment', () => {
-  const env = {
+  const env = testEnv({
     VERCEL: '1',
     VERCEL_URL: 'otonom-git-abc-team.vercel.app',
     OTONOM_CSRF_ORIGINS: 'https://otonom-smart-home-web-team-1626.vercel.app, https://admin.example.test',
-  } as NodeJS.ProcessEnv;
+  });
   assert.deepEqual(trustedCsrfOrigins(env), [
     'https://otonom-smart-home-web-team-1626.vercel.app',
     'https://admin.example.test',
     'https://otonom-git-abc-team.vercel.app',
   ]);
-  assert.deepEqual(trustedCsrfOrigins({ OTONOM_CSRF_ORIGINS: 'http://127.0.0.1:3301' } as NodeJS.ProcessEnv), ['http://127.0.0.1:3301']);
+  assert.deepEqual(trustedCsrfOrigins(testEnv({ OTONOM_CSRF_ORIGINS: 'http://127.0.0.1:3301' })), ['http://127.0.0.1:3301']);
   assert.throws(
-    () => trustedCsrfOrigins({ OTONOM_CSRF_ORIGINS: 'http://admin.example.test' } as NodeJS.ProcessEnv),
+    () => trustedCsrfOrigins(testEnv({ OTONOM_CSRF_ORIGINS: 'http://admin.example.test' })),
     /exact HTTPS origins/,
   );
   assert.throws(
-    () => trustedCsrfOrigins({ OTONOM_CSRF_ORIGINS: 'https://admin.example.test/path' } as NodeJS.ProcessEnv),
+    () => trustedCsrfOrigins(testEnv({ OTONOM_CSRF_ORIGINS: 'https://admin.example.test/path' })),
     /exact HTTPS origins/,
   );
 });

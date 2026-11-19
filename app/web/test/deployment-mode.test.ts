@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { adminPathRequiresSessionCookie, hostRole, isAdministrativePath, isPrivatePublicRoute, isPublicHostEndpoint, marketingDecision, protectedAdminOrigin, PUBLIC_HOST_ENDPOINTS, publicMarketingOnly } from '../src/lib/deployment.ts';
+import { testEnv } from './test-env.ts';
 
 test('public marketing mode is fail-closed outside Vercel Production', () => {
-  const enabled = { OTONOM_PUBLIC_MARKETING_ONLY: '1', VERCEL: '1', VERCEL_ENV: 'production' } as NodeJS.ProcessEnv;
+  const enabled = testEnv({ OTONOM_PUBLIC_MARKETING_ONLY: '1', VERCEL: '1', VERCEL_ENV: 'production' });
   assert.equal(publicMarketingOnly(enabled), true);
   assert.equal(publicMarketingOnly({ ...enabled, VERCEL_ENV: 'preview' }), false);
   assert.equal(publicMarketingOnly({ ...enabled, VERCEL: '0' }), false);
@@ -23,10 +24,10 @@ test('public marketing routing blocks all private application surfaces', () => {
 });
 
 test('admin redirects accept only credential-free HTTPS Vercel deployment origins', () => {
-  assert.equal(protectedAdminOrigin({ OTONOM_ADMIN_URL: 'https://protected-team.vercel.app/path' } as NodeJS.ProcessEnv), 'https://protected-team.vercel.app');
-  assert.equal(protectedAdminOrigin({ OTONOM_ADMIN_URL: 'http://protected-team.vercel.app' } as NodeJS.ProcessEnv), undefined);
-  assert.equal(protectedAdminOrigin({ OTONOM_ADMIN_URL: 'https://user:pass@protected-team.vercel.app' } as NodeJS.ProcessEnv), undefined);
-  assert.equal(protectedAdminOrigin({ OTONOM_ADMIN_URL: 'https://example.com' } as NodeJS.ProcessEnv), undefined);
+  assert.equal(protectedAdminOrigin(testEnv({ OTONOM_ADMIN_URL: 'https://protected-team.vercel.app/path' })), 'https://protected-team.vercel.app');
+  assert.equal(protectedAdminOrigin(testEnv({ OTONOM_ADMIN_URL: 'http://protected-team.vercel.app' })), undefined);
+  assert.equal(protectedAdminOrigin(testEnv({ OTONOM_ADMIN_URL: 'https://user:pass@protected-team.vercel.app' })), undefined);
+  assert.equal(protectedAdminOrigin(testEnv({ OTONOM_ADMIN_URL: 'https://example.com' })), undefined);
 });
 
 test('admin shell requires the HttpOnly session cookie while authentication routes stay public', () => {
@@ -41,16 +42,16 @@ test('admin shell requires the HttpOnly session cookie while authentication rout
 });
 
 // ---- Final release (owner 2026-11-04): one Production deployment, two hosts ----
-const PROD = { OTONOM_PUBLIC_MARKETING_ONLY: '1', VERCEL: '1', VERCEL_ENV: 'production', OTONOM_ADMIN_URL: 'https://otonom-admin.vercel.app' } as NodeJS.ProcessEnv;
+const PROD = testEnv({ OTONOM_PUBLIC_MARKETING_ONLY: '1', VERCEL: '1', VERCEL_ENV: 'production', OTONOM_ADMIN_URL: 'https://otonom-admin.vercel.app' });
 const PUBLIC_HOST = 'otonom-smart-home-web.vercel.app';
 const ADMIN_HOST = 'otonom-admin.vercel.app';
 const decide = (method: string, pathname: string, host: string | null, env = PROD, search = '') => marketingDecision({ method, pathname, search, host }, env);
 
 test('a custom admin domain is accepted only when it is listed exactly in OTONOM_CSRF_ORIGINS (domain move = env only)', () => {
-  assert.equal(protectedAdminOrigin({ OTONOM_ADMIN_URL: 'https://admin.otonomiot.com' } as NodeJS.ProcessEnv), undefined);
-  assert.equal(protectedAdminOrigin({ OTONOM_ADMIN_URL: 'https://admin.otonomiot.com', OTONOM_CSRF_ORIGINS: 'https://otonomiot.com,https://admin.otonomiot.com' } as NodeJS.ProcessEnv), 'https://admin.otonomiot.com');
-  assert.equal(protectedAdminOrigin({ OTONOM_ADMIN_URL: 'https://admin.otonomiot.com', OTONOM_CSRF_ORIGINS: 'https://otonomiot.com' } as NodeJS.ProcessEnv), undefined);
-  assert.equal(protectedAdminOrigin({ OTONOM_ADMIN_URL: 'http://admin.otonomiot.com', OTONOM_CSRF_ORIGINS: 'http://admin.otonomiot.com' } as NodeJS.ProcessEnv), undefined);
+  assert.equal(protectedAdminOrigin(testEnv({ OTONOM_ADMIN_URL: 'https://admin.otonomiot.com' })), undefined);
+  assert.equal(protectedAdminOrigin(testEnv({ OTONOM_ADMIN_URL: 'https://admin.otonomiot.com', OTONOM_CSRF_ORIGINS: 'https://otonomiot.com,https://admin.otonomiot.com' })), 'https://admin.otonomiot.com');
+  assert.equal(protectedAdminOrigin(testEnv({ OTONOM_ADMIN_URL: 'https://admin.otonomiot.com', OTONOM_CSRF_ORIGINS: 'https://otonomiot.com' })), undefined);
+  assert.equal(protectedAdminOrigin(testEnv({ OTONOM_ADMIN_URL: 'http://admin.otonomiot.com', OTONOM_CSRF_ORIGINS: 'http://admin.otonomiot.com' })), undefined);
 });
 
 test('host role: only the exact admin host is "admin"; everything else, including a missing Host, is public', () => {

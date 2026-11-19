@@ -5,7 +5,7 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { getPayload } from 'payload';
 import { generateSecret } from 'otplib';
-import { makePool, SECRETS_DIR } from '@otonom/domain';
+import { makePool, passwordPolicyError, SECRETS_DIR } from '@otonom/domain';
 import config from '../src/payload.config.ts';
 
 const CLAIMS: Array<[string, string, string, string, string, string]> = [
@@ -29,6 +29,17 @@ const CLAIMS: Array<[string, string, string, string, string, string]> = [
   ['CL-18', 'OWNER_REPORTED', 'MEDIUM', 'RF frequencies / radio specifics', 'ترددات الراديو', 'Datasheet'],
 ];
 
+/**
+ * A random synthetic password that always meets the staff password policy. A bare base64url string has no symbol about
+ * half the time, so seeding a fresh database (CI) failed at random.
+ */
+function syntheticPassword(email: string): string {
+  for (;;) {
+    const candidate = `${randomBytes(18).toString('base64url')}-aA1`;
+    if (!passwordPolicyError(candidate, email)) return candidate;
+  }
+}
+
 async function main() {
   const credentialsFile = process.env.OTONOM_SEED_CREDENTIALS_FILE?.trim() || 'dev_users.json';
   if (!/^[a-z0-9_-]+\.json$/.test(credentialsFile)) throw new Error('OTONOM_SEED_CREDENTIALS_FILE must be a safe JSON basename');
@@ -38,7 +49,7 @@ async function main() {
     const email = `${role.toLowerCase()}@otonom.local`;
     const existing = await payload.find({ collection: 'users', where: { email: { equals: email } }, overrideAccess: true, limit: 1 });
     if (existing.docs[0]) continue;
-    const password = randomBytes(18).toString('base64url');
+    const password = syntheticPassword(email);
     const totp = generateSecret();
     const recovery = Array.from({ length: 5 }, () => randomBytes(8).toString('hex'));
     const doc = await payload.create({

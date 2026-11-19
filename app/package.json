@@ -24,7 +24,9 @@
     "test:e2e": "pnpm --filter @otonom/tests run e2e",
     "release:verify": "pnpm --filter @otonom/tests run release:verify",
     "release:promote": "pnpm --filter @otonom/tests run release:promote",
-    "test:release-gate": "pnpm --filter @otonom/tests run test:release-gate"
+    "test:release-gate": "pnpm --filter @otonom/tests run test:release-gate",
+    "lint": "eslint --max-warnings=571 .",
+    "typecheck:tests": "pnpm --filter @otonom/web run typecheck:test && pnpm --filter @otonom/domain run typecheck && pnpm --filter @otonom/tests run typecheck"
   },
   "pnpm": {
     "onlyBuiltDependencies": [],
@@ -44,6 +46,10 @@
     }
   },
   "devDependencies": {
-    "next": "16.4.5"
+    "@next/eslint-plugin-next": "16.4.5",
+    "eslint": "10.14.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "next": "16.4.5",
+    "typescript-eslint": "8.72.1"
   }
 }

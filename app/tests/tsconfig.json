@@ -1,0 +1,15 @@
+{
+  "//": "Type-check of the HTTP/browser suites and tools (run by CI). DOM types are needed for code that runs in page.evaluate.",
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts", "src/**/*.mts", "tools/**/*.mts"]
+}
