@@ -87,9 +87,19 @@ export function roleSecretFileName(role: 'domain' | 'cms', environment: Migratio
   return environment === 'local' ? `pg_${role}_pw.txt` : `pg_${environment}_${role}_pw.txt`;
 }
 
-/** Create login roles (idempotent). Passwords are generated locally and never printed. */
+/**
+ * Refuses role setup anywhere but the local development cluster (audit C4-06): no configured database URL, a loopback
+ * host and a development or disposable database name. Hosted roles (Neon) are never created or rotated by this code;
+ * the remote-migration authorization variables do not change that.
+ */
+export function assertLocalRolesTarget(target = databaseTarget('superuser'), database = DB_NAME): void {
+  if (target.configuredUrl) throw new Error('refusing to set up roles: a database URL is configured (db:roles is local only)');
+  if (assertSafeTarget(database, target.host, {}) !== 'local') throw new Error(`refusing to set up roles on non-local host ${target.host}`);
+}
+
+/** Create login roles (idempotent) on the LOCAL cluster only. Passwords are generated locally and never printed. */
 export async function ensureRoles(): Promise<void> {
-  const target = assertConfiguredMigrationTarget();
+  assertLocalRolesTarget();
   const c = new pg.Client(connConfig('superuser', 'postgres'));
   await c.connect();
   // cluster-wide advisory lock: concurrent setups (parallel test files, two deploy steps) must not race on ALTER ROLE
@@ -97,23 +107,9 @@ export async function ensureRoles(): Promise<void> {
   try {
     for (const role of ['domain', 'cms'] as const) {
       const name = ROLE_NAMES[role];
-      const pw = ensureSecret(roleSecretFileName(role, target.migrationEnvironment));
+      const pw = ensureSecret(roleSecretFileName(role, 'local'));
       const ex = await c.query(`SELECT 1 FROM pg_roles WHERE rolname=$1`, [name]);
-      // Neon grants a newly created role back to its creator with ADMIN but without SET.
-      // SET lets the owner become the login role, rotate that role's own password, and create
-      // objects it owns without requiring a managed-service superuser capability.
-      if (ex.rowCount && target.configuredUrl) {
-        await c.query(`GRANT ${name} TO CURRENT_USER WITH SET TRUE`);
-        await c.query(`SET ROLE ${name}`);
-        try {
-          await c.query(`ALTER ROLE CURRENT_USER PASSWORD ${pg.escapeLiteral(pw)}`);
-        } finally {
-          await c.query('RESET ROLE');
-        }
-      } else {
-        await c.query(`${ex.rowCount ? 'ALTER' : 'CREATE'} ROLE ${name} WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD ${pg.escapeLiteral(pw)}`);
-      }
-      if (target.configuredUrl) await c.query(`GRANT ${name} TO CURRENT_USER WITH SET TRUE`);
+      await c.query(`${ex.rowCount ? 'ALTER' : 'CREATE'} ROLE ${name} WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD ${pg.escapeLiteral(pw)}`);
     }
     const db = await c.query(`SELECT 1 FROM pg_database WHERE datname=$1`, [DB_NAME]);
     if (!db.rowCount) await c.query(`CREATE DATABASE ${DB_NAME}`);
@@ -177,9 +173,10 @@ export async function migrate(): Promise<MigrationResult> {
   return { applied, alreadyApplied: already };
 }
 
+// `pnpm --filter @otonom/domain migrate` only migrates (audit C4-06). Roles and their passwords are set up by the
+// separate, local-only `db:roles` script (src/roles.ts), so a habitual migrate can never rotate a role password.
 if (process.argv[1] && process.argv[1].endsWith('migrate.ts')) {
-  ensureRoles()
-    .then(migrate)
+  migrate()
     .then((r) => {
       console.log(JSON.stringify(r));
       process.exit(0);
