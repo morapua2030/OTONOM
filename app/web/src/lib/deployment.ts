@@ -1,3 +1,5 @@
+import { testHarnessBuild } from './test-harness.ts';
+
 const ADMIN_PREFIXES = ['/admin', '/staff'];
 const PRIVATE_PREFIXES = ['/api', '/graphql'];
 const PRIVATE_LOCALIZED_PREFIXES = ['/account', '/cart', '/checkout', '/shop', '/preview', '/support/warranty'];
@@ -136,7 +138,7 @@ const LEGACY_ROUTES: ReadonlyArray<readonly [RegExp, string]> = [
 ];
 
 export const legacyRouteHarness = (env: NodeJS.ProcessEnv = process.env) =>
-  env.OTONOM_TEST_PAGES === '1' && env.VERCEL !== '1' && env.OTONOM_FORCE_PREVIEW !== '1';
+  testHarnessBuild() && env.OTONOM_TEST_PAGES === '1' && env.VERCEL !== '1' && env.OTONOM_FORCE_PREVIEW !== '1';
 
 /** Target path (locale kept, no query) for a legacy public route, or null. */
 export function legacyRouteRedirect(pathname: string, env: NodeJS.ProcessEnv = process.env): string | null {

@@ -149,6 +149,26 @@ async function main() {
   rec.add('F-BOOKING-CREATED', 'LEADS', 'a valid request is stored once with a BK reference; a retry returns the same reference', ok.status === 201 && /^BK-\d{4}-[A-Z2-9]{6}$/.test(ok.json?.ref ?? '') && replay.status === 200 && replay.json?.ref === ok.json?.ref, { ok: ok.status, replay: replay.status });
   const row = (await su.query(`SELECT phone, consent_given, consent_privacy_version, status, source, plan FROM cms.leads WHERE ref=$1`, [ok.json?.ref])).rows[0];
   rec.add('F-BOOKING-STORED', 'LEADS', 'phone normalised to +20…, consent and the privacy text date kept with the lead, status NEW, the simulator plan attached', row?.phone === '+201123456789' && row?.consent_given === true && /^\d{4}-\d{2}-\d{2}$/.test(row?.consent_privacy_version ?? '') && row?.status === 'NEW' && row?.source === 'simulator' && row?.plan === 'Synthetic plan: 6 rooms, 13 channels', row);
+  // Audit 2026-11-18 (C2-01, X6): EVERY field the booking endpoint accepts is stored and read back, from the database
+  // and through the OWNER's admin API. A field dropped from the create call (the X6 broken variant) fails here.
+  const full = lead(fresh, { name: 'Synthetic Full Lead', phone: '01198765432', package: 'premium', message: 'Synthetic note: every field is kept', source: 'simulator', plan: 'Synthetic plan: 3 rooms, 7 channels', locale: 'en' });
+  const fullRes = await anon.post('/api/booking', full, { 'x-forwarded-for': ip() });
+  const fullRef = String(fullRes.json?.ref ?? '');
+  const fullRow = (await su.query(`SELECT ref, name, phone, package, message, plan, source, locale, status, consent_given, consent_at, consent_privacy_version, idempotency_key, last_activity_at FROM cms.leads WHERE ref=$1`, [fullRef])).rows[0];
+  const fullApi = (await owner.get(`/api/leads?where[ref][equals]=${encodeURIComponent(fullRef)}&depth=0`)).json?.docs?.[0];
+  const fullExpected: Record<string, unknown> = { ref: fullRef, name: 'Synthetic Full Lead', phone: '+201198765432', package: 'premium', message: 'Synthetic note: every field is kept', plan: 'Synthetic plan: 3 rooms, 7 channels', source: 'simulator', locale: 'en', status: 'NEW' };
+  const fullMismatch = [
+    ...Object.entries(fullExpected).filter(([k, v]) => fullRow?.[k] !== v).map(([k]) => `db.${k}`),
+    ...(fullRow?.consent_given === true ? [] : ['db.consent_given']),
+    ...(fullRow?.consent_at ? [] : ['db.consent_at']),
+    ...(/^\d{4}-\d{2}-\d{2}$/.test(fullRow?.consent_privacy_version ?? '') ? [] : ['db.consent_privacy_version']),
+    ...(fullRow?.idempotency_key === full.idempotencyKey ? [] : ['db.idempotency_key']),
+    ...(fullRow?.last_activity_at ? [] : ['db.last_activity_at']),
+    ...Object.entries(fullExpected).filter(([k, v]) => fullApi?.[k] !== v).map(([k]) => `api.${k}`),
+    ...(fullApi?.consent?.given === true && fullApi?.consent?.at && fullApi?.consent?.privacyVersion === fullRow?.consent_privacy_version ? [] : ['api.consent']),
+    ...(fullApi?.lastActivityAt ? [] : ['api.lastActivityAt']),
+  ];
+  rec.add('F-BOOKING-ALL-FIELDS', 'LEADS', 'every booking field (name, mobile, package, note, plan, source, locale, consent, status, key, activity) is stored and read back from the database and the admin API', fullRes.status === 201 && fullMismatch.length === 0, { status: fullRes.status, mismatch: fullMismatch });
   // owner 2026-11-04: the simplified form. Area and preferred time are gone from the form, the API and the database;
   // an old client that still sends them is accepted and they are dropped; +20 / spaces are normalised; a plan is kept
   // only for simulator requests.

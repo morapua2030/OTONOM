@@ -26,7 +26,8 @@
     "release:promote": "tsx src/release-promote.ts",
     "test:release-gate": "tsx --test src/release-gate.test.ts",
     "test:run-all-exit": "tsx --test src/run-all-exit.test.ts",
-    "pool-production": "tsx src/pool-production.ts"
+    "pool-production": "tsx src/pool-production.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@otonom/domain": "workspace:*",

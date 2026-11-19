@@ -102,7 +102,7 @@ test('tickets: only for own devices (IDOR guard), transitions enforced, resoluti
   const t = await d.openTicket(pool, alice, { serial: 'SVC-0001', category: 'FAULT', description: 'Synthetic: channel 3 relay does not switch.', idempotencyKey: ticketKey });
   assert.match(t.ref, /^SRV-\d{4}-/);
   const replay = await d.openTicket(pool, alice, { serial: 'svc-0001', category: 'FAULT', description: 'Synthetic: channel 3 relay does not switch.', idempotencyKey: ticketKey });
-  assert.equal(replay.replay, true);
+  assert.equal('replay' in replay && replay.replay, true);
   assert.equal(replay.ref, t.ref);
   await assert.rejects(d.openTicket(pool, alice, { serial: 'SVC-0001', category: 'OTHER', description: 'Synthetic: a different request using the same key.', idempotencyKey: ticketKey }), /IDEMPOTENCY_KEY_REUSED/);
   assert.equal((await d.listMyTickets(pool, bob.actor.id)).length, 0);
@@ -110,7 +110,7 @@ test('tickets: only for own devices (IDOR guard), transitions enforced, resoluti
   const concurrentKey = `ticket:${key()}`;
   const duplicateAttempts = await Promise.all(Array.from({ length: 10 }, () => d.openTicket(pool, alice, { serial: 'SVC-0003', category: 'OTHER', description: 'Synthetic concurrent duplicate ticket submission.', idempotencyKey: concurrentKey })));
   assert.equal(new Set(duplicateAttempts.map((result) => result.ref)).size, 1);
-  assert.equal(duplicateAttempts.filter((result) => result.replay).length, 9);
+  assert.equal(duplicateAttempts.filter((result) => 'replay' in result && result.replay).length, 9);
   const tid = (await pool.query(`SELECT id FROM domain.service_tickets WHERE ref=$1`, [t.ref])).rows[0].id;
   await assert.rejects(d.updateTicket(pool, eng, tid, { status: 'RESOLVED' }), /ILLEGAL_TRANSITION/);
   await assert.rejects(d.updateTicket(pool, eng, tid, { status: 'TRIAGE', expectedRevision: 99 }), /STALE_REVISION/);
@@ -215,11 +215,12 @@ test('ownership transfer requires both parties and revokes the former owner proj
 });
 
 test('pure warranty evaluation never invents a policy or start date', () => {
+  const reasonOf = (e: ReturnType<typeof d.evaluateWarranty>) => ('reason' in e ? e.reason : undefined);
   assert.equal(d.evaluateWarranty({ policy: null, asOf: '2026-01-01T00:00:00Z' }).status, 'UNKNOWN_POLICY');
-  assert.equal(d.evaluateWarranty({ policy: { version: 2, status: 'APPROVED', durationMonths: 12 } }).reason, 'OWNERSHIP_UNVERIFIED');
+  assert.equal(reasonOf(d.evaluateWarranty({ policy: { version: 2, status: 'APPROVED', durationMonths: 12 } })), 'OWNERSHIP_UNVERIFIED');
   assert.equal(d.evaluateWarranty({ policy: { version: 2, status: 'APPROVED', durationMonths: 12 }, ownershipVerified: true }).status, 'PENDING_START_EVIDENCE');
   const evidence = { ownershipVerified: true, verifiedStartAt: '2026-01-01T00:00:00Z', startEvidence: 'COMMISSIONING' as const };
-  assert.equal(d.evaluateWarranty({ policy: { version: 2, status: 'APPROVED', durationMonths: 12 }, ...evidence, exclusionMatch: true, asOf: '2026-06-01T00:00:00Z' }).reason, 'POSSIBLE_EXCLUSION');
+  assert.equal(reasonOf(d.evaluateWarranty({ policy: { version: 2, status: 'APPROVED', durationMonths: 12 }, ...evidence, exclusionMatch: true, asOf: '2026-06-01T00:00:00Z' })), 'POSSIBLE_EXCLUSION');
   assert.equal(d.evaluateWarranty({ policy: { version: 2, status: 'APPROVED', durationMonths: 12 }, ...evidence, asOf: '2026-06-01T00:00:00Z' }).status, 'ELIGIBLE');
   assert.equal(d.evaluateWarranty({ policy: { version: 2, status: 'APPROVED', durationMonths: 12 }, ...evidence, asOf: '2027-01-01T00:00:00Z' }).status, 'EXPIRED');
 });

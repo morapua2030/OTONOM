@@ -6,6 +6,10 @@ import { legacyRouteRedirect } from '../src/lib/deployment.ts';
 import { ADDRESS } from '../src/lib/contact.ts';
 import { SITE_COPY } from '../src/lib/site-copy.ts';
 import { INNER } from '../src/lib/site-copy-inner.ts';
+import { testEnv } from './test-env.ts';
+// These tests check the test-harness switches themselves, so they run as a harness build (audit AI3-01). That a
+// normal build cannot switch them on is proven in test-switches.test.ts.
+process.env.OTONOM_TEST_HARNESS_BUILD = '1';
 
 const read = (path: string) => readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');
 
@@ -73,7 +77,7 @@ test('the address comes from lib/contact.ts only', () => {
 });
 
 test('legacy routes redirect with the locale kept; gated and new pages never redirect (DR-107)', () => {
-  const env = {} as NodeJS.ProcessEnv;
+  const env = testEnv({});
   const cases: Array<[string, string]> = [
     ['/ar/solutions', '/ar/services'], ['/en/solutions/villas', '/en/services'], ['/ar/engineering-process', '/ar/about'], ['/en/build-with-us', '/en/start-project'],
     ['/ar/products/compare', '/ar/products'], ['/en/consultation', '/en/contact'], ['/ar/business/request-a-proposal', '/ar/contact'], ['/en/business/partners', '/en/business/contractors'],
@@ -85,8 +89,8 @@ test('legacy routes redirect with the locale kept; gated and new pages never red
   for (const path of ['/ar', '/en/services', '/ar/products', '/en/support', '/ar/support/warranty', '/en/account', '/ar/shop', '/en/cart', '/ar/checkout', '/en/preview', '/ar/start-project', '/en/business/developers', '/ar/solutionsx', '/api/ready']) {
     assert.equal(legacyRouteRedirect(path, env), null, path);
   }
-  assert.equal(legacyRouteRedirect('/ar/insights', { OTONOM_TEST_PAGES: '1' } as NodeJS.ProcessEnv), null, 'local synthetic harness keeps legacy pages for security suites');
-  assert.equal(legacyRouteRedirect('/ar/insights', { OTONOM_TEST_PAGES: '1', VERCEL: '1' } as NodeJS.ProcessEnv), '/ar', 'never kept on Vercel');
+  assert.equal(legacyRouteRedirect('/ar/insights', testEnv({ OTONOM_TEST_PAGES: '1' })), null, 'local synthetic harness keeps legacy pages for security suites');
+  assert.equal(legacyRouteRedirect('/ar/insights', testEnv({ OTONOM_TEST_PAGES: '1', VERCEL: '1' })), '/ar', 'never kept on Vercel');
   const proxy = read('proxy.ts');
   assert.match(proxy, /NextResponse\.redirect\(destination, 308\)/);
   assert.match(proxy, /destination\.search = '';/, 'the query is dropped');

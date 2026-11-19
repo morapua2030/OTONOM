@@ -11,6 +11,7 @@ import { DEFAULT_SITE_CONTENT, mergeContent, packagesFrom } from '../src/lib/sit
 import { canPublishSiteContent } from '../src/lib/content-workflow.ts';
 import { SMART_HOME_PACKAGES } from '../src/lib/smart-home-packages.ts';
 import { can } from '@otonom/domain';
+import { testEnv } from './test-env.ts';
 
 const read = (p: string) => readFileSync(new URL(`../src/${p}`, import.meta.url), 'utf8');
 const KEY = 'k'.repeat(40);
@@ -123,16 +124,16 @@ test('the metrics client sends only event, route and locale; no storage or cooki
 });
 
 test('e-mail: skipped without a provider, sent only to the allowed recipient, HTML escaped, no personal data in the subject', async () => {
-  const none = await sendMail({ to: 'team@otonomiot.com', subject: 's', text: 't', html: 'h', idempotencyKey: 'k' }, 'team@otonomiot.com', {} as NodeJS.ProcessEnv);
+  const none = await sendMail({ to: 'team@otonomiot.com', subject: 's', text: 't', html: 'h', idempotencyKey: 'k' }, 'team@otonomiot.com', testEnv({}));
   assert.deepEqual(none, { sent: false, reason: 'NOT_CONFIGURED' });
-  const env = { OTONOM_EMAIL_PROVIDER: 'resend', RESEND_API_KEY: 're_' + 'x'.repeat(30), OTONOM_EMAIL_FROM: 'OTONOM <noreply@otonomiot.com>' } as NodeJS.ProcessEnv;
+  const env = testEnv({ OTONOM_EMAIL_PROVIDER: 'resend', RESEND_API_KEY: 're_' + 'x'.repeat(30), OTONOM_EMAIL_FROM: 'OTONOM <noreply@otonomiot.com>' });
   assert.equal(notificationsConfigured(env), true);
   let called = 0;
   const fake = (async () => { called++; return new Response(JSON.stringify({ id: 'email_123456789' }), { status: 200 }); }) as typeof fetch;
   assert.deepEqual(await sendMail({ to: 'other@example.com', subject: 's', text: 't', html: 'h', idempotencyKey: 'k' }, 'team@otonomiot.com', env, fake), { sent: false, reason: 'RECIPIENT_NOT_ALLOWED' });
   assert.equal(called, 0);
   assert.deepEqual(await sendMail({ to: 'TEAM@otonomiot.com', subject: 's', text: 't', html: 'h', idempotencyKey: 'k' }, 'team@otonomiot.com', env, fake), { sent: true, id: 'email_123456789' });
-  assert.equal(notificationsConfigured({ OTONOM_EMAIL_PROVIDER: 'test', OTONOM_EMAIL_TEST_MODE: '1', VERCEL: '1' } as NodeJS.ProcessEnv), false, 'test provider never on Vercel');
+  assert.equal(notificationsConfigured(testEnv({ OTONOM_EMAIL_PROVIDER: 'test', OTONOM_EMAIL_TEST_MODE: '1', VERCEL: '1' })), false, 'test provider never on Vercel');
   const mail = leadAlertEmail({ ref: 'BK-2026-ABCDEF', id: 7, name: '<script>x</script>', phone: '+201012345678', package: 'plus', source: 'simulator', hasNote: true, hasPlan: true }, 'https://otonom-admin.vercel.app');
   assert.doesNotMatch(mail.html, /<script>/);
   assert.match(mail.html, /&lt;script&gt;/);
@@ -141,16 +142,16 @@ test('e-mail: skipped without a provider, sent only to the allowed recipient, HT
   assert.match(mail.text, /مرفق \/ Attached: ملاحظة \/ note \+ خطة المحاكي \/ simulator plan/);
   assert.doesNotMatch(mail.text, /Area|المنطقة/, 'area is no longer collected');
   assert.equal(escapeHtml(`"'&<>`), '&quot;&#39;&amp;&lt;&gt;');
-  assert.equal(leadsNotifyTo({ OTONOM_LEADS_NOTIFY_TO: ' Team@OtonomIoT.com ' } as NodeJS.ProcessEnv), 'team@otonomiot.com');
-  assert.equal(leadsNotifyTo({ OTONOM_LEADS_NOTIFY_TO: 'not-an-email' } as NodeJS.ProcessEnv), null);
+  assert.equal(leadsNotifyTo(testEnv({ OTONOM_LEADS_NOTIFY_TO: ' Team@OtonomIoT.com ' })), 'team@otonomiot.com');
+  assert.equal(leadsNotifyTo(testEnv({ OTONOM_LEADS_NOTIFY_TO: 'not-an-email' })), null);
 });
 
 test('daily job needs a CRON_SECRET of at least 32 characters (constant-time compare); CSV cells cannot start a formula', () => {
-  const env = { CRON_SECRET: 's'.repeat(40) } as NodeJS.ProcessEnv;
+  const env = testEnv({ CRON_SECRET: 's'.repeat(40) });
   assert.equal(cronAuthorized(`Bearer ${'s'.repeat(40)}`, env), true);
   assert.equal(cronAuthorized(`Bearer ${'s'.repeat(39)}`, env), false);
   assert.equal(cronAuthorized(null, env), false);
-  assert.equal(cronAuthorized(`Bearer ${'s'.repeat(10)}`, { CRON_SECRET: 's'.repeat(10) } as NodeJS.ProcessEnv), false, 'short secrets are refused');
+  assert.equal(cronAuthorized(`Bearer ${'s'.repeat(10)}`, testEnv({ CRON_SECRET: 's'.repeat(10) })), false, 'short secrets are refused');
   assert.equal(csvCell('=HYPERLINK("x")'), `"'=HYPERLINK(""x"")"`);
   assert.equal(csvCell('+201012345678'), `"'+201012345678"`);
   assert.equal(csvCell('Ali'), '"Ali"');

@@ -11,11 +11,12 @@ import { contentSecurityPolicy } from '../src/lib/csp.ts';
 import { parseFromAddress, passwordResetEmail, passwordResetEmailEnabled } from '../src/lib/password-reset.ts';
 import { mediaImageFrom } from '../src/lib/site-content.ts';
 import { BOOKING_IP_LIMIT, BOOKING_PHONE_LIMIT } from '../src/endpoints/final-release.ts';
+import { testEnv } from './test-env.ts';
 
 const src = (p: string) => readFileSync(new URL(p, import.meta.url), 'utf8');
 
 // ---------------- A: operator reset ----------------
-const gate = { OTONOM_RESET_PRODUCTION_STAFF: OPERATOR_RESET_GATE, OTONOM_FORCE_PRODUCTION: '1', OTONOM_EXPECTED_NEON_PROJECT_ID: 'neon-x', NEON_PROJECT_ID: 'neon-x' } as NodeJS.ProcessEnv;
+const gate = testEnv({ OTONOM_RESET_PRODUCTION_STAFF: OPERATOR_RESET_GATE, OTONOM_FORCE_PRODUCTION: '1', OTONOM_EXPECTED_NEON_PROJECT_ID: 'neon-x', NEON_PROJECT_ID: 'neon-x' });
 
 test('A: the operator reset refuses unless every Production confirmation is present', () => {
   assert.doesNotThrow(() => assertOperatorResetGate(gate));
@@ -124,26 +125,26 @@ test('C: only the OWNER may reset another staff member\'s authenticator', () => 
 });
 
 // ---------------- D: media storage ----------------
-const blobEnv = { VERCEL: '1', BLOB_READ_WRITE_TOKEN: 'vercel_blob_rw_AbC123def_SyntheticRandomPart0000' } as NodeJS.ProcessEnv;
+const blobEnv = testEnv({ VERCEL: '1', BLOB_READ_WRITE_TOKEN: 'vercel_blob_rw_AbC123def_SyntheticRandomPart0000' });
 
 test('D: Blob storage is on for Vercel with a valid token, and locally only on purpose', () => {
   assert.equal(blobStoreId(blobEnv), 'abc123def');
   assert.equal(blobStorageEnabled(blobEnv), true);
   assert.equal(blobStorageEnabled({ ...blobEnv, VERCEL: undefined }), false, 'a token copied to a laptop is not used by accident');
   assert.equal(blobStorageEnabled({ ...blobEnv, VERCEL: undefined, OTONOM_BLOB_STORAGE_LOCAL: '1' }), true);
-  assert.equal(blobStorageEnabled({ VERCEL: '1', BLOB_READ_WRITE_TOKEN: 'not-a-token' }), false);
-  assert.equal(blobStorageEnabled({ VERCEL: '1' }), false);
+  assert.equal(blobStorageEnabled(testEnv({ VERCEL: '1', BLOB_READ_WRITE_TOKEN: 'not-a-token' })), false);
+  assert.equal(blobStorageEnabled(testEnv({ VERCEL: '1' })), false);
 });
 
 test('D: media uploads need Blob on Vercel; private files are never accepted on Vercel', () => {
-  assert.equal(mediaUploadsEnabled({}), true, 'local development: disk');
-  assert.equal(mediaUploadsEnabled({ OTONOM_DISABLE_UPLOADS: '1' }), false);
-  assert.equal(mediaUploadsEnabled({ VERCEL: '1' }), false, 'no Blob store: refused, never ephemeral disk');
+  assert.equal(mediaUploadsEnabled(testEnv({})), true, 'local development: disk');
+  assert.equal(mediaUploadsEnabled(testEnv({ OTONOM_DISABLE_UPLOADS: '1' })), false);
+  assert.equal(mediaUploadsEnabled(testEnv({ VERCEL: '1' })), false, 'no Blob store: refused, never ephemeral disk');
   assert.equal(mediaUploadsEnabled(blobEnv), true);
   assert.equal(mediaUploadsEnabled({ ...blobEnv, OTONOM_DISABLE_UPLOADS: '1' }), false);
-  assert.equal(privateUploadsEnabled({}), true);
+  assert.equal(privateUploadsEnabled(testEnv({})), true);
   assert.equal(privateUploadsEnabled(blobEnv), false);
-  assert.equal(privateUploadsEnabled({ OTONOM_DISABLE_UPLOADS: '1' }), false);
+  assert.equal(privateUploadsEnabled(testEnv({ OTONOM_DISABLE_UPLOADS: '1' })), false);
 });
 
 test('D: only real PNG/JPEG/WebP files up to 4 MB pass; SVG and disguised files are refused', () => {
@@ -166,7 +167,7 @@ test('D: only real PNG/JPEG/WebP files up to 4 MB pass; SVG and disguised files 
 test('D: the CSP allows exactly this project\'s Blob store for images, nothing else', () => {
   const nonce = 'AbCdEf0123_-';
   const imgSrc = (env: NodeJS.ProcessEnv) => contentSecurityPolicy(nonce, env).match(/(?:^|;)\s*img-src\s+([^;]+)/)?.[1] ?? '';
-  assert.equal(imgSrc({}), "'self' data: blob:");
+  assert.equal(imgSrc(testEnv({})), "'self' data: blob:");
   assert.equal(imgSrc(blobEnv), "'self' data: blob: https://abc123def.public.blob.vercel-storage.com");
   assert.equal(blobImageOrigin({ ...blobEnv, VERCEL: undefined }), null);
   assert.doesNotMatch(contentSecurityPolicy(nonce, blobEnv), /\*\.public\.blob|vercel-storage\.com(?!\/)\s*\*/);
@@ -204,11 +205,11 @@ test('D: Blob storage is configured for media only, with access control off for 
 });
 
 // ---------------- E: password-reset e-mail ----------------
-const mailEnv = { OTONOM_EMAIL_PROVIDER: 'resend', RESEND_API_KEY: 're_synthetic_key_0000000000', OTONOM_EMAIL_FROM: 'OTONOM <no-reply@example.test>', OTONOM_EMAIL_FROM_VERIFIED: '1' } as NodeJS.ProcessEnv;
+const mailEnv = testEnv({ OTONOM_EMAIL_PROVIDER: 'resend', RESEND_API_KEY: 're_synthetic_key_0000000000', OTONOM_EMAIL_FROM: 'OTONOM <no-reply@example.test>', OTONOM_EMAIL_FROM_VERIFIED: '1' });
 
 test('E: reset e-mail turns on only with Resend, a key, a sender and the operator\'s "verified" confirmation', () => {
   assert.equal(passwordResetEmailEnabled(mailEnv), true);
-  assert.equal(passwordResetEmailEnabled({}), false);
+  assert.equal(passwordResetEmailEnabled(testEnv({})), false);
   assert.equal(passwordResetEmailEnabled({ ...mailEnv, OTONOM_EMAIL_FROM_VERIFIED: '0' }), false);
   assert.equal(passwordResetEmailEnabled({ ...mailEnv, OTONOM_EMAIL_FROM_VERIFIED: undefined }), false);
   assert.equal(passwordResetEmailEnabled({ ...mailEnv, RESEND_API_KEY: 'short' }), false);

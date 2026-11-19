@@ -8,7 +8,9 @@
   },
   "scripts": {
     "migrate": "tsx src/migrate.ts",
-    "test": "node --import tsx --test --test-concurrency=1 test/*.test.ts"
+    "db:roles": "tsx src/roles.ts",
+    "test": "node --import tsx --test --test-concurrency=1 test/*.test.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "pg": "8.23.1"

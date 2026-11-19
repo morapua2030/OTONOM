@@ -11,6 +11,7 @@ Write outputs **outside the repository** (or into a git-ignored folder): they ar
 | Script | Purpose |
 | --- | --- |
 | `verify-chain.sh <out> [ref-shots] [lcp-baseline.json]` | The full release chain on the current commit; per-step exit codes in `<out>/chain-steps.tsv`, clone timing in `<out>/clone-times.tsv`; exits 1 if any step failed. The optional inputs are resolved against the caller's directory before the chain changes directory; a given input that is missing fails its step. |
+| `ci-integration.sh` | **CI (Linux) and local dry runs.** Builds a fresh synthetic database (`otonom_e2e_ci`) from the migrations and seeds in a disposable PostgreSQL, then runs the domain DB tests and the HTTP suites (no browser suites). Needs `OTONOM_PG_PORT`, `OTONOM_PG_SUPERUSER` and `OTONOM_PG_SUPERUSER_PW_FILE`; refuses to run when any hosted database URL is set. Never point it at the shared development cluster: it creates the roles and writes `app/.local-secrets`. |
 | `serve-clone.sh <out> [audit\|public\|perf\|flags]` / `teardown-clone.sh <out>` | Clone + server that stays up / stop it and drop the clone. |
 | `browser-suites.sh <public\|flags> <out>` | Edge suites: public = hybrid03, d4, sim; flags = d3, wave1 (run-all harness flags). |
 | `hosts-sim.sh <out>` | Both Production hosts at the proxy layer (`src/hosts.ts`), Production marketing-only mode with an example admin origin and synthetic secrets. |

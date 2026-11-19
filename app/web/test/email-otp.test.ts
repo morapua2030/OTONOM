@@ -9,14 +9,18 @@ import {
   ownerOtpEmail,
   sendOwnerEmailOtp,
 } from '../src/lib/email-otp.ts';
+import { testEnv } from './test-env.ts';
+// These tests check the test-harness switches themselves, so they run as a harness build (audit AI3-01). That a
+// normal build cannot switch them on is proven in test-switches.test.ts.
+process.env.OTONOM_TEST_HARNESS_BUILD = '1';
 
-const baseEnv = {
+const baseEnv = testEnv({
   OTONOM_EMAIL_OTP_PEPPER: 'synthetic-email-otp-pepper-for-tests-2026',
   OTONOM_EMAIL_OTP_ALLOWED_RECIPIENT: 'owner@example.test',
-} as NodeJS.ProcessEnv;
+});
 
 test('email OTP is required only for the configured OWNER identity', () => {
-  const env = { ...baseEnv, OTONOM_OWNER_EMAIL_OTP_REQUIRED: '1', OTONOM_OWNER_EMAIL_OTP_ACCOUNT: 'owner@example.test' } as NodeJS.ProcessEnv;
+  const env = testEnv({ ...baseEnv, OTONOM_OWNER_EMAIL_OTP_REQUIRED: '1', OTONOM_OWNER_EMAIL_OTP_ACCOUNT: 'owner@example.test' });
   assert.equal(emailOtpRequiredForUser({ email: 'OWNER@example.test', role: 'OWNER' }, env), true);
   assert.equal(emailOtpRequiredForUser({ email: 'owner@example.test', role: 'ADMIN' }, env), false);
   assert.equal(emailOtpRequiredForUser({ email: 'other@example.test', role: 'OWNER' }, env), false);
@@ -37,7 +41,7 @@ test('OTP generation, hashing and verification are six-digit, keyed and session-
 
 test('local test transport is explicit, supports failure tests and is forbidden on Vercel', async () => {
   const input = { to: 'owner@example.test', code: '483921', challengeId: 'challenge-test' };
-  const enabled = { ...baseEnv, OTONOM_EMAIL_PROVIDER: 'test', OTONOM_EMAIL_TEST_MODE: '1' } as NodeJS.ProcessEnv;
+  const enabled = testEnv({ ...baseEnv, OTONOM_EMAIL_PROVIDER: 'test', OTONOM_EMAIL_TEST_MODE: '1' });
   assert.deepEqual(await sendOwnerEmailOtp(input, enabled), { providerMessageId: 'test-challenge-test' });
   await assert.rejects(() => sendOwnerEmailOtp(input, { ...enabled, OTONOM_EMAIL_TEST_FAIL: '1' }), /EMAIL_PROVIDER_FAILED/);
   await assert.rejects(() => sendOwnerEmailOtp(input, { ...enabled, VERCEL: '1' }), /EMAIL_TEST_PROVIDER_FORBIDDEN/);
@@ -49,12 +53,12 @@ test('Resend transport keeps its key out of the payload and uses an idempotency 
     captured = { url: String(url), init: init ?? {} };
     return Response.json({ id: 'provider-message-123' });
   }) as typeof fetch;
-  const env = {
+  const env = testEnv({
     ...baseEnv,
     OTONOM_EMAIL_PROVIDER: 'resend',
     OTONOM_EMAIL_FROM: 'OTONOM <no-reply@accounts.example.test>',
     RESEND_API_KEY: 'synthetic-provider-key-for-unit-test',
-  } as NodeJS.ProcessEnv;
+  });
   const result = await sendOwnerEmailOtp({ to: 'owner@example.test', code: '483921', challengeId: 'challenge-resend' }, env, fetcher);
   assert.equal(result.providerMessageId, 'provider-message-123');
   assert.equal(captured?.url, 'https://api.resend.com/emails');
