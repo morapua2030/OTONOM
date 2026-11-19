@@ -9,6 +9,7 @@ import { blobStorageEnabled, MEDIA_MIME_TYPES, mediaUploadProblem, mediaUploadsE
 import { blobFileName } from '../lib/deferred-upload.ts';
 import { cleanUploadedFile } from '../lib/image-metadata.ts';
 import { revalidateSiteContent } from '../lib/content-workflow.ts';
+import { failAfterChangeForTests } from '../lib/test-failures.ts';
 
 /**
  * Public-site media (WAVE 4). Rules:
@@ -106,6 +107,7 @@ export const Media: CollectionConfig = {
         if (operation === 'update' && (previousDoc?.status === 'APPROVED' || doc.status === 'APPROVED')) revalidateSiteContent();
         return doc;
       },
+      failAfterChangeForTests,
     ],
   },
 };
