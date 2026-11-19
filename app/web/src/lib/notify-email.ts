@@ -4,6 +4,7 @@
  * keeps working: leads still land in the admin. The test provider is local-only (never on Vercel) and logs no content.
  * Subjects never contain personal data; every value placed in HTML is escaped.
  */
+import { testHarnessBuild } from './test-harness.ts';
 type FetchLike = typeof fetch;
 export type MailResult = { sent: true; id: string } | { sent: false; reason: 'NOT_CONFIGURED' | 'RECIPIENT_NOT_ALLOWED' | 'PROVIDER_FAILED' };
 export type Mail = { to: string; subject: string; text: string; html: string; idempotencyKey: string };
@@ -22,7 +23,7 @@ export function leadsNotifyTo(env: NodeJS.ProcessEnv = process.env): string | nu
 }
 
 export function notificationsConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
-  if (env.OTONOM_EMAIL_PROVIDER === 'test') return env.OTONOM_EMAIL_TEST_MODE === '1' && env.VERCEL !== '1';
+  if (env.OTONOM_EMAIL_PROVIDER === 'test') return testHarnessBuild() && env.OTONOM_EMAIL_TEST_MODE === '1' && env.VERCEL !== '1';
   const key = env.RESEND_API_KEY?.trim() ?? '';
   const from = env.OTONOM_EMAIL_FROM?.trim() ?? '';
   return env.OTONOM_EMAIL_PROVIDER === 'resend' && key.length >= 20 && senderOk(from);

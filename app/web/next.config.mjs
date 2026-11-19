@@ -1,5 +1,11 @@
 import { withPayload } from '@payloadcms/next/withPayload';
 
+// Test-only switches (audit AI3-01) are compiled in only for the local / CI test harness: run `next build` with
+// OTONOM_TEST_HARNESS_BUILD=1 (run-all.sh, tests/tools/ci-integration.sh). Every other build inlines '' here, so
+// src/lib/test-harness.ts is the constant false. A harness build is refused on Vercel.
+const testHarnessBuild = process.env.OTONOM_TEST_HARNESS_BUILD === '1';
+if (testHarnessBuild && process.env.VERCEL === '1') throw new Error('OTONOM_TEST_HARNESS_BUILD=1 is for the local / CI test harness only, never on Vercel');
+
 const hostedOverHttps = process.env.VERCEL === '1' || (process.env.OTONOM_SITE_URL ?? '').startsWith('https://');
 
 const securityHeaders = [
@@ -15,6 +21,7 @@ const securityHeaders = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  env: { OTONOM_TEST_HARNESS_BUILD: testHarnessBuild ? '1' : '' },
   transpilePackages: ['@otonom/domain'],
   poweredByHeader: false,
   serverExternalPackages: ['pg'],

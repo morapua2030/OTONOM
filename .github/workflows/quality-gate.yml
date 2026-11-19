@@ -90,6 +90,9 @@ jobs:
           echo 'OTONOM_DOMAIN_DATABASE_URL=postgresql://ci@127.0.0.1:5432/ci' >> "$GITHUB_ENV"
       - name: Verify production build
         run: pnpm build
+      # Audit 2026-11-18, AI3-01: this is a normal build (no OTONOM_TEST_HARNESS_BUILD), so it must hold no test-only switch.
+      - name: Production build has no test-only switches
+        run: node tests/tools/assert-no-test-switches.mjs web/.next
 
   # Audit 2026-11-18, C5-01 / C1-01 / C1-02: lint, and type-check of the test code (excluded from the Next build).
   static:

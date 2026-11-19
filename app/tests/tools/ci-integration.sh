@@ -71,8 +71,9 @@ cd "$APP/web" && must db-setup npx --no-install tsx scripts/setup.ts
 cd "$APP/web" && must payload-migrate sh -c 'npx --no-install payload migrate < /dev/null'
 cd "$APP/web" && must seed npx --no-install tsx scripts/seed.ts
 cd "$APP/web" && must seed-content npx --no-install tsx scripts/seed-site-content.ts
-# 3. Production build, then every HTTP suite against `next start`.
-cd "$APP/web" && must build npx --no-install next build
+# 3. Production build with the test harness compiled in (OTONOM_TEST_HARNESS_BUILD=1, audit AI3-01), then every HTTP
+#    suite against `next start`. A normal build (Vercel) has no test-only switch at all.
+cd "$APP/web" && must build env OTONOM_TEST_HARNESS_BUILD=1 npx --no-install next build
 start_server server
 cd "$APP/tests"
 for s in acceptance surface journey cms portal security final-release fixes-20261115; do
