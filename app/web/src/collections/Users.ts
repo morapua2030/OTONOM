@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { APIError, ValidationError, type CollectionConfig, type FieldAccess } from 'payload';
 import { STAFF_ROLES, can, passwordPolicyError } from '@otonom/domain';
 import { mfaOk, mutationOriginGuard, nobody, perm, staffOnly } from '../lib/access.ts';
@@ -6,7 +5,9 @@ import { domainDb, payloadSecret, siteUsesHttps } from '../lib/server.ts';
 import { clientIp, rateLimit, rateLimitStatus } from '../lib/ratelimit.ts';
 import { isUsersLoginRequest, loginIdentityDigest, normalizeLoginIdentity } from '../lib/login-security.ts';
 import { productionOwnerPasswordOnly } from '../lib/production-owner-auth.ts';
+import { auditChange, writeAudit } from '../lib/audit.ts';
 import { PASSWORD_RESET_TOKEN_TTL_MS, passwordResetEmail, passwordResetEmailEnabled } from '../lib/password-reset.ts';
+import { failAfterChangeForTests } from '../lib/test-failures.ts';
 
 const ROLES = [...STAFF_ROLES, 'CUSTOMER'];
 const ownerOnlyField: FieldAccess = ({ req }) => !!req.user && mfaOk(req.user as any) && can((req.user as any).role, 'user.role_change');
@@ -106,15 +107,7 @@ export const Users: CollectionConfig = {
     ],
     afterLogin: [
       async ({ req, user }) => {
-        await domainDb().query(
-          `INSERT INTO domain.audit_events(actor_type, actor_id, action, entity_type, entity_id, after, correlation_id)
-           VALUES ('user',$1,'user.login_succeeded','authentication',$1,$2,$3)`,
-          [
-            String(user.id),
-            JSON.stringify({ policy: productionOwnerPasswordOnly(user as any) ? 'PRODUCTION_OWNER_PASSWORD_ONLY' : 'MFA_PENDING' }),
-            req.headers.get('x-correlation-id')?.slice(0, 80) || randomUUID(),
-          ],
-        );
+        await writeAudit(req, { action: 'user.login_succeeded', entityType: 'authentication', entityId: user.id, actorType: 'user', actorId: String(user.id), after: { policy: productionOwnerPasswordOnly(user as any) ? 'PRODUCTION_OWNER_PASSWORD_ONLY' : 'MFA_PENDING' } });
         return user;
       },
     ],
@@ -126,15 +119,7 @@ export const Users: CollectionConfig = {
         responseHeaders.set('cache-control', 'no-store');
         responseHeaders.set('clear-site-data', '"cache"');
         req.responseHeaders = responseHeaders;
-        await domainDb().query(
-          `INSERT INTO domain.audit_events(actor_type, actor_id, action, entity_type, entity_id, after, correlation_id)
-           VALUES ('user',$1,'user.logout_requested','authentication',$1,$2,$3)`,
-          [
-            String(req.user?.id ?? 'unknown'),
-            JSON.stringify({ allSessions: req.searchParams.get('allSessions') === 'true' }),
-            req.headers.get('x-correlation-id')?.slice(0, 80) || randomUUID(),
-          ],
-        );
+        await writeAudit(req, { action: 'user.logout_requested', entityType: 'authentication', entityId: String(req.user?.id ?? 'unknown'), actorType: 'user', actorId: String(req.user?.id ?? 'unknown'), after: { allSessions: req.searchParams.get('allSessions') === 'true' } });
       },
     ],
     afterError: [
@@ -148,15 +133,7 @@ export const Users: CollectionConfig = {
             rateLimit(`staff-login-account-fast:${identity}`, 12, 60_000),
             rateLimit(`staff-login-account-cooldown:${identity}`, 25, 10 * 60_000),
             rateLimit(`staff-login-ip:${ip}`, 60, 10 * 60_000),
-            domainDb().query(
-              `INSERT INTO domain.audit_events(actor_type, actor_id, action, entity_type, entity_id, after, correlation_id)
-               VALUES ('anonymous','anonymous','user.login_failed','authentication',$1,$2,$3)`,
-              [
-                identity,
-                JSON.stringify({ outcome: 'DENIED', category: error.name === 'LockedAuth' ? 'LOCKED' : (error as Error & { status?: number }).status === 429 ? 'RATE_LIMITED' : 'AUTHENTICATION_FAILED' }),
-                req.headers.get('x-correlation-id')?.slice(0, 80) || randomUUID(),
-              ],
-            ),
+            writeAudit(req, { action: 'user.login_failed', entityType: 'authentication', entityId: identity, actorType: 'anonymous', actorId: 'anonymous', after: { outcome: 'DENIED', category: error.name === 'LockedAuth' ? 'LOCKED' : (error as Error & { status?: number }).status === 429 ? 'RATE_LIMITED' : 'AUTHENTICATION_FAILED' } }),
           ]);
         } catch (auditError) {
           req.payload.logger.error({ err: auditError, msg: 'Failed to append login denial audit event' });
@@ -196,20 +173,13 @@ export const Users: CollectionConfig = {
               WHERE user_id=$1 AND status IN ('PENDING','SENT')`,
             [String(doc.id)],
           );
-          await domainDb().query(
-            `INSERT INTO domain.audit_events(actor_type, actor_id, action, entity_type, entity_id, correlation_id)
-             VALUES ('user',$1,'user.password_changed','user',$2,$3)`,
-            [String(req.user?.id ?? doc.id), String(doc.id), randomUUID()],
-          );
+          await auditChange(req, { action: 'user.password_changed', entityType: 'user', entityId: doc.id, actorType: 'user', actorId: String(req.user?.id ?? doc.id) });
         }
         if (operation === 'update' && previousDoc && previousDoc.role !== doc.role) {
-          // NOTE: separate pool => not in the same transaction as Payload's write (documented limitation)
-          await domainDb().query(
-            `INSERT INTO domain.audit_events(actor_type, actor_id, action, entity_type, entity_id, before, after, correlation_id) VALUES ('user',$1,'user.role_change','user',$2,$3,$4,$5)`,
-            [String(req.user?.id ?? 'system'), String(doc.id), { role: previousDoc.role }, { role: doc.role }, randomUUID()],
-          );
+          await auditChange(req, { action: 'user.role_change', entityType: 'user', entityId: doc.id, before: { role: previousDoc.role }, after: { role: doc.role } });
         }
       },
+      failAfterChangeForTests,
     ],
   },
 };

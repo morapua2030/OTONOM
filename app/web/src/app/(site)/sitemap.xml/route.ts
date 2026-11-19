@@ -1,17 +1,16 @@
 import { publicProjects } from '@/lib/portfolio-public.ts';
 import { SITE_URL } from '@/lib/server.ts';
+import { PUBLIC_STATIC_PATHS } from '@/lib/public-routes.ts';
 import { loadSiteContent } from '@/lib/site-content.ts';
 
 export const dynamic = 'force-dynamic';
-
-const STATIC = ['', '/about', '/services', '/services/iot-embedded', '/services/software-engineering', '/services/smart-home-automation', '/services/custom-engineering', '/business/developers', '/business/contractors', '/start-project', '/smart-home/packages', '/try', '/projects', '/products', '/products/4r', '/products/6r', '/products/16r', '/contact', '/support'];
 
 /** Built from PUBLISHED content only, with reciprocal hreflang alternates. */
 export async function GET() {
   const casePaths = (await publicProjects('ar')).map((project) => `/projects/${project.slug}`);
   // the privacy page is listed only once the OWNER approved its text in the admin
   const privacy = (await loadSiteContent()).privacy.approved ? ['/legal/privacy'] : [];
-  const paths = [...STATIC, ...privacy, ...casePaths];
+  const paths = [...PUBLIC_STATIC_PATHS, ...privacy, ...casePaths];
   const url = (l: string, p: string) => `${SITE_URL}/${l}${p}`;
   const body = paths
     .map((p) => `<url><loc>${url('ar', p)}</loc><xhtml:link rel="alternate" hreflang="ar" href="${url('ar', p)}"/><xhtml:link rel="alternate" hreflang="en" href="${url('en', p)}"/><xhtml:link rel="alternate" hreflang="x-default" href="${url('ar', p)}"/></url>`)
