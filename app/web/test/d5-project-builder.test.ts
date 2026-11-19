@@ -102,7 +102,7 @@ test('Project Builder package options and notice come from the package registry'
 });
 
 test('D5 public routes are localized and indexed in the sitemap', () => {
-  const sitemap = readFileSync(new URL('../src/app/(site)/sitemap.xml/route.ts', import.meta.url), 'utf8');
+  const sitemap = readFileSync(new URL('../src/app/(site)/sitemap.xml/route.ts', import.meta.url), 'utf8') + readFileSync(new URL('../src/lib/public-routes.ts', import.meta.url), 'utf8');
   assert.match(sitemap, /\/start-project/);
   assert.match(sitemap, /\/smart-home\/packages/);
   const packagePage = readFileSync(new URL('../src/app/(site)/[locale]/smart-home/packages/page.tsx', import.meta.url), 'utf8');

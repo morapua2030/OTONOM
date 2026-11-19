@@ -35,7 +35,7 @@ test('simulator entry points: home, smart home, packages banner, controllers, 16
   const site = read('components/site.tsx');
   assert.match(site, /drawer \? <SiteNavLink href=\{L\('\/try'\)\}/);
   assert.match(site, /\[SIM_ENTRY\[locale\]\.cta, '\/try'\]/);
-  assert.match(read('app/(site)/sitemap.xml/route.ts'), /'\/try'/);
+  assert.match(read('app/(site)/sitemap.xml/route.ts') + read('lib/public-routes.ts'), /'\/try'/);
 });
 
 test('language switch on /try keeps only an allow-listed demo preset', () => {

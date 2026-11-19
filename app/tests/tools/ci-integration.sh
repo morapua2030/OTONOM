@@ -19,7 +19,7 @@ done
 export OTONOM_PG_HOST=127.0.0.1 OTONOM_DB=otonom_e2e_ci
 mkdir -p "$OUT"
 rm -f "$OUT"/*.log "$OUT/steps.tsv"
-for s in acceptance surface journey cms portal security final-release fixes-20261115 pool-production blob-upload; do rm -f "$APP/tests/results/$s-latest.json"; done
+for s in acceptance surface journey cms portal security final-release fixes-20261115 audit-commit pool-production blob-upload; do rm -f "$APP/tests/results/$s-latest.json"; done
 
 # Same synthetic test switches as run-all.sh (local/CI only; never set on Vercel).
 SERVER_ENV=(OTONOM_TRUST_PROXY=1 OTONOM_TEST_PAGES=1 OTONOM_ENABLE_SYNTHETIC_COMMERCIAL_TESTS=1 OTONOM_ENABLE_SYNTHETIC_RFQ_TESTS=1
@@ -76,7 +76,7 @@ cd "$APP/web" && must seed-content npx --no-install tsx scripts/seed-site-conten
 cd "$APP/web" && must build env OTONOM_TEST_HARNESS_BUILD=1 npx --no-install next build
 start_server server
 cd "$APP/tests"
-for s in acceptance surface journey cms portal security final-release fixes-20261115; do
+for s in acceptance surface journey cms portal security final-release fixes-20261115 audit-commit; do
   step "$s" env OTONOM_BASE="$BASE" OTONOM_TEST_CRON_SECRET=synthetic-cron-secret-for-local-tests-only-2026 npx --no-install tsx "src/$s.ts"
 done
 stop_server
@@ -94,7 +94,7 @@ stop_server
 echo "--- steps (name, exit, seconds) ---"
 cat "$OUT/steps.tsv"
 # A suite that exits 0 but wrote no fresh result also fails the run.
-for s in acceptance surface journey cms portal security final-release fixes-20261115 pool-production blob-upload; do
+for s in acceptance surface journey cms portal security final-release fixes-20261115 audit-commit pool-production blob-upload; do
   f="$APP/tests/results/$s-latest.json"
   if [ ! -f "$f" ]; then echo "FAIL $s: no fresh result file"; failed=1; continue; fi
   node -e 'const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));console.log(process.argv[2],"total="+j.total,"failed="+j.failed);process.exit(j.failed?1:0)' "$f" "$s" || failed=1

@@ -4,6 +4,7 @@ import { exposeDomainErrorCodes } from '../lib/errors.ts';
 import { mfaOk, nobody, perm } from '../lib/access.ts';
 import { auditRow } from '../lib/audit.ts';
 import { LEAD_LIMITS, LEAD_PACKAGES, LEAD_SOURCES, LEAD_STATUSES } from '../lib/leads.ts';
+import { failAfterChangeForTests } from '../lib/test-failures.ts';
 
 const ownerField: FieldAccess = ({ req }) => !!req.user && mfaOk(req.user as any) && can((req.user as any).role, 'leads.export');
 const noClientWrite: FieldAccess = () => false;
@@ -95,6 +96,7 @@ export const Leads: CollectionConfig = {
         if (added > 0) await auditRow(req, 'lead.note', 'lead', doc.id, undefined, { notes: added });
         return doc;
       },
+      failAfterChangeForTests,
     ],
     afterDelete: [
       async ({ doc, req, context }) => {

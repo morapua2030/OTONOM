@@ -71,7 +71,8 @@ test('unknown language-code paths get the localized 404; site paths never do', (
 });
 
 test('sitemap indexes /products and keeps the placeholder and redirected routes out (D8-C #7, DR-107)', () => {
-  const sitemap = read('app/(site)/sitemap.xml/route.ts');
+  // the sitemap's static pages are the registry's PUBLIC_STATIC_PATHS (lib/public-routes.ts; its other lists are not sitemap pages)
+  const sitemap = read('app/(site)/sitemap.xml/route.ts') + (read('lib/public-routes.ts').match(/export const PUBLIC_STATIC_PATHS = \[[^\]]*\]/)?.[0] ?? '');
   assert.match(sitemap, /'\/products'/);
   // final release: /legal/privacy is listed only once the OWNER approved the privacy text (never in the static list)
   assert.match(sitemap, /const privacy = \(await loadSiteContent\(\)\)\.privacy\.approved \? \['\/legal\/privacy'\] : \[\];/);

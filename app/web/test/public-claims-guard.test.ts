@@ -29,7 +29,7 @@ test('public components and copy never offer a cart or an immediate purchase', (
 });
 
 test('gated commerce and portal pages stay out of the sitemap and always send noindex', () => {
-  const sitemap = readFileSync(new URL('app/(site)/sitemap.xml/route.ts', SRC), 'utf8');
+  const sitemap = readFileSync(new URL('app/(site)/sitemap.xml/route.ts', SRC), 'utf8') + readFileSync(new URL('lib/public-routes.ts', SRC), 'utf8');
   const listed = sitemap.slice(sitemap.indexOf('const STATIC'), sitemap.indexOf('];'));
   for (const path of ['/shop', '/cart', '/checkout', '/account', '/support/warranty', '/preview']) {
     assert.equal(listed.includes(`'${path}'`), false, `${path} must not be in the sitemap`);

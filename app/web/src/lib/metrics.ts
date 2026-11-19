@@ -1,4 +1,5 @@
 import type pg from 'pg';
+import { isKnownPublicPath } from './public-routes.ts';
 
 /**
  * Privacy-first site metrics (final release, owner 2026-11-04): only (event, route, locale, day) -> count is stored.
@@ -9,12 +10,20 @@ export const METRIC_EVENTS = ['page_view', 'whatsapp_click', 'call_click', 'pack
 export type MetricEvent = (typeof METRIC_EVENTS)[number];
 export const isMetricEvent = (v: unknown): v is MetricEvent => typeof v === 'string' && (METRIC_EVENTS as readonly string[]).includes(v);
 
-/** Path only, lower-case, locale-prefixed, at most four segments; anything else (queries, ids, junk) is refused. */
+/** Events one client (IP) may add per 10 minutes; more are silently not counted (audit S9-01: was 240). */
+export const METRIC_IP_LIMIT = 60;
+/** Package-interest clicks count once per client (IP), package and Cairo day (audit S9-01). */
+export const PACKAGE_INTEREST_EVENTS: readonly MetricEvent[] = ['package_premium', 'package_plus', 'package_essential'];
+
+/**
+ * Path only, lower-case, locale-prefixed, at most four segments, AND a page the site really serves (audit S9-01: the
+ * public route registry in public-routes.ts). Anything else (queries, ids, junk, made-up pages) is refused.
+ */
 export function metricRoute(raw: unknown): { route: string; locale: 'ar' | 'en' } | null {
   if (typeof raw !== 'string' || raw.length > 80) return null;
   const path = raw.split(/[?#]/)[0]!.replace(/\/+$/, '') || '/';
   const m = path.match(/^\/(ar|en)((?:\/[a-z0-9-]{1,40}){0,4})$/);
-  if (!m) return null;
+  if (!m || !isKnownPublicPath(m[2] ?? '')) return null;
   return { route: path, locale: m[1] as 'ar' | 'en' };
 }
 
