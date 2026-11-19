@@ -85,7 +85,8 @@ test('font stacks and fallback metrics are the ones next/font generated (same lo
   assert.match(css, /--font-dm-serif: 'dmSerif', 'dmSerif Fallback';/);
   assert.match(css, /--font-plex-arabic: 'plexArabic', 'plexArabic Fallback';/);
   assert.match(css, /--font-plex-latin: 'plexArabicLatin', 'plexArabicLatin Fallback';/);
-  assert.match(css, /'plexArabic Fallback'; src: local\('Arial'\); ascent-override: 108\.5%; descent-override: 41\.5%; line-gap-override: 0\.0%; size-adjust: 100\.0%;/);
+  // R2 (P1-01): the Arabic fallback has one face per weight, sized to IBM Plex Sans Arabic (see mobile-speed.test.ts).
+  assert.equal((css.match(/font-family: 'plexArabic Fallback'; src: local\('Arial( Bold)?'\)/g) ?? []).length, 4);
   assert.match(css, /'inter Fallback'; src: local\('Arial'\); ascent-override: 89\.79%; descent-override: 22\.36%; line-gap-override: 0\.0%; size-adjust: 107\.89%;/);
   assert.equal((css.match(/font-display: swap;/g) ?? []).length, 10);
   const v2 = read('app/(site)/v2.css');

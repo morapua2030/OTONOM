@@ -10,7 +10,7 @@ const css = () => read('app/(site)/v2.css');
 test('Home (mix) shows the 16R as hero and Choose opens WhatsApp with the encoded package message (DR-100/101)', () => {
   const home = read('components/home-mix.tsx');
   assert.match(home, /const r16 = requireProductByModel\('16r'\)/);
-  assert.match(home, /<div className="v2-hero-card">\s*<Image src=\{r16\.image\}[^>]*priority \/>/);
+  assert.match(home, /<div className="v2-hero-card">\s*<Image src=\{r16\.image\}[^>]*preload fetchPriority="high" \/>/);
   assert.match(home, /href=\{whatsappHref\(bookVisitMessage\(locale, entry\.id\)\)\} \{\.\.\.EXTERNAL_LINK\}/);
   // final release: cards render the admin-managed list, whose built-in default is the registry (never literal prices)
   assert.match(home, /packages = SMART_HOME_PACKAGES/, 'package cards default to the registry');

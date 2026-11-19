@@ -18,7 +18,7 @@ test('the site layout imports exactly the shared site.css and the main hybrid03.
   const sheets = [...layout.matchAll(/^import '([^']+\.css)';$/gm)].map((m) => m[1]);
   assert.deepEqual(sheets, ['../site.css', '../hybrid03.css', '../v2.css'], 'no separate font stylesheet');
   const v2 = read('app/(site)/v2.css');
-  assert.equal((v2.match(/@font-face \{/g) ?? []).length, 14, 'ten self-hosted faces and four metric-matched fallbacks');
+  assert.equal((v2.match(/@font-face \{/g) ?? []).length, 17, 'ten self-hosted faces and seven metric-matched fallbacks (the Arabic fallback has one face per weight, R2)');
   assert.equal((v2.match(/src: url\('\/fonts\/[a-z0-9-]+\.[0-9a-f]{10}\.woff2'\) format\('woff2'\);/g) ?? []).length, 10);
 });
 
