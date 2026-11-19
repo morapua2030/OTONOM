@@ -39,12 +39,22 @@ export function jsonRes(status: number, body: unknown) {
   return Response.json(body, { status, headers: { 'cache-control': 'no-store' } });
 }
 
-/** Reject cross-origin state changes while allowing non-browser clients that omit Origin. */
+/** Plain-http origins are accepted only for these hosts (local development and the test harness). */
+const LOOPBACK_HOSTNAMES = new Set(['127.0.0.1', 'localhost', '[::1]']);
+
+/**
+ * Reject cross-origin state changes while allowing non-browser clients that omit Origin.
+ * The Origin must match the request host AND use HTTPS. Plain http is accepted only for a loopback host, as in
+ * trustedCsrfOrigins. So a downgraded origin such as http://<admin host> is refused even though its host matches:
+ * it is not the same origin as the HTTPS site.
+ */
 export function mutationOriginGuard(req: PayloadRequest): Response | null {
   const origin = req.headers.get('origin');
   if (!origin || req.method === 'GET') return null;
   try {
-    if (new URL(origin).host !== req.headers.get('host')) return jsonRes(403, { code: 'CSRF_ORIGIN_MISMATCH' });
+    const url = new URL(origin);
+    const secure = url.protocol === 'https:' || (url.protocol === 'http:' && LOOPBACK_HOSTNAMES.has(url.hostname));
+    if (!secure || url.host !== req.headers.get('host')) return jsonRes(403, { code: 'CSRF_ORIGIN_MISMATCH' });
   } catch {
     return jsonRes(403, { code: 'CSRF_ORIGIN_MISMATCH' });
   }
