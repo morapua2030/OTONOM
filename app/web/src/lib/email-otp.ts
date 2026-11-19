@@ -33,7 +33,9 @@ export function emailOtpPepper(env: NodeJS.ProcessEnv = process.env): string {
 }
 
 export function generateEmailOtp(env: NodeJS.ProcessEnv = process.env): string {
-  if (testHarnessBuild() && env.OTONOM_EMAIL_PROVIDER === 'test' && env.OTONOM_EMAIL_TEST_MODE === '1' && env.VERCEL !== '1') {
+  // The literal (not testHarnessBuild()) on purpose: next.config.mjs inlines it, so in a normal build this condition is
+  // the constant false and the minifier drops the whole fixed-code branch (checked by tests/tools/assert-no-test-switches.mjs).
+  if (process.env.OTONOM_TEST_HARNESS_BUILD === '1' && env.OTONOM_EMAIL_PROVIDER === 'test' && env.OTONOM_EMAIL_TEST_MODE === '1' && env.VERCEL !== '1') {
     const fixed = env.OTONOM_EMAIL_OTP_TEST_CODE?.trim();
     if (fixed) {
       if (!/^\d{6}$/.test(fixed)) throw new Error('OTONOM_EMAIL_OTP_TEST_CODE must be six digits');
