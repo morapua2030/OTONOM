@@ -57,7 +57,17 @@
   font-weight: 700;
   font-style: normal;
 }
-@font-face { font-family: 'plexArabic Fallback'; src: local('Arial'); ascent-override: 108.5%; descent-override: 41.5%; line-gap-override: 0.0%; size-adjust: 100.0%; }
+/*
+ * Arabic fallback, one face per weight (audit 2026-11-18, P1-01: CLS 0.174 on /ar/try). IBM Plex Sans Arabic is wider
+ * than Arial's Arabic, so before the web font arrived a large heading took one line fewer and everything below jumped
+ * when it swapped in. size-adjust = Plex width / Arial width, measured on the live Arabic text (400: 1.09-1.12,
+ * 500: 1.12-1.15, 600: 1.13-1.15, 700: 1.15-1.18; Arial Bold from 600); the vertical overrides are the previous
+ * 108.5% / 41.5% divided by size-adjust, so the line boxes stay as they were.
+ */
+@font-face { font-family: 'plexArabic Fallback'; src: local('Arial'); font-weight: 400; ascent-override: 98.19%; descent-override: 37.56%; line-gap-override: 0.0%; size-adjust: 110.5%; }
+@font-face { font-family: 'plexArabic Fallback'; src: local('Arial'); font-weight: 500; ascent-override: 95.59%; descent-override: 36.56%; line-gap-override: 0.0%; size-adjust: 113.5%; }
+@font-face { font-family: 'plexArabic Fallback'; src: local('Arial Bold'), local('Arial-BoldMT'); font-weight: 600; ascent-override: 95.18%; descent-override: 36.4%; line-gap-override: 0.0%; size-adjust: 114%; }
+@font-face { font-family: 'plexArabic Fallback'; src: local('Arial Bold'), local('Arial-BoldMT'); font-weight: 700; ascent-override: 93.29%; descent-override: 35.68%; line-gap-override: 0.0%; size-adjust: 116.3%; }
 @font-face {
   font-family: 'plexArabicLatin';
   src: url('/fonts/ibm-plex-sans-arabic-latin-400.9ed8dcb02e.woff2') format('woff2');
