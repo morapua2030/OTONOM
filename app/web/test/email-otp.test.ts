@@ -10,6 +10,9 @@ import {
   sendOwnerEmailOtp,
 } from '../src/lib/email-otp.ts';
 import { testEnv } from './test-env.ts';
+// These tests check the test-harness switches themselves, so they run as a harness build (audit AI3-01). That a
+// normal build cannot switch them on is proven in test-switches.test.ts.
+process.env.OTONOM_TEST_HARNESS_BUILD = '1';
 
 const baseEnv = testEnv({
   OTONOM_EMAIL_OTP_PEPPER: 'synthetic-email-otp-pepper-for-tests-2026',

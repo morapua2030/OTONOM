@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { isLocale, type Locale } from '@/lib/i18n.ts';
 import { Bidi, Ltr, Money } from '@/components/bidi.tsx';
 import { formatAmountMinor, formatDate, formatNumber, formatPercent } from '@/lib/format.ts';
+import { testHarnessBuild } from '@/lib/test-harness.ts';
 
 // TEST-ONLY conformance page for automated + human RTL review. 404 unless OTONOM_TEST_PAGES=1 (never in a public build).
 // Every value below is SYNTHETIC and labelled as such; none is a price, specification or claim.
@@ -35,7 +36,7 @@ const ROWS: Array<[string, number, number]> = [
 ];
 
 export default async function BidiSamples({ params }: { params: Promise<{ locale: string }> }) {
-  if (process.env.OTONOM_TEST_PAGES !== '1') notFound();
+  if (!testHarnessBuild() || process.env.OTONOM_TEST_PAGES !== '1') notFound();
   const { locale: l } = await params;
   if (!isLocale(l)) notFound();
   const locale = l as Locale;

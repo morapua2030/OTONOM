@@ -2,6 +2,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import type pg from 'pg';
 import { APP_ROOT, connString, makePool, readSecret } from '@otonom/domain';
+import { testHarnessBuild } from './test-harness.ts';
 
 export const PRIVATE_UPLOAD_DIR = path.join(APP_ROOT, 'web', '.private-uploads');
 /** Public-site media (images only, approval + consent gated). Local disk in development; object storage is BLOCKED (B-19). */
@@ -73,13 +74,14 @@ export const previewLocked = (env: NodeJS.ProcessEnv = process.env) => env.OTONO
 export const uploadsDisabled = (env: NodeJS.ProcessEnv = process.env) => env.OTONOM_DISABLE_UPLOADS === '1';
 /** Local-only synthetic commerce lab. It cannot be enabled on Vercel or a forced Preview runtime. */
 export const internalCommerceLabEnabled = (env: NodeJS.ProcessEnv = process.env) =>
-  env.OTONOM_TEST_PAGES === '1' && env.VERCEL !== '1' && !previewLocked(env);
+  testHarnessBuild() && env.OTONOM_TEST_PAGES === '1' && env.VERCEL !== '1' && !previewLocked(env);
 
 /**
  * Public order, warranty and customer-operation routes are executable only in the isolated local synthetic harness.
  * Vercel is hard-denied even if an environment variable is accidentally copied to a hosted target.
  */
 export const commercialOperationsEnabled = (env: NodeJS.ProcessEnv = process.env) =>
+  testHarnessBuild() &&
   env.OTONOM_ENABLE_SYNTHETIC_COMMERCIAL_TESTS === '1' &&
   env.OTONOM_TEST_PAGES === '1' &&
   env.VERCEL !== '1' &&
@@ -87,6 +89,7 @@ export const commercialOperationsEnabled = (env: NodeJS.ProcessEnv = process.env
 
 /** Personal-data RFQ writes remain local and synthetic until privacy/retention/consent are owner-approved. */
 export const publicRfqEnabled = (env: NodeJS.ProcessEnv = process.env) =>
+  testHarnessBuild() &&
   env.OTONOM_ENABLE_SYNTHETIC_RFQ_TESTS === '1' &&
   env.OTONOM_TEST_PAGES === '1' &&
   env.VERCEL !== '1' &&
