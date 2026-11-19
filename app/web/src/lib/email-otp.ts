@@ -1,4 +1,5 @@
 import { createHmac, randomInt, timingSafeEqual } from 'node:crypto';
+import { testHarnessBuild } from './test-harness.ts';
 
 export const EMAIL_OTP_TTL_SECONDS = 5 * 60;
 export const EMAIL_OTP_RESEND_SECONDS = 60;
@@ -32,7 +33,7 @@ export function emailOtpPepper(env: NodeJS.ProcessEnv = process.env): string {
 }
 
 export function generateEmailOtp(env: NodeJS.ProcessEnv = process.env): string {
-  if (env.OTONOM_EMAIL_PROVIDER === 'test' && env.OTONOM_EMAIL_TEST_MODE === '1' && env.VERCEL !== '1') {
+  if (testHarnessBuild() && env.OTONOM_EMAIL_PROVIDER === 'test' && env.OTONOM_EMAIL_TEST_MODE === '1' && env.VERCEL !== '1') {
     const fixed = env.OTONOM_EMAIL_OTP_TEST_CODE?.trim();
     if (fixed) {
       if (!/^\d{6}$/.test(fixed)) throw new Error('OTONOM_EMAIL_OTP_TEST_CODE must be six digits');
@@ -90,7 +91,7 @@ export async function sendOwnerEmailOtp(input: EmailOtpDelivery, env: NodeJS.Pro
   if (!allowedRecipient || normalizedEmail(input.to) !== allowedRecipient) throw new Error('EMAIL_RECIPIENT_NOT_ALLOWED');
 
   if (env.OTONOM_EMAIL_PROVIDER === 'test') {
-    if (env.OTONOM_EMAIL_TEST_MODE !== '1' || env.VERCEL === '1') throw new Error('EMAIL_TEST_PROVIDER_FORBIDDEN');
+    if (!testHarnessBuild() || env.OTONOM_EMAIL_TEST_MODE !== '1' || env.VERCEL === '1') throw new Error('EMAIL_TEST_PROVIDER_FORBIDDEN');
     if (env.OTONOM_EMAIL_TEST_FAIL === '1') throw new Error('EMAIL_PROVIDER_FAILED');
     return { providerMessageId: `test-${input.challengeId}` };
   }

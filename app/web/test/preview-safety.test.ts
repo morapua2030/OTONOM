@@ -3,6 +3,9 @@ import { readFileSync } from 'node:fs';
 import { afterEach, test } from 'node:test';
 import { commercialOperationsEnabled, internalCommerceLabEnabled, previewLocked, publicRfqEnabled, resolveSiteUrl, siteUsesHttps, trustedCsrfOrigins, uploadsDisabled } from '../src/lib/server.ts';
 import { testEnv } from './test-env.ts';
+// These tests check the test-harness switches themselves, so they run as a harness build (audit AI3-01). That a
+// normal build cannot switch them on is proven in test-switches.test.ts.
+process.env.OTONOM_TEST_HARNESS_BUILD = '1';
 
 const originalPreview = process.env.OTONOM_FORCE_PREVIEW;
 const originalUploads = process.env.OTONOM_DISABLE_UPLOADS;
