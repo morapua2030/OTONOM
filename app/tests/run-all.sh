@@ -59,7 +59,7 @@ cd "$APP/web" && step web-unit node --import tsx --test test/*.test.ts
 cd "$APP/tests" && step release-gate pnpm run test:release-gate
 cd "$APP/tests" && step run-all-selftest pnpm run test:run-all-exit
 stop_server
-cd "$APP/web" && step build npx --no-install next build
+cd "$APP/web" && step build env OTONOM_TEST_HARNESS_BUILD=1 npx --no-install next build
 # Clone the known synthetic development database into a unique disposable target. All HTTP/browser suites and
 # their server write only to this clone; the source database is never reset or cleaned by the regression run.
 export PGHOST=127.0.0.1 PGPORT=5433 PGUSER=spike_admin PGPASSWORD="$(cat "$PG_PW_FILE")"

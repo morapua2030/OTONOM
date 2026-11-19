@@ -7,6 +7,9 @@ import { ADDRESS } from '../src/lib/contact.ts';
 import { SITE_COPY } from '../src/lib/site-copy.ts';
 import { INNER } from '../src/lib/site-copy-inner.ts';
 import { testEnv } from './test-env.ts';
+// These tests check the test-harness switches themselves, so they run as a harness build (audit AI3-01). That a
+// normal build cannot switch them on is proven in test-switches.test.ts.
+process.env.OTONOM_TEST_HARNESS_BUILD = '1';
 
 const read = (path: string) => readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');
 
