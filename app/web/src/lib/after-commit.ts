@@ -8,13 +8,15 @@ import type { Payload, PayloadRequest } from 'payload';
  */
 type Task = () => Promise<void>;
 const pending = new Map<string | number, Task[]>();
+/** Until the adapter hook is installed (payload onInit), work runs at once: it must never wait for a commit nobody reports. */
+let installed = false;
 
 type TransactionId = string | number | Promise<string | number | null | undefined> | null | undefined;
 const resolveId = async (id: TransactionId) => (id instanceof Promise ? await id : id) ?? undefined;
 
 export async function afterCommit(req: PayloadRequest, task: Task): Promise<void> {
   const id = await resolveId(req.transactionID as TransactionId);
-  if (id === undefined) return task();
+  if (!installed || id === undefined) return task();
   pending.set(id, [...(pending.get(id) ?? []), task]);
 }
 
@@ -27,6 +29,7 @@ type TransactionAdapter = {
 /** Hooks the database adapter once (payload onInit): queued tasks run right after the real COMMIT. */
 export function installAfterCommit(payload: Payload): void {
   const db = payload.db as unknown as TransactionAdapter;
+  installed = true;
   if (db.__otonomAfterCommit) return;
   db.__otonomAfterCommit = true;
   const commit = db.commitTransaction.bind(db);
