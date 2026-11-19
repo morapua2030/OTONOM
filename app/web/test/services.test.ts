@@ -59,6 +59,6 @@ test('service discovery remains client-only and non-collecting', () => {
 });
 
 test('D3 service routes remain in the public sitemap', () => {
-  const source = readFileSync(new URL('../src/app/(site)/sitemap.xml/route.ts', import.meta.url), 'utf8');
+  const source = readFileSync(new URL('../src/app/(site)/sitemap.xml/route.ts', import.meta.url), 'utf8') + readFileSync(new URL('../src/lib/public-routes.ts', import.meta.url), 'utf8');
   for (const path of servicePaths) assert.match(source, new RegExp(`/${path.replaceAll('/', '\\/')}`));
 });

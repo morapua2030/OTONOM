@@ -2,6 +2,7 @@
 // per client every 10 minutes, and a package-interest click once per client and day. The limits themselves are
 // exercised over HTTP in tests/src/final-release.ts (F-METRICS-*); this file covers the route registry.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { METRIC_IP_LIMIT, metricRoute, PACKAGE_INTEREST_EVENTS } from '../src/lib/metrics.ts';
 import { isKnownPublicPath, PUBLIC_STATIC_PATHS } from '../src/lib/public-routes.ts';
@@ -26,4 +27,11 @@ test('made-up, unreleased or disabled pages are never counted', () => {
 test('the client and package limits', () => {
   assert.equal(METRIC_IP_LIMIT, 60);
   assert.deepEqual([...PACKAGE_INTEREST_EVENTS].sort(), ['package_essential', 'package_plus', 'package_premium']);
+});
+
+test('the sitemap lists exactly the registry pages (one list, not two)', () => {
+  const sitemap = readFileSync(new URL('../src/app/(site)/sitemap.xml/route.ts', import.meta.url), 'utf8');
+  assert.match(sitemap, /import \{ PUBLIC_STATIC_PATHS \} from '@\/lib\/public-routes\.ts'/);
+  assert.match(sitemap, /\[\.\.\.PUBLIC_STATIC_PATHS, \.\.\.privacy, \.\.\.casePaths\]/);
+  assert.doesNotMatch(sitemap, /const STATIC = \[/);
 });
