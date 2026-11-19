@@ -265,12 +265,38 @@ export async function runDailyJobs(req: PayloadRequest, now = new Date()) {
     });
   }
 
+  const retention = await leadRetentionMonths(req);
+  if ('skipped' in retention) {
+    // Fail closed (audit AI3-02): without the owner's setting nothing is deleted; there is no default period.
+    // The reason goes into the claim row itself: the domain role may only INSERT into job_runs, never UPDATE it.
+    const result = { deleted: 0, skipped: retention.skipped };
+    console.error(`[cron] lead_retention skipped, nothing deleted: ${retention.skipped}${retention.error ? ` (${retention.error})` : ''}`);
+    const claimed = await db.query(`INSERT INTO domain.job_runs(job, run_key, result) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING RETURNING job`, ['lead_retention', day, JSON.stringify(result)]);
+    out.retention = claimed.rowCount ? result : { skipped: 'ALREADY_RAN' };
+    return out;
+  }
   out.retention = await once('lead_retention', day, async () => {
-    const intake: any = await req.payload.findGlobal({ slug: 'intake-settings' as any, overrideAccess: true, depth: 0 }).catch(() => null);
-    const cutoff = retentionCutoff(now, intake?.retentionMonths ?? 12).toISOString();
+    const cutoff = retentionCutoff(now, retention.months).toISOString();
     const old = await req.payload.find({ collection: 'leads' as any, where: { lastActivityAt: { less_than: cutoff } }, overrideAccess: true, depth: 0, limit: 500, pagination: false, req } as any);
     for (const d of old.docs as any[]) await req.payload.delete({ collection: 'leads' as any, id: d.id, overrideAccess: true, req, context: { retention: true } });
     return { deleted: old.docs.length, cutoff };
   });
   return out;
+}
+
+/**
+ * The owner's lead retention period (intake settings, 1 to 36 whole months). Fails closed: when the setting cannot be
+ * read or is not a valid period, the result says why and the caller deletes nothing (audit AI3-02: an unreadable
+ * setting used to fall back to 12 months and delete leads the owner wanted kept longer).
+ */
+export async function leadRetentionMonths(req: PayloadRequest): Promise<{ months: number } | { skipped: 'SETTINGS_UNREADABLE' | 'SETTINGS_INVALID'; error?: string }> {
+  let intake: { retentionMonths?: unknown } | null;
+  try {
+    intake = (await req.payload.findGlobal({ slug: 'intake-settings' as any, overrideAccess: true, depth: 0 })) as { retentionMonths?: unknown } | null;
+  } catch (e) {
+    return { skipped: 'SETTINGS_UNREADABLE', error: String((e as Error)?.message ?? e).slice(0, 200) };
+  }
+  const months = intake?.retentionMonths;
+  if (typeof months !== 'number' || !Number.isInteger(months) || months < 1 || months > 36) return { skipped: 'SETTINGS_INVALID' };
+  return { months };
 }
