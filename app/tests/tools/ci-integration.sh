@@ -19,7 +19,7 @@ done
 export OTONOM_PG_HOST=127.0.0.1 OTONOM_DB=otonom_e2e_ci
 mkdir -p "$OUT"
 rm -f "$OUT"/*.log "$OUT/steps.tsv"
-for s in acceptance surface journey cms portal security final-release fixes-20261115 pool-production; do rm -f "$APP/tests/results/$s-latest.json"; done
+for s in acceptance surface journey cms portal security final-release fixes-20261115 pool-production blob-upload; do rm -f "$APP/tests/results/$s-latest.json"; done
 
 # Same synthetic test switches as run-all.sh (local/CI only; never set on Vercel).
 SERVER_ENV=(OTONOM_TRUST_PROXY=1 OTONOM_TEST_PAGES=1 OTONOM_ENABLE_SYNTHETIC_COMMERCIAL_TESTS=1 OTONOM_ENABLE_SYNTHETIC_RFQ_TESTS=1
@@ -84,11 +84,17 @@ stop_server
 start_server server-pool-production OTONOM_PG_POOL_MAX=2
 cd "$APP/tests" && step pool-production env OTONOM_BASE="$BASE" OTONOM_PG_POOL_MAX=2 npx --no-install tsx src/pool-production.ts
 stop_server
+# 5. Media uploads to Blob (audit X-05): the Production pool setting and Blob storage switched on, pointed at the fake
+#    Blob API that src/blob-upload.ts serves on 127.0.0.1:3399. The token is synthetic: it only names a store.
+FAKE_BLOB_TOKEN="vercel_blob_rw_r2fakestore_$(node -e "process.stdout.write(require('node:crypto').randomBytes(12).toString('hex'))")"
+start_server server-blob OTONOM_PG_POOL_MAX=2 OTONOM_BLOB_STORAGE_LOCAL=1 BLOB_READ_WRITE_TOKEN="$FAKE_BLOB_TOKEN" VERCEL_BLOB_API_URL=http://127.0.0.1:3399 VERCEL_BLOB_RETRIES=0
+cd "$APP/tests" && step blob-upload env OTONOM_BASE="$BASE" OTONOM_FAKE_BLOB_PORT=3399 npx --no-install tsx src/blob-upload.ts
+stop_server
 
 echo "--- steps (name, exit, seconds) ---"
 cat "$OUT/steps.tsv"
 # A suite that exits 0 but wrote no fresh result also fails the run.
-for s in acceptance surface journey cms portal security final-release fixes-20261115 pool-production; do
+for s in acceptance surface journey cms portal security final-release fixes-20261115 pool-production blob-upload; do
   f="$APP/tests/results/$s-latest.json"
   if [ ! -f "$f" ]; then echo "FAIL $s: no fresh result file"; failed=1; continue; fi
   node -e 'const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));console.log(process.argv[2],"total="+j.total,"failed="+j.failed);process.exit(j.failed?1:0)' "$f" "$s" || failed=1
