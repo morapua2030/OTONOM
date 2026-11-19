@@ -90,3 +90,80 @@ jobs:
           echo 'OTONOM_DOMAIN_DATABASE_URL=postgresql://ci@127.0.0.1:5432/ci' >> "$GITHUB_ENV"
       - name: Verify production build
         run: pnpm build
+
+  # Audit 2026-11-18, C5-01 / C1-01 / C1-02: lint, and type-check of the test code (excluded from the Next build).
+  static:
+    name: Lint and test type-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install pnpm
+        uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
+        with:
+          version: 10.33.0
+          run_install: false
+      - name: Use Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Lint (warning count is a ratchet)
+        run: pnpm lint
+      - name: Type-check the web, domain and HTTP-suite tests
+        run: pnpm typecheck:tests
+
+  # Audit 2026-11-18, C5-01 / C2-01: the domain DB tests and the HTTP suites, on a fresh synthetic database in a
+  # disposable PostgreSQL that exists only for this job. No hosted database or secret is used.
+  integration:
+    name: DB and HTTP integration suites
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install pnpm
+        uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
+        with:
+          version: 10.33.0
+          run_install: false
+      - name: Use Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Start a disposable PostgreSQL 17 (random password, bound to 127.0.0.1)
+        shell: bash
+        run: |
+          set -euo pipefail
+          pwfile="$RUNNER_TEMP/pg_superuser_pw.txt"
+          node -e "require('node:fs').writeFileSync(process.argv[1], require('node:crypto').randomBytes(24).toString('base64url'))" "$pwfile"
+          docker run -d --name otonom-ci-pg -p 127.0.0.1:5432:5432 -e POSTGRES_PASSWORD_FILE=/run/pg_pw -v "$pwfile:/run/pg_pw:ro" \
+            postgres:17.11-bookworm@sha256:665dc7b37ac52a17e298511414c21d23ffa4e6a6ef6225b3e5d59c7afb35e994 > /dev/null
+          for i in $(seq 1 60); do docker exec otonom-ci-pg pg_isready -U postgres -h 127.0.0.1 > /dev/null 2>&1 && break; sleep 1; done
+          docker exec otonom-ci-pg pg_isready -U postgres -h 127.0.0.1
+          { echo "OTONOM_PG_PORT=5432"; echo "OTONOM_PG_SUPERUSER=postgres"; echo "OTONOM_PG_SUPERUSER_PW_FILE=$pwfile"; } >> "$GITHUB_ENV"
+      - name: Domain DB tests, then the HTTP suites against next start
+        run: bash tests/tools/ci-integration.sh
+      - name: Keep the logs of a failed run
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ci-integration-logs
+          path: |
+            app/tests/results/ci-integration/
+            app/tests/results/*-latest.json
+          retention-days: 7

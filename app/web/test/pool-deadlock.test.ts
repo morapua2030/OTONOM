@@ -5,18 +5,19 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { cmsPoolMax, CMS_MIN_USABLE_CONNECTIONS, PAYLOAD_KEPT_CONNECTIONS, POOL_CONNECT_TIMEOUT_MS } from '@otonom/domain';
+import { testEnv } from './test-env.ts';
 
 const src = (p: string) => readFileSync(new URL(p, import.meta.url), 'utf8');
 
 test('the CMS pool always leaves room for Payload\'s kept connection plus concurrent saves', () => {
   assert.equal(PAYLOAD_KEPT_CONNECTIONS, 1);
   assert.equal(CMS_MIN_USABLE_CONNECTIONS, 4);
-  assert.equal(cmsPoolMax({ VERCEL: '1', OTONOM_PG_POOL_MAX: '2' } as NodeJS.ProcessEnv), 5, 'the Production setting');
-  assert.equal(cmsPoolMax({ VERCEL: '1' } as NodeJS.ProcessEnv), 5, 'Vercel default');
-  assert.equal(cmsPoolMax({ OTONOM_PG_POOL_MAX: '1' } as NodeJS.ProcessEnv), 5, 'never below the minimum');
-  assert.equal(cmsPoolMax({ OTONOM_PG_POOL_MAX: '8' } as NodeJS.ProcessEnv), 9);
-  assert.equal(cmsPoolMax({} as NodeJS.ProcessEnv), 11, 'local default');
-  for (const bad of ['0', '21', 'x', '2.5']) assert.throws(() => cmsPoolMax({ OTONOM_PG_POOL_MAX: bad } as NodeJS.ProcessEnv), /OTONOM_PG_POOL_MAX/, bad);
+  assert.equal(cmsPoolMax(testEnv({ VERCEL: '1', OTONOM_PG_POOL_MAX: '2' })), 5, 'the Production setting');
+  assert.equal(cmsPoolMax(testEnv({ VERCEL: '1' })), 5, 'Vercel default');
+  assert.equal(cmsPoolMax(testEnv({ OTONOM_PG_POOL_MAX: '1' })), 5, 'never below the minimum');
+  assert.equal(cmsPoolMax(testEnv({ OTONOM_PG_POOL_MAX: '8' })), 9);
+  assert.equal(cmsPoolMax(testEnv({})), 11, 'local default');
+  for (const bad of ['0', '21', 'x', '2.5']) assert.throws(() => cmsPoolMax(testEnv({ OTONOM_PG_POOL_MAX: bad })), /OTONOM_PG_POOL_MAX/, bad);
 });
 
 test('waiting for a pool connection fails fast instead of hanging', () => {

@@ -4,9 +4,10 @@ import { test } from 'node:test';
 import { mfaOk, mfaSessionVerified } from '../src/lib/access.ts';
 import { isUsersLoginRequest, loginIdentityDigest, normalizeLoginIdentity } from '../src/lib/login-security.ts';
 import { PRODUCTION_OWNER_EMAIL, productionOwnerPasswordOnly } from '../src/lib/production-owner-auth.ts';
+import { testEnv } from './test-env.ts';
 
 const owner = { id: 'owner-immutable-01', email: PRODUCTION_OWNER_EMAIL, role: 'OWNER', _sid: 'sid-owner', mfaVerifiedSids: [] };
-const enabled = {
+const enabled = testEnv({
   OTONOM_PRODUCTION_OWNER_PASSWORD_ONLY: '1',
   OTONOM_PRODUCTION_OWNER_ID: owner.id,
   OTONOM_PRODUCTION_OWNER_EMAIL: PRODUCTION_OWNER_EMAIL,
@@ -14,7 +15,7 @@ const enabled = {
   OTONOM_FORCE_PREVIEW: '0',
   VERCEL: '1',
   VERCEL_ENV: 'production',
-} as NodeJS.ProcessEnv;
+});
 
 test('password-only authorization is exact and does not synthesize MFA verification', () => {
   assert.equal(productionOwnerPasswordOnly(owner, enabled), true);

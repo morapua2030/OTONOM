@@ -29,7 +29,7 @@ async function staff(role: string) {
 }
 const upload = (c: Client, name: string, bytes: Buffer, type: string, fields: Record<string, string> = {}) => {
   const f = new FormData();
-  f.append('file', new Blob([bytes], { type }), name);
+  f.append('file', new Blob([new Uint8Array(bytes)], { type }), name);
   if (Object.keys(fields).length) f.append('_payload', JSON.stringify(fields));
   return c.req('POST', '/api/media', { body: f });
 };

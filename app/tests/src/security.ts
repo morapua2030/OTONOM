@@ -223,7 +223,7 @@ async function main() {
   // ---------- upload validation bypass ----------
   const up = (name: string, bytes: Buffer, type: string) => {
     const f = new FormData();
-    f.append('file', new Blob([bytes], { type }), name);
+    f.append('file', new Blob([new Uint8Array(bytes)], { type }), name);
     return editor.req('POST', '/api/media', { body: f });
   };
   const htmlAsPng = await up('evil.png', Buffer.from(`<html><script>alert(1)</script></html>`), 'image/png');
