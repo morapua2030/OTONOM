@@ -5,9 +5,11 @@ import { exposeDomainErrorCodes } from '../lib/errors.ts';
 import { auditRow } from '../lib/audit.ts';
 import { mfaOk, nobody, perm, staffOnly } from '../lib/access.ts';
 import { MEDIA_UPLOAD_DIR } from '../lib/server.ts';
-import { MEDIA_MIME_TYPES, mediaUploadProblem, mediaUploadsEnabled } from '../lib/media-storage.ts';
+import { blobStorageEnabled, MEDIA_MIME_TYPES, mediaUploadProblem, mediaUploadsEnabled } from '../lib/media-storage.ts';
+import { blobFileName } from '../lib/deferred-upload.ts';
 import { cleanUploadedFile } from '../lib/image-metadata.ts';
 import { revalidateSiteContent } from '../lib/content-workflow.ts';
+import { failAfterChangeForTests } from '../lib/test-failures.ts';
 
 /**
  * Public-site media (WAVE 4). Rules:
@@ -62,7 +64,9 @@ export const Media: CollectionConfig = {
     ],
     beforeChange: [
       async ({ data, originalDoc, req, operation, context }) => {
-        if ((context as any)?.systemWithdraw) return data;
+        if ((context as any)?.systemWithdraw || (context as any)?.fileRevert) return data;
+        // A new Blob object gets its unique name here, inside the save (lib/deferred-upload.ts uploads after the commit).
+        if (req.file && typeof data.filename === 'string' && blobStorageEnabled()) data.filename = blobFileName(data.filename);
         data.approvedBy = originalDoc?.approvedBy ?? null;
         if (operation === 'create') {
           data.status = 'DRAFT';
@@ -103,6 +107,7 @@ export const Media: CollectionConfig = {
         if (operation === 'update' && (previousDoc?.status === 'APPROVED' || doc.status === 'APPROVED')) revalidateSiteContent();
         return doc;
       },
+      failAfterChangeForTests,
     ],
   },
 };

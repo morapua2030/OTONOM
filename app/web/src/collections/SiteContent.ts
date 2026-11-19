@@ -15,6 +15,7 @@ import { PACKAGE_ITEM_KEYS, SMART_HOME_PACKAGE_IDS } from '../lib/smart-home-pac
 import { PRODUCT_MODELS } from '../lib/products.ts';
 import { RORDER } from '../lib/simulator/rules.ts';
 import { can } from '@otonom/domain';
+import { failAfterChangeForTests } from '../lib/test-failures.ts';
 
 /**
  * Admin-managed site content (final release, owner 2026-11-04). Every text is an explicit Arabic + English pair
@@ -54,7 +55,7 @@ const intIn = (min: number, max: number, label: string) => (value: unknown) =>
 const hooks = (entity: string) => ({
   afterError: [exposeDomainErrorCodes],
   beforeChange: [siteContentBeforeChange],
-  afterChange: [siteContentAfterChange(entity)],
+  afterChange: [siteContentAfterChange(entity), failAfterChangeForTests],
 });
 
 export const CatalogPackages: CollectionConfig = {
