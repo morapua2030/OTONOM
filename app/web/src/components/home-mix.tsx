@@ -123,7 +123,7 @@ export function HomeMix({ locale, packages = SMART_HOME_PACKAGES }: { locale: Lo
           </div>
         </div>
         <div className="v2-hero-card">
-          <Image src={r16.image} alt={localProductText(r16.alt, locale)} width={1254} height={1254} sizes="(max-width: 900px) 70vw, 420px" priority />
+          <Image src={r16.image} alt={localProductText(r16.alt, locale)} width={1254} height={1254} sizes="(max-width: 900px) 70vw, 420px" preload fetchPriority="high" />
           <span className="v2-pill v2-badge-pin"><Bidi text={tx(locale, 'كنترولر 16R الذكي', '16R Smart Controller')} locale={locale} /></span>
         </div>
       </section>

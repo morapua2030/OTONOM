@@ -110,7 +110,7 @@ export function SmartHomeLanding({ locale, packages }: { locale: Locale; package
           </div>
         </div>
         <div className="v2-hero-card">
-          <Image src={r16.image} alt={localProductText(r16.alt, locale)} width={1254} height={1254} sizes="(max-width: 900px) 70vw, 420px" priority />
+          <Image src={r16.image} alt={localProductText(r16.alt, locale)} width={1254} height={1254} sizes="(max-width: 900px) 70vw, 420px" preload fetchPriority="high" />
           <span className="v2-pill v2-badge-pin"><Bidi text={locale === 'ar' ? 'كنترولر 16R الذكي' : '16R Smart Controller'} locale={locale} /></span>
         </div>
       </section>
@@ -185,7 +185,7 @@ export function ProductV3({ locale, model, photo }: { locale: Locale; model: Pro
             // An approved photo uploaded in the admin (Controllers → photo) replaces the built-in product image.
             <img src={photo.url} alt={photo.alt[locale]} width={photo.width} height={photo.height} decoding="async" fetchPriority="high" data-testid="product-admin-photo" />
           ) : (
-            <Image src={product.image} alt={localProductText(product.alt, locale)} width={1254} height={1254} sizes="(max-width: 900px) 80vw, 460px" priority />
+            <Image src={product.image} alt={localProductText(product.alt, locale)} width={1254} height={1254} sizes="(max-width: 900px) 80vw, 460px" preload fetchPriority="high" />
           )}
         </div>
       </section>
