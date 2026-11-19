@@ -12,6 +12,7 @@ import { parseFromAddress, passwordResetEmail, passwordResetEmailEnabled } from 
 import { mediaImageFrom } from '../src/lib/site-content.ts';
 import { BOOKING_IP_LIMIT, BOOKING_PHONE_LIMIT } from '../src/endpoints/final-release.ts';
 import { testEnv } from './test-env.ts';
+import { blobFileName } from '../src/lib/deferred-upload.ts';
 
 const src = (p: string) => readFileSync(new URL(p, import.meta.url), 'utf8');
 
@@ -196,7 +197,14 @@ test('D: Blob storage is configured for media only, with access control off for 
   const config = src('../src/payload.config.ts');
   assert.match(config, /vercelBlobStorage\(\{/);
   assert.match(config, /collections: \{ media: \{ disablePayloadAccessControl: true \} \}/);
-  assert.match(config, /addRandomSuffix: true/);
+  // Random object names are now chosen inside the save (audit X-05, lib/deferred-upload.ts), so the adapter adds none.
+  assert.match(config, /addRandomSuffix: false/);
+  assert.match(config, /uploadAfterCommit\(vercelBlobStorage\(\{/);
+  assert.match(src('../src/collections/Media.ts'), /data\.filename = blobFileName\(data\.filename\)/);
+  const a = blobFileName('photo.final.png');
+  const b = blobFileName('photo.final.png');
+  assert.match(a, /^photo\.final-[0-9a-f]{12}\.png$/);
+  assert.notEqual(a, b, 'every object gets its own random name');
   assert.match(config, /alwaysInsertFields: true/);
   assert.doesNotMatch(config, /'private-files'\s*:/);
   const pkg = JSON.parse(src('../package.json'));

@@ -13,6 +13,7 @@ import { finalReleaseEndpoints } from './endpoints/final-release.ts';
 import { cmsConnString, payloadSecret, SITE_URL, trustedCsrfOrigins } from './lib/server.ts';
 import { protectedAdminOrigin, publicMarketingOnly } from './lib/deployment.ts';
 import { blobStorageEnabled } from './lib/blob-origin.ts';
+import { uploadAfterCommit } from './lib/deferred-upload.ts';
 import { parseFromAddress, passwordResetEmailEnabled } from './lib/password-reset.ts';
 
 const resetFrom = passwordResetEmailEnabled() ? parseFromAddress(process.env.OTONOM_EMAIL_FROM) : null;
@@ -81,14 +82,16 @@ export default buildConfig({
   plugins: [
     // Public-site images survive deployments in Vercel Blob (owner 2026-11-15). The same columns exist everywhere
     // (alwaysInsertFields); development and tests keep using local disk. Private files never use Blob.
-    vercelBlobStorage({
+    // The upload runs after the save commits, never inside its transaction (audit X-05, lib/deferred-upload.ts). Object
+    // names get their random suffix inside the save (Media beforeChange), so the adapter does not add one.
+    uploadAfterCommit(vercelBlobStorage({
       enabled: blobStorageEnabled(),
       token: blobStorageEnabled() ? process.env.BLOB_READ_WRITE_TOKEN!.trim() : undefined,
       collections: { media: { disablePayloadAccessControl: true } },
-      addRandomSuffix: true,
+      addRandomSuffix: false,
       alwaysInsertFields: true,
       cacheControlMaxAge: 30 * 24 * 60 * 60,
-    }),
+    }), 'media'),
   ],
   telemetry: false,
   graphQL: { disablePlaygroundInProduction: true },

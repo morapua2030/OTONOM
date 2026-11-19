@@ -22,6 +22,7 @@
     "@payloadcms/next": "3.90.2",
     "@payloadcms/storage-vercel-blob": "3.90.2",
     "@payloadcms/ui": "3.90.2",
+    "@vercel/blob": "2.3.1",
     "graphql": "16.14.2",
     "next": "16.4.5",
     "otplib": "13.5.0",
