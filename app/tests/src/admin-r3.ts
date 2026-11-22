@@ -2,14 +2,15 @@
 // headless) against a production build with synthetic data. Checks per page: no console error, exception, failed
 // request, 5xx or third-party request; no sideways page overflow; <html dir> right-to-left in Arabic; digits 0–9 only;
 // the page line from the copy file under the title. axe (WCAG 2.1 A/AA): no serious or critical issue on the 4 key
-// screens (sign-in, Home, bookings list, one booking). One request waits at most 60 s; the whole suite at most 25 min.
+// screens (sign-in, Home, bookings list, one booking). Also: the menu language switch, the not-found page in both languages,
+// and Payload's own language selector on the account page. One request waits at most 60 s; the whole suite at most 25 min.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { generate } from 'otplib';
 import pg from 'pg';
 import { APP_ROOT, connConfig, SECRETS_DIR } from '@otonom/domain';
-import { PAGE, type Pair } from '../../web/src/admin-ui/copy.ts';
+import { PAGE, PAYLOAD_TRANSLATIONS, type Pair } from '../../web/src/admin-ui/copy.ts';
 import { ACCOUNT_PAGE, menuFor } from '../../web/src/admin-ui/nav-model.ts';
 import { Browser, type Page } from './browser.ts';
 import { Recorder, sleep } from './http-client.ts';
@@ -152,6 +153,44 @@ async function main() {
     const backAr = await facts(p);
     rec.add('R3-LANG-SWITCH', 'ADMIN', 'the menu switch changes the admin to English, the choice is kept on the next page, and it switches back to Arabic (rtl)',
       afterEn.lang === 'en' && afterEn.dir === 'ltr' && keptEn.lang === 'en' && backAr.lang === 'ar' && backAr.dir === 'rtl', { afterEn: afterEn.lang, keptEn: keptEn.lang, backAr: backAr.lang });
+
+    // ---- the not-found page (M8): plain words in the UI language, a link back to Home, the menu, no overflow
+    const words = PAYLOAD_TRANSLATIONS as unknown as Record<'ar' | 'en', { general: Record<string, string> }>;
+    for (const lang of ['ar', 'en'] as const) {
+      await setLang(p, lang);
+      for (const width of [1440, 390]) {
+        await viewport(p, width);
+        p.issues.length = 0;
+        await p.goto('/admin/no-such-page');
+        let ok = true;
+        await settle(p, `!!document.querySelector('h1')`).catch(() => (ok = false));
+        const f = await facts(p);
+        const text = await p.eval<string>('document.body.innerText');
+        await p.screenshot(`${lang}-${width}-not-found.png`);
+        rec.add(`R3-NOT-FOUND-${lang}-${width}`, 'ADMIN', `${lang} ${width}: an unknown admin address shows the not-found page in ${lang}, in plain words, with a link back to Home, the menu and no page overflow`,
+          ok && f.dir === (lang === 'ar' ? 'rtl' : 'ltr') && f.lang === lang && f.overflow === 0 && !f.digits && text.includes(words[lang].general.sorryNotFound)
+            && (await p.exists('[data-testid="staff-nav"]')) && (await p.exists('a[href="/admin"]')) && problems(p).length === 0,
+          { f: { ...f, line: '' }, issues: problems(p).slice(0, 5) });
+      }
+    }
+
+    // ---- Payload's own language selector on the account page keeps working (M1)
+    await viewport(p, 1440);
+    await setLang(p, 'ar');
+    await p.goto('/admin/account');
+    await settle(p, `!!document.querySelector('#language-select')`);
+    const viaAccount = await p.eval<{ options: string[]; lang: string; dir: string }>(`(async () => {
+      const input = document.querySelector('#language-select');
+      input.focus();
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', code: 'ArrowDown', keyCode: 40, bubbles: true }));
+      await new Promise((r) => setTimeout(r, 600));
+      const options = [...document.querySelectorAll('.rs__option')];
+      options.find((o) => o.textContent === 'English')?.click();
+      for (let i = 0; i < 80 && document.documentElement.lang !== 'en'; i++) await new Promise((r) => setTimeout(r, 250));
+      return { options: options.map((o) => o.textContent || ''), lang: document.documentElement.lang, dir: (document.documentElement.getAttribute('dir') || '').toLowerCase() };
+    })()`);
+    rec.add('R3-ACCOUNT-LANGUAGE', 'ADMIN', "Payload's own language selector on the account page offers Arabic and English and switches the admin to English",
+      viaAccount.options.length === 2 && viaAccount.lang === 'en' && viaAccount.dir === 'ltr', viaAccount);
     await p.close();
   } finally {
     browser.close();
