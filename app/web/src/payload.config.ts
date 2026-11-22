@@ -18,6 +18,7 @@ import { blobStorageEnabled } from './lib/blob-origin.ts';
 import { uploadAfterCommit } from './lib/deferred-upload.ts';
 import { parseFromAddress, passwordResetEmailEnabled } from './lib/password-reset.ts';
 import { PAYLOAD_TRANSLATIONS } from './admin-ui/copy.ts';
+import { payloadDatePattern } from './admin-ui/format.ts';
 
 const resetFrom = passwordResetEmailEnabled() ? parseFromAddress(process.env.OTONOM_EMAIL_FROM) : null;
 
@@ -32,12 +33,14 @@ export default buildConfig({
     user: 'users',
     // R3 (owner 2026-11-22): the OTONOM look, light only (admin-ui/admin-theme.css)
     theme: 'light',
-    dateFormat: 'd MMM yyyy, h:mm a',
+    // Arabic by default; DateFormatProvider sets the pattern of the admin language («،» in Arabic, "," in English)
+    dateFormat: payloadDatePattern('ar'),
     importMap: { baseDir: path.resolve(dirname) },
     components: {
       beforeLogin: ['/components/StaffLoginNotice#StaffLoginNotice'],
       // the menu: 6 groups by role + the language switch (navigation only; every page re-checks access)
       Nav: '/admin-ui/Nav#AdminNav',
+      providers: ['/admin-ui/DateFormatProvider#DateFormatProvider'],
       graphics: { Logo: '/admin-ui/brand#AdminLogo', Icon: '/admin-ui/brand#AdminIcon' },
       // staff workspaces (each view re-checks MFA + permission; every action goes through the existing guarded endpoints)
       views: {

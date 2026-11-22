@@ -4,13 +4,25 @@ import type { AdminLang } from './copy.ts';
 export const CAIRO = 'Africa/Cairo';
 const locale = (lang: AdminLang) => (lang === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB');
 
-/** «22 نوفمبر 2026، 3:05 م» / "22 Nov 2026, 3:05 PM" */
+const NBSP = '\u00a0';
+
+/**
+ * Payload's own date pattern (date-fns) for the admin language: the Arabic comma «،» in Arabic, a comma in English, and
+ * a no-break space so the time never splits from ص/م (AM/PM). Used by DateFormatProvider and the config default.
+ */
+export function payloadDatePattern(language: string | undefined | null): string {
+  return language === 'en' ? `d MMM yyyy, h:mm${NBSP}a` : `d MMM yyyy، h:mm${NBSP}a`;
+}
+
+/** «22 نوفمبر 2026، 3:05 م» / "22 Nov 2026, 3:05 PM" (the time and ص/م never split across lines) */
 export function dateTime(value: string | number | Date | null | undefined, lang: AdminLang): string {
   if (value === null || value === undefined || value === '') return '—';
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return '—';
   const date = new Intl.DateTimeFormat(locale(lang), { timeZone: CAIRO, day: 'numeric', month: lang === 'ar' ? 'long' : 'short', year: 'numeric' }).format(d);
-  const time = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-EG-u-nu-latn' : 'en-US', { timeZone: CAIRO, hour: 'numeric', minute: '2-digit', hour12: true }).format(d);
+  const time = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-EG-u-nu-latn' : 'en-US', { timeZone: CAIRO, hour: 'numeric', minute: '2-digit', hour12: true })
+    .format(d)
+    .replace(/\s+/g, NBSP);
   return lang === 'ar' ? `${date}، ${time}` : `${date}, ${time}`;
 }
 

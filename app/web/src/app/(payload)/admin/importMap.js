@@ -9,6 +9,7 @@ import { AdminNav as AdminNav_454fcd92575ff2c16813086614bb2c2c } from '../../../
 import { AdminIcon as AdminIcon_8a9d259bdffd728358371a4391438b89 } from '../../../admin-ui/brand'
 import { AdminLogo as AdminLogo_8a9d259bdffd728358371a4391438b89 } from '../../../admin-ui/brand'
 import { StaffLoginNotice as StaffLoginNotice_d7868647ca41487517c1f53878e7aa00 } from '../../../components/StaffLoginNotice'
+import { DateFormatProvider as DateFormatProvider_40b4ad3483b7c9301092757f254fb415 } from '../../../admin-ui/DateFormatProvider'
 import { HomeView as HomeView_2a553b0a5ba3ecce6d06ffd42da26b87 } from '../../../admin-ui/HomeView'
 import { OverviewHome as OverviewHome_2a553b0a5ba3ecce6d06ffd42da26b87 } from '../../../admin-ui/HomeView'
 import { HiddenPagesView as HiddenPagesView_d41ca7fc92cc370db6a5f8134778a2fd } from '../../../admin-ui/HiddenPagesView'
@@ -36,6 +37,7 @@ export const importMap = {
   "/admin-ui/brand#AdminIcon": AdminIcon_8a9d259bdffd728358371a4391438b89,
   "/admin-ui/brand#AdminLogo": AdminLogo_8a9d259bdffd728358371a4391438b89,
   "/components/StaffLoginNotice#StaffLoginNotice": StaffLoginNotice_d7868647ca41487517c1f53878e7aa00,
+  "/admin-ui/DateFormatProvider#DateFormatProvider": DateFormatProvider_40b4ad3483b7c9301092757f254fb415,
   "/admin-ui/HomeView#HomeView": HomeView_2a553b0a5ba3ecce6d06ffd42da26b87,
   "/admin-ui/HomeView#OverviewHome": OverviewHome_2a553b0a5ba3ecce6d06ffd42da26b87,
   "/admin-ui/HiddenPagesView#HiddenPagesView": HiddenPagesView_d41ca7fc92cc370db6a5f8134778a2fd,

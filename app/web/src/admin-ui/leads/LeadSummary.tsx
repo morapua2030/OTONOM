@@ -5,20 +5,21 @@ import { dateTime, egyptMobileDigits } from '../format.ts';
 import { Icon } from '../icons.tsx';
 import { StatusBadge } from '../StatusBadge.tsx';
 
-/** The top of one booking (R3, M7): the page line, the code, the status badge and when it arrived. Display only. */
+/**
+ * The top of one booking (R3, M7): the page line, the status badge and when it arrived. The booking code is the page
+ * title right above (owner 2026-11-22: show it once). Display only.
+ */
 export function LeadSummary() {
   const { i18n } = useTranslation();
   const lang = langOf(i18n.language);
   const { data, initialData } = useDocumentInfo() as { data?: Record<string, any>; initialData?: Record<string, any> };
   const doc = data ?? initialData ?? {};
   const status = useFormFields(([fields]) => fields?.status?.value) as string | undefined;
-  const ref = useFormFields(([fields]) => fields?.ref?.value) as string | undefined;
   const copy = status ? LEAD_STATUS_COPY[status as keyof typeof LEAD_STATUS_COPY] : undefined;
   return (
     <section className="otn-lead-top" data-testid="lead-summary">
       <p className="otn-line">{pick(PAGE.lead.line, lang)}</p>
       <div className="otn-lead-top__row">
-        {ref ? <bdi dir="ltr" className="otn-lead-top__ref">{ref}</bdi> : null}
         {status ? <StatusBadge status={status} label={copy ? pick(copy.label, lang) : status} /> : null}
         {doc.createdAt ? (
           <span className="otn-lead-top__when">

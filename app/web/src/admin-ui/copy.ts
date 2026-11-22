@@ -10,6 +10,12 @@ export type AdminLang = 'ar' | 'en';
 
 /** The admin language from Payload's i18n (anything other than English is Arabic, the default). */
 export const langOf = (language: string | undefined | null): AdminLang => (language === 'en' ? 'en' : 'ar');
+/**
+ * A left-to-right run inside Arabic text (phone formats, model codes, e-mails, links): wrapped in Unicode isolates
+ * (LRI … PDI), the plain-text form of <bdi dir="ltr">, so «+20…» never shows as «20+…». Help texts are plain strings
+ * (Payload prints them as text), so this is how they keep their direction.
+ */
+export const ltr = (text: string) => `\u2066${text}\u2069`;
 export const pick = (pair: Pair, language: string | undefined | null): string => pair[langOf(language)];
 
 /** Menu groups, in menu order (M3). */
@@ -51,7 +57,7 @@ export const PAGE = {
   controllers: {
     name: { ar: 'أجهزة التحكم', en: 'Controllers' },
     one: { ar: 'جهاز تحكم', en: 'Controller' },
-    line: { ar: 'أجهزة التحكم 4R و6R و16R وبياناتها في الموقع.', en: 'The 4R, 6R and 16R controllers and their details on the site.' },
+    line: { ar: `أجهزة التحكم ${ltr('4R')} و${ltr('6R')} و${ltr('16R')} وبياناتها في الموقع.`, en: 'The 4R, 6R and 16R controllers and their details on the site.' },
   },
   media: {
     name: { ar: 'مكتبة الصور', en: 'Photo library' },
@@ -192,7 +198,7 @@ export const HOME = {
 export const LEAD_FIELDS = {
   ref: { label: { ar: 'كود الحجز', en: 'Booking code' } },
   name: { label: { ar: 'الاسم', en: 'Name' } },
-  phone: { label: { ar: 'الموبايل', en: 'Mobile' }, help: { ar: 'موبايل مصري، محفوظ بصيغة ‎+20…', en: 'Egyptian mobile, stored as +20…' } },
+  phone: { label: { ar: 'الموبايل', en: 'Mobile' }, help: { ar: `موبايل مصري، محفوظ بصيغة ${ltr('+20…')}`, en: 'Egyptian mobile, stored as +20…' } },
   package: { label: { ar: 'الباقة', en: 'Package' } },
   message: { label: { ar: 'ملاحظة العميل', en: "Customer's note" }, help: { ar: 'ملاحظة كتبها العميل، لحد 500 حرف.', en: 'A note the customer wrote, up to 500 characters.' } },
   plan: { label: { ar: 'خطة المحاكي', en: 'Simulator plan' }, help: { ar: 'اتبعتت أوتوماتيك من صفحة «جرّب».', en: 'Sent automatically from the Try page.' } },
@@ -252,7 +258,7 @@ export const STAFF_LOGIN = {
   signInFailed: { ar: 'الدخول ما نجحش. راجع الإيميل والباسورد.', en: 'Sign-in failed. Check your email and password.' },
   statusFailed: { ar: 'مش قادرين نتأكد من حالة الحماية دلوقتي. جرّب تاني.', en: 'Unable to check verification status.' },
   emailTitle: { ar: 'شوف إيميلك', en: 'Check your email' },
-  emailSent: { ar: 'بعتنالك كود من 6 أرقام على {destination}.', en: 'We sent a six-digit code to {destination}.' },
+  emailSent: { ar: `بعتنالك كود من 6 أرقام على ${ltr('{destination}')}.`, en: 'We sent a six-digit code to {destination}.' },
   yourInbox: { ar: 'إيميلك', en: 'your inbox' },
   emailCode: { ar: 'كود الإيميل', en: 'Email verification code' },
   verifyEmail: { ar: 'تأكيد الكود', en: 'Verify email code' },
