@@ -5,8 +5,8 @@ import { A11Y_COPY, langOf, pick } from './copy.ts';
 
 /**
  * Accessible names and roles that Payload 3.90.2 leaves out on a few of its own controls (axe, R3): the pagination
- * arrows, row checkboxes, "more options" buttons, select inputs, focusable icons inside hidden select parts, and the
- * document tabs list. Only ARIA attributes / tab order of decorative icons change; behaviour and data are untouched.
+ * arrows, row checkboxes, "more options" buttons, the drag handles of list rows, select inputs, focusable icons inside
+ * hidden select parts, and the document tabs list. Only ARIA attributes / tab order of decorative icons change; behaviour and data are untouched.
  * Runs after the page has hydrated and again when Payload renders new parts.
  */
 export function A11yFixes() {
@@ -25,6 +25,10 @@ export function A11yFixes() {
       });
       document.querySelectorAll('button.popup-button').forEach((b) => {
         if (!b.textContent?.trim() && !b.getAttribute('aria-label')) named(b, t('moreOptions'));
+      });
+      // the drag handle of a list row (for example a booking note): a role=button with no text
+      document.querySelectorAll('[role="button"][aria-roledescription="sortable"]').forEach((h) => {
+        if (!h.textContent?.trim()) named(h, t('dragToReorder'));
       });
       document.querySelectorAll('.react-select input.rs__input').forEach((input) => {
         const label = input.closest('.field-type')?.querySelector('.field-label')?.textContent?.replace(/\*/g, '').trim();
