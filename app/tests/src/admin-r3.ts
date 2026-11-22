@@ -77,7 +77,8 @@ const problems = (p: Page) => p.issues.filter((i) => i.kind !== 'request-failed'
 
 async function main() {
   mkdirSync(SHOTS, { recursive: true });
-  const leadId = (await su.query(`SELECT id FROM cms.leads ORDER BY created_at DESC LIMIT 1`)).rows[0]?.id;
+  // one synthetic booking, preferably one with follow-up notes (their rows add Payload's drag handles to the page)
+  const leadId = (await su.query(`SELECT l.id FROM cms.leads l ORDER BY EXISTS (SELECT 1 FROM cms.leads_notes n WHERE n._parent_id = l.id) DESC, l.created_at DESC LIMIT 1`)).rows[0]?.id;
   if (!leadId) throw new Error('admin-r3 needs at least one synthetic booking (seed)');
   const browser = await Browser.launch(BASE, path.join(APP_ROOT, 'tests', '.edge-profile-admin-r3'), SHOTS, 9344);
   try {
