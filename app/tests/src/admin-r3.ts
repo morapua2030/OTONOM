@@ -40,7 +40,7 @@ async function freshTotp() {
     await sleep(1000);
   }
 }
-const cdp = (p: Page) => (p as unknown as { cdp: { send: (m: string, params?: object, sid?: string) => Promise<any> } }).cdp;
+const cdp = (p: Page) => (p as unknown as { cdp: { send: (m: string, params?: object, sid?: string) => Promise<unknown> } }).cdp;
 const sid = (p: Page) => (p as unknown as { sid: string }).sid;
 async function viewport(p: Page, width: number) {
   await cdp(p).send('Emulation.setDeviceMetricsOverride', { width, height: width < 768 ? 844 : 900, deviceScaleFactor: 1, mobile: width < 768 }, sid(p));
