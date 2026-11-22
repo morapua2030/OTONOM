@@ -322,11 +322,18 @@ export const wordCount = (s: string) => s.replace(/[«»"“”().,:;!?؟،؛—
  */
 export const PAYLOAD_TRANSLATIONS = {
   ar: {
-    general: { locale: 'لغة المحتوى اللي بتعدّله', dashboard: 'الرئيسية', createNew: 'إضافة جديد', createdAt: 'التاريخ' },
+    general: {
+      locale: 'لغة المحتوى اللي بتعدّله', dashboard: 'الرئيسية', createNew: 'إضافة جديد', createdAt: 'التاريخ',
+      // the not-found page (M8): plain words. Payload's `error:*` texts stay as they are: its API errors share them.
+      nothingFound: 'الصفحة دي مش موجودة', sorryNotFound: 'مفيش صفحة بالعنوان ده. ارجع للرئيسية واختار من القايمة.', backToDashboard: 'ارجع للرئيسية',
+    },
     authentication: { logOut: 'خروج' },
   },
   en: {
-    general: { locale: "Content language you're editing", dashboard: 'Home', createdAt: 'Date' },
+    general: {
+      locale: "Content language you're editing", dashboard: 'Home', createdAt: 'Date',
+      nothingFound: 'Page not found', sorryNotFound: 'There is no page at this address. Go back to Home and use the menu.', backToDashboard: 'Back to Home',
+    },
     authentication: { logOut: 'Sign out' },
   },
 } as unknown as NonNullable<Config['i18n']>['translations']; // partial: Payload deep-merges it over its full translations

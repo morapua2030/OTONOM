@@ -103,3 +103,15 @@ test('dates: Western digits, Cairo time, the language comma, and the time never 
   assert.equal(payloadDatePattern('ar'), 'd MMM yyyy، h:mm a');
   assert.equal(payloadDatePattern('en'), 'd MMM yyyy, h:mm a');
 });
+
+test("Payload's own words we replace exist in both languages, with no technical words", () => {
+  const T = C.PAYLOAD_TRANSLATIONS as unknown as Record<'ar' | 'en', { general: Record<string, string>; authentication: Record<string, string> }>;
+  for (const lang of ['ar', 'en'] as const) {
+    for (const key of ['locale', 'dashboard', 'createdAt', 'nothingFound', 'sorryNotFound', 'backToDashboard']) {
+      const s = T[lang].general[key];
+      assert.ok(typeof s === 'string' && s.trim().length > 0, `${lang}.general.${key}`);
+      assert.deepEqual(banned(s), [], `${lang}.general.${key}`);
+    }
+    assert.ok(T[lang].authentication.logOut.trim().length > 0, `${lang}.authentication.logOut`);
+  }
+});
