@@ -363,6 +363,8 @@ async function main() {
         const sid = att.sessionId as string;
         await cdp.send('Network.enable', {}, sid);
         await cdp.send('Network.setCookie', { name: 'payload-token', value: token ?? '', domain: '127.0.0.1', path: '/', httpOnly: true }, sid);
+        // R3: the admin opens in Arabic by default; these checks read the English admin
+        await cdp.send('Network.setCookie', { name: 'payload-lng', value: 'en', domain: '127.0.0.1', path: '/' }, sid);
         await cdp.send('Page.enable', {}, sid);
         await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1366, height: 900, deviceScaleFactor: 1, mobile: false }, sid);
         const loaded = cdp.once('Page.loadEventFired', sid);
@@ -395,6 +397,8 @@ async function main() {
         const sid = att.sessionId as string;
         await cdp.send('Network.enable', {}, sid);
         await cdp.send('Network.setCookie', { name: 'payload-token', value: token ?? '', domain: '127.0.0.1', path: '/', httpOnly: true }, sid);
+        // R3: the admin opens in Arabic by default; these checks read the English admin
+        await cdp.send('Network.setCookie', { name: 'payload-lng', value: 'en', domain: '127.0.0.1', path: '/' }, sid);
         await cdp.send('Page.enable', {}, sid);
         await cdp.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 768 }, sid);
         const loaded = cdp.once('Page.loadEventFired', sid);
@@ -427,6 +431,8 @@ async function main() {
         const sid = att.sessionId as string;
         await cdp.send('Network.enable', {}, sid);
         await cdp.send('Network.setCookie', { name: 'payload-token', value: token ?? '', domain: '127.0.0.1', path: '/', httpOnly: true }, sid);
+        // R3: the admin opens in Arabic by default; these checks read the English admin
+        await cdp.send('Network.setCookie', { name: 'payload-lng', value: 'en', domain: '127.0.0.1', path: '/' }, sid);
         await cdp.send('Page.enable', {}, sid);
         await cdp.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 768 }, sid);
         const loaded = cdp.once('Page.loadEventFired', sid);
@@ -456,6 +462,8 @@ async function main() {
         const sid = att.sessionId as string;
         await cdp.send('Network.enable', {}, sid);
         await cdp.send('Network.setCookie', { name: 'payload-token', value: token ?? '', domain: '127.0.0.1', path: '/', httpOnly: true }, sid);
+        // R3: the admin opens in Arabic by default; these checks read the English admin
+        await cdp.send('Network.setCookie', { name: 'payload-lng', value: 'en', domain: '127.0.0.1', path: '/' }, sid);
         await cdp.send('Page.enable', {}, sid);
         await cdp.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 768 }, sid);
         const loaded = cdp.once('Page.loadEventFired', sid);
