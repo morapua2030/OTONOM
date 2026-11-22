@@ -1,8 +1,9 @@
 /* OTONOM admin pages (R3): Home, Hidden pages, the bookings list and one booking. Imported by admin-theme.css. */
 
 /* ---------- OTONOM pages (Home, Hidden pages, custom views) ---------- */
-.otn-page { display: grid; gap: 28px; padding-block: 24px 48px; max-width: 1200px; }
-.otn-page__head { display: grid; gap: 4px; }
+/* minmax(0, 1fr): a wide table stays inside its own scroll box instead of widening the page (tablet width) */
+.otn-page { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; padding-block: 24px 48px; max-width: 1200px; }
+.otn-page__head { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
 .otn-eyebrow { margin: 0; color: var(--otn-blue-text); font-size: 14px; font-weight: 600; }
 .otn-section-title { margin: 0; font-size: 20px; line-height: 1.4; }
 .otn-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
