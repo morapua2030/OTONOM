@@ -743,4 +743,5 @@ export const A11Y_COPY = {
   selectRow: { ar: 'اختار الصف ده', en: 'Select this row' },
   selectAll: { ar: 'اختار كل الصفوف', en: 'Select all rows' },
   moreOptions: { ar: 'اختيارات تانية', en: 'More options' },
+  dragToReorder: { ar: 'اسحب لتغيير الترتيب', en: 'Drag to reorder' },
 } as const satisfies Record<string, Pair>;
