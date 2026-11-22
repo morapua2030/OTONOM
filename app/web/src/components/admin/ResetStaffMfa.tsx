@@ -1,5 +1,7 @@
 'use client';
 import { useState, type FormEvent } from 'react';
+import { useTranslation } from '@payloadcms/ui';
+import { langOf, pick, RESET_V, ROLE_COPY } from '@/admin-ui/copy.ts';
 import s from './staff.module.css';
 
 type Row = { id: string; email: string; role: string; mfaEnabled: boolean };
@@ -11,6 +13,10 @@ type Row = { id: string; email: string; role: string; mfaEnabled: boolean };
  */
 export function ResetStaffMfa({ users }: { users: Row[] }) {
   const [state, setState] = useState<'idle' | 'working' | 'done' | 'mismatch' | 'error'>('idle');
+  const { i18n } = useTranslation();
+  const lang = langOf(i18n.language);
+  const t = (k: keyof typeof RESET_V) => pick(RESET_V[k], lang);
+  const roleName = (role: string) => (lang === 'en' || !(role in ROLE_COPY) ? role : pick(ROLE_COPY[role as keyof typeof ROLE_COPY], lang));
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const element = event.currentTarget;
@@ -32,25 +38,25 @@ export function ResetStaffMfa({ users }: { users: Row[] }) {
   }
   return (
     <section className={s.section} data-testid="reset-staff-mfa">
-      <h2>Reset a team member&apos;s authenticator / إعادة ضبط تطبيق المصادقة</h2>
-      <p className={s.muted}>For a lost phone: their sessions end and their next sign-in asks them to set up a new authenticator. Recorded in the audit log.</p>
+      <h2>{t('title')}</h2>
+      <p className={s.muted}>{t('line')}</p>
       <form className={s.form} onSubmit={submit}>
         <label>
-          Team member{' '}
+          {t('member')}{' '}
           <select name="userId" required defaultValue="">
-            <option value="" disabled>Choose…</option>
+            <option value="" disabled>{t('choose')}</option>
             {users.map((u) => (
-              <option key={u.id} value={u.id}>{`${u.email} · ${u.role}${u.mfaEnabled ? '' : ' · not enrolled'}`}</option>
+              <option key={u.id} value={u.id}>{`${u.email} · ${roleName(u.role)}${u.mfaEnabled ? '' : ` · ${t('notEnrolled')}`}`}</option>
             ))}
           </select>
         </label>
-        <label>Type their full e-mail to confirm <input name="confirmEmail" type="email" required maxLength={254} autoComplete="off" /></label>
-        <button className={s.btn} type="submit" disabled={state === 'working'}>{state === 'working' ? 'Resetting…' : 'Reset authenticator'}</button>
+        <label>{t('confirm')} <input name="confirmEmail" type="email" dir="ltr" required maxLength={254} autoComplete="off" /></label>
+        <button className={s.btn} type="submit" disabled={state === 'working'}>{state === 'working' ? t('resetting') : t('reset')}</button>
       </form>
       <div role="status" aria-live="polite">
-        {state === 'done' ? <p className={`${s.result} ${s.ok}`}>Done. Their sessions ended; they will set up a new authenticator at their next sign-in.</p> : null}
-        {state === 'mismatch' ? <p className={`${s.result} ${s.err}`}>The e-mail does not match the selected team member.</p> : null}
-        {state === 'error' ? <p className={`${s.result} ${s.err}`}>The reset could not be completed.</p> : null}
+        {state === 'done' ? <p className={`${s.result} ${s.ok}`}>{t('done')}</p> : null}
+        {state === 'mismatch' ? <p className={`${s.result} ${s.err}`}>{t('mismatch')}</p> : null}
+        {state === 'error' ? <p className={`${s.result} ${s.err}`}>{t('error')}</p> : null}
       </div>
     </section>
   );

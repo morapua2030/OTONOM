@@ -159,8 +159,10 @@ async function main() {
     rec.add('APP-MFA-ADMIN-PENDING', 'MFA', 'admin panel refused to a password-only session', pa.status === 307 && pa.headers.get('location') === '/admin/unauthorized', { status: pa.status, location: pa.headers.get('location') });
     const fa = await s.ADMIN.get('/admin/collections/rfqs');
     rec.add('APP-MFA-ADMIN-OK', 'MFA', 'admin panel usable after MFA', fa.status === 200, fa.status);
+    // R3 (owner 2026-11-22): the staff pages open in Arabic unless English was chosen (the payload-lng preference)
     const ui = await new Client(BASE).get('/staff/login');
-    rec.add('APP-MFA-STAFF-LOGIN-PAGE', 'MFA', 'staff login page available', ui.status === 200 && ui.text.includes('staff sign-in'), ui.status);
+    const uiEn = await new Client(BASE).get('/staff/login', { cookie: 'payload-lng=en' });
+    rec.add('APP-MFA-STAFF-LOGIN-PAGE', 'MFA', 'staff login page available (Arabic by default, English when chosen)', ui.status === 200 && ui.text.includes('دخول فريق OTONOM') && uiEn.status === 200 && uiEn.text.includes('staff sign-in'), { ar: ui.status, en: uiEn.status });
   }
   // ---------- CRM read access ----------
   {

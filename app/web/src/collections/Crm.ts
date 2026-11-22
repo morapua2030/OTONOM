@@ -12,7 +12,8 @@ const crmWrite = perm('crm.write');
 export const Organisations: CollectionConfig = {
   slug: 'organisations',
   versions: { maxPerDoc: 50 },
-  admin: { group: 'Projects', useAsTitle: 'legalName' },
+  // R3: hidden from the menu only (route kept; listed on «Hidden pages»)
+  admin: { group: false, useAsTitle: 'legalName' },
   access: { read: crmRead, create: crmWrite, update: crmWrite, delete: nobody },
   fields: [
     { name: 'legalName', type: 'text', required: true },
@@ -28,7 +29,8 @@ export const Organisations: CollectionConfig = {
 export const Contacts: CollectionConfig = {
   slug: 'contacts',
   versions: { maxPerDoc: 50 },
-  admin: { group: 'Projects', useAsTitle: 'fullName' },
+  // R3: hidden from the menu only (route kept; listed on «Hidden pages»)
+  admin: { group: false, useAsTitle: 'fullName' },
   access: { read: crmRead, create: crmWrite, update: crmWrite, delete: nobody },
   fields: [
     { name: 'fullName', type: 'text', required: true },
@@ -54,7 +56,8 @@ export const REASON_REQUIRED = new Set(['LOST', 'CANCELLED']);
 
 export const Rfqs: CollectionConfig = {
   slug: 'rfqs',
-  admin: { group: 'Projects', useAsTitle: 'ref', defaultColumns: ['ref', 'status', 'customerType', 'projectType', 'governorate', 'createdAt'] },
+  // R3: hidden from the menu only (route kept; listed on «Hidden pages»)
+  admin: { group: false, useAsTitle: 'ref', defaultColumns: ['ref', 'status', 'customerType', 'projectType', 'governorate', 'createdAt'] },
   versions: { maxPerDoc: 100 }, // revision history = status history audit trail
   access: { read: crmRead, create: nobody /* public intake only through /api/rfq */, update: crmWrite, delete: nobody },
   fields: [
@@ -145,7 +148,8 @@ export const OPP_TRANSITIONS: Record<string, string[]> = {
 
 export const Opportunities: CollectionConfig = {
   slug: 'opportunities',
-  admin: { group: 'Projects', useAsTitle: 'ref', defaultColumns: ['ref', 'stage', 'estimatedValueEgp', 'qualifiedAt', 'ownerEngineer'] },
+  // R3: hidden from the menu only (route kept; listed on «Hidden pages»)
+  admin: { group: false, useAsTitle: 'ref', defaultColumns: ['ref', 'stage', 'estimatedValueEgp', 'qualifiedAt', 'ownerEngineer'] },
   versions: { maxPerDoc: 200 },
   access: { read: crmRead, create: crmWrite, update: crmWrite, delete: nobody },
   fields: [

@@ -16,7 +16,8 @@ const NEVER_PUBLISHABLE = ['PROHIBITED'];
  */
 export const Claims: CollectionConfig = {
   slug: 'claims',
-  admin: { group: 'Content', useAsTitle: 'code', defaultColumns: ['code', 'status', 'impact', 'reviewBy'] },
+  // R3: hidden from the menu only (route kept; listed on «Hidden pages»)
+  admin: { group: false, useAsTitle: 'code', defaultColumns: ['code', 'status', 'impact', 'reviewBy'] },
   versions: { maxPerDoc: 100 },
   access: {
     read: ({ req }) => (req.user && mfaOk(req.user as any) && staffOnly({ req } as any) ? true : { status: { in: PUBLISHABLE_CLAIM_STATUSES } }),

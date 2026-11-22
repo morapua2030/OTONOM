@@ -2,22 +2,12 @@ import type { AdminViewServerProps } from 'payload';
 import { LEAD_STATUSES } from '@/lib/leads.ts';
 import { metricsSummary, type MetricEvent } from '@/lib/metrics.ts';
 import { domainDb } from '@/lib/server.ts';
-import { NoAccess, StaffShell, staffOf } from './shell.tsx';
+import { EVENT_COPY, LEAD_PACKAGE_COPY, LEAD_STATUS_COPY, PAGE, pick, SALES_V } from '@/admin-ui/copy.ts';
+import { count as fmt } from '@/admin-ui/format.ts';
+import { NoAccess, StaffShell, staffOf, viewLang } from './shell.tsx';
 import s from './staff.module.css';
 
-const EVENT_LABEL: Record<MetricEvent, string> = {
-  page_view: 'Page views / مشاهدات',
-  whatsapp_click: 'WhatsApp clicks / واتساب',
-  call_click: 'Call clicks / اتصال',
-  package_premium: 'Premium chosen',
-  package_plus: 'Plus chosen',
-  package_essential: 'Essential chosen',
-  sim_start: 'Simulator started',
-  sim_stage_2: 'Simulator: rooms',
-  sim_stage_3: 'Simulator: try it',
-  sim_stage_4: 'Simulator: plan',
-  plan_sent: 'Plan sent',
-};
+const EVENTS = Object.keys(EVENT_COPY) as MetricEvent[];
 
 /**
  * Sales overview (final release, owner 2026-11-04): booking-request cards (new today, waiting > 24 h, by status), the
@@ -27,8 +17,10 @@ const EVENT_LABEL: Record<MetricEvent, string> = {
  */
 export async function SalesView(props: AdminViewServerProps) {
   const staff = staffOf(props);
-  const shell = { ...props, title: 'Sales & site metrics', subtitle: 'Booking requests from the site and aggregated site metrics (no visitor is identified).' };
-  if (!staff || !(staff.can('leads.read') || staff.can('metrics.read'))) return <StaffShell {...shell}><NoAccess need="leads.read" /></StaffShell>;
+  const lang = viewLang(props);
+  const t = (k: keyof typeof SALES_V) => pick(SALES_V[k], lang);
+  const shell = { ...props, title: pick(PAGE.siteNumbers.name, lang), subtitle: pick(PAGE.siteNumbers.line, lang) };
+  if (!staff || !(staff.can('leads.read') || staff.can('metrics.read'))) return <StaffShell {...shell}><NoAccess need="leads.read" lang={lang} /></StaffShell>;
   const payload = props.initPageResult.req.payload;
   let leads: { newToday: number; waiting: number; byStatus: Array<[string, number]> } | null = null;
   if (staff.can('leads.read')) {
@@ -41,50 +33,50 @@ export async function SalesView(props: AdminViewServerProps) {
       count({ and: [{ status: { equals: 'NEW' } }, { createdAt: { less_than: since24 } }] }),
       ...LEAD_STATUSES.map((st) => count({ status: { equals: st.value } })),
     ]);
-    leads = { newToday, waiting, byStatus: LEAD_STATUSES.map((st, i) => [`${st.ar} — ${st.en}`, byStatus[i] ?? 0]) };
+    leads = { newToday, waiting, byStatus: LEAD_STATUSES.map((st, i) => [pick(LEAD_STATUS_COPY[st.value].label, lang), byStatus[i] ?? 0]) };
   }
   const metrics = staff.can('metrics.read') ? await metricsSummary(domainDb()).catch(() => null) : null;
   return (
     <StaffShell {...shell}>
       {leads ? (
         <section className={s.section} data-testid="sales-leads">
-          <h2>Booking requests</h2>
+          <h2>{t('bookings')}</h2>
           <div className={s.grid}>
-            <div className={s.card}><span className={s.muted}>New today</span><strong className={s.securityValue} data-testid="sales-new-today">{leads.newToday}</strong></div>
-            <div className={s.card}><span className={s.muted}>New, waiting &gt; 24 h</span><strong className={s.securityValue} data-testid="sales-waiting">{leads.waiting}</strong></div>
+            <div className={s.card}><span className={s.muted}>{t('newToday')}</span><strong className={s.securityValue} data-testid="sales-new-today">{leads.newToday}</strong></div>
+            <div className={s.card}><span className={s.muted}>{t('waiting')}</span><strong className={s.securityValue} data-testid="sales-waiting">{leads.waiting}</strong></div>
           </div>
           <div className={s.tableWrap}>
             <table className={s.table}>
-              <caption className={s.srOnly}>Booking requests by status</caption>
-              <thead><tr><th scope="col">Status</th><th scope="col">Requests</th></tr></thead>
-              <tbody>{leads.byStatus.map(([label, n]) => <tr key={label}><td data-label="Status">{label}</td><td data-label="Requests">{n}</td></tr>)}</tbody>
+              <caption className={s.srOnly}>{t('byStatus')}</caption>
+              <thead><tr><th scope="col">{t('status')}</th><th scope="col">{t('requests')}</th></tr></thead>
+              <tbody>{leads.byStatus.map(([label, n]) => <tr key={label}><td data-label={t('status')}>{label}</td><td data-label={t('requests')}>{fmt(Number(n))}</td></tr>)}</tbody>
             </table>
           </div>
           <div className={s.actions}>
-            <a className={s.btn} href="/admin/collections/leads">Open booking requests</a>
-            {staff.can('leads.export') ? <a className={`${s.btn} ${s.btnSecondary}`} href="/api/leads-export" data-testid="sales-export">Export CSV (OWNER)</a> : null}
+            <a className={s.btn} href="/admin/collections/leads">{t('openBookings')}</a>
+            {staff.can('leads.export') ? <a className={`${s.btn} ${s.btnSecondary}`} href="/api/leads-export" data-testid="sales-export">{t('export')}</a> : null}
           </div>
         </section>
       ) : null}
       {metrics ? (
         <section className={s.section} data-testid="sales-metrics">
-          <h2>Site metrics</h2>
+          <h2>{t('metrics')}</h2>
           <div className={s.tableWrap}>
             <table className={s.table}>
-              <caption className={s.srOnly}>Site events today, last 7 days and last 30 days</caption>
-              <thead><tr><th scope="col">Event</th><th scope="col">Today</th><th scope="col">7 days</th><th scope="col">30 days</th></tr></thead>
+              <caption className={s.srOnly}>{t('metricsCaption')}</caption>
+              <thead><tr><th scope="col">{t('event')}</th><th scope="col">{t('today')}</th><th scope="col">{t('days7')}</th><th scope="col">{t('days30')}</th></tr></thead>
               <tbody>
-                {(Object.keys(EVENT_LABEL) as MetricEvent[]).map((e) => (
-                  <tr key={e}><td data-label="Event">{EVENT_LABEL[e]}</td><td data-label="Today">{metrics.totals.today[e] ?? 0}</td><td data-label="7 days">{metrics.totals.days7[e] ?? 0}</td><td data-label="30 days">{metrics.totals.days30[e] ?? 0}</td></tr>
+                {EVENTS.map((e) => (
+                  <tr key={e}><td data-label={t('event')}>{pick(EVENT_COPY[e], lang)}</td><td data-label={t('today')}>{fmt(metrics.totals.today[e] ?? 0)}</td><td data-label={t('days7')}>{fmt(metrics.totals.days7[e] ?? 0)}</td><td data-label={t('days30')}>{fmt(metrics.totals.days30[e] ?? 0)}</td></tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <h3>Simulator funnel (30 days)</h3>
-          <ol data-testid="sales-funnel">{metrics.funnel.map((f) => <li key={f.event}>{EVENT_LABEL[f.event]}: <strong>{f.count}</strong></li>)}</ol>
-          <h3>Top packages (30 days)</h3>
-          <ol>{metrics.topPackages.length ? metrics.topPackages.map((p) => <li key={p.pkg}>{p.pkg}: <strong>{p.count}</strong></li>) : <li>—</li>}</ol>
-          <h3>Top pages (30 days)</h3>
+          <h3>{t('funnel')}</h3>
+          <ol data-testid="sales-funnel">{metrics.funnel.map((f) => <li key={f.event}>{pick(EVENT_COPY[f.event], lang)}: <strong>{fmt(f.count)}</strong></li>)}</ol>
+          <h3>{t('topPackages')}</h3>
+          <ol>{metrics.topPackages.length ? metrics.topPackages.map((p) => <li key={p.pkg}>{p.pkg in LEAD_PACKAGE_COPY ? pick(LEAD_PACKAGE_COPY[p.pkg as keyof typeof LEAD_PACKAGE_COPY], lang) : p.pkg}: <strong>{fmt(p.count)}</strong></li>) : <li>—</li>}</ol>
+          <h3>{t('topPages')}</h3>
           <ol>{metrics.topRoutes.length ? metrics.topRoutes.map((r) => <li key={r.route}><bdi dir="ltr">{r.route}</bdi>: <strong>{r.count}</strong></li>) : <li>—</li>}</ol>
         </section>
       ) : null}

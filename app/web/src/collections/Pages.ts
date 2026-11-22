@@ -5,7 +5,8 @@ import { auditWorkflow, editorialWorkflow, WORKFLOW_FIELDS } from '../lib/workfl
 
 export const Pages: CollectionConfig = {
   slug: 'pages',
-  admin: { group: 'Content', useAsTitle: 'title', defaultColumns: ['title', 'slug', 'workflowStatus', '_status'] },
+  // R3: hidden from the menu only (route kept; listed on «Hidden pages»)
+  admin: { group: false, useAsTitle: 'title', defaultColumns: ['title', 'slug', 'workflowStatus', '_status'] },
   versions: { drafts: true, maxPerDoc: 50 },
   access: {
     read: ({ req }) => (req.user && mfaOk(req.user as any) && staffOnly({ req } as any) ? true : { _status: { equals: 'published' } }),

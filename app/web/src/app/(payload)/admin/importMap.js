@@ -1,6 +1,18 @@
-import { StaffNav as StaffNav_08cba80541c72b8edf3bea6d25983b78 } from '../../../components/admin/StaffNav'
+import { LeadSummary as LeadSummary_058c86e2e849d17483a91904c969d4d7 } from '../../../admin-ui/leads/LeadSummary'
+import { PhoneCell as PhoneCell_54e47d4b0c37d2ab2c895a437dcc4457 } from '../../../admin-ui/leads/cells'
+import { ContactButtons as ContactButtons_058c86e2e849d17483a91904c969d4d7 } from '../../../admin-ui/leads/LeadSummary'
+import { ReadOnlyDate as ReadOnlyDate_6ec2c4e26279a67c1ee6ae49672f440c } from '../../../admin-ui/leads/ReadOnlyDate'
+import { StatusCell as StatusCell_54e47d4b0c37d2ab2c895a437dcc4457 } from '../../../admin-ui/leads/cells'
+import { StatusHint as StatusHint_578985c741f220ff2bb08d9d64a24759 } from '../../../admin-ui/leads/StatusHint'
+import { LeadQuickFilters as LeadQuickFilters_63edfb9f5c15c700569ac4c199964ec9 } from '../../../admin-ui/leads/QuickFilters'
+import { AdminNav as AdminNav_454fcd92575ff2c16813086614bb2c2c } from '../../../admin-ui/Nav'
+import { AdminIcon as AdminIcon_8a9d259bdffd728358371a4391438b89 } from '../../../admin-ui/brand'
+import { AdminLogo as AdminLogo_8a9d259bdffd728358371a4391438b89 } from '../../../admin-ui/brand'
 import { StaffLoginNotice as StaffLoginNotice_d7868647ca41487517c1f53878e7aa00 } from '../../../components/StaffLoginNotice'
-import { OverviewView as OverviewView_5d5529febef9806330273f8c4298b4ef } from '../../../components/admin/OverviewView'
+import { DateFormatProvider as DateFormatProvider_40b4ad3483b7c9301092757f254fb415 } from '../../../admin-ui/DateFormatProvider'
+import { HomeView as HomeView_2a553b0a5ba3ecce6d06ffd42da26b87 } from '../../../admin-ui/HomeView'
+import { OverviewHome as OverviewHome_2a553b0a5ba3ecce6d06ffd42da26b87 } from '../../../admin-ui/HomeView'
+import { HiddenPagesView as HiddenPagesView_d41ca7fc92cc370db6a5f8134778a2fd } from '../../../admin-ui/HiddenPagesView'
 import { ContentReviewView as ContentReviewView_559b0f15b41f54742617fe9db3cc158e } from '../../../components/admin/ContentReviewView'
 import { ProjectsView as ProjectsView_52b0369b50b14f6311ca8629549163eb } from '../../../components/admin/ProjectsView'
 import { KpiView as KpiView_109205f83ea2a8cc06c0d5512f810249 } from '../../../components/admin/KpiView'
@@ -14,9 +26,21 @@ import { VercelBlobClientUploadHandler as VercelBlobClientUploadHandler_16c82c5e
 
 /** @type import('payload').ImportMap */
 export const importMap = {
-  "/components/admin/StaffNav#StaffNav": StaffNav_08cba80541c72b8edf3bea6d25983b78,
+  "/admin-ui/leads/LeadSummary#LeadSummary": LeadSummary_058c86e2e849d17483a91904c969d4d7,
+  "/admin-ui/leads/cells#PhoneCell": PhoneCell_54e47d4b0c37d2ab2c895a437dcc4457,
+  "/admin-ui/leads/LeadSummary#ContactButtons": ContactButtons_058c86e2e849d17483a91904c969d4d7,
+  "/admin-ui/leads/ReadOnlyDate#ReadOnlyDate": ReadOnlyDate_6ec2c4e26279a67c1ee6ae49672f440c,
+  "/admin-ui/leads/cells#StatusCell": StatusCell_54e47d4b0c37d2ab2c895a437dcc4457,
+  "/admin-ui/leads/StatusHint#StatusHint": StatusHint_578985c741f220ff2bb08d9d64a24759,
+  "/admin-ui/leads/QuickFilters#LeadQuickFilters": LeadQuickFilters_63edfb9f5c15c700569ac4c199964ec9,
+  "/admin-ui/Nav#AdminNav": AdminNav_454fcd92575ff2c16813086614bb2c2c,
+  "/admin-ui/brand#AdminIcon": AdminIcon_8a9d259bdffd728358371a4391438b89,
+  "/admin-ui/brand#AdminLogo": AdminLogo_8a9d259bdffd728358371a4391438b89,
   "/components/StaffLoginNotice#StaffLoginNotice": StaffLoginNotice_d7868647ca41487517c1f53878e7aa00,
-  "/components/admin/OverviewView#OverviewView": OverviewView_5d5529febef9806330273f8c4298b4ef,
+  "/admin-ui/DateFormatProvider#DateFormatProvider": DateFormatProvider_40b4ad3483b7c9301092757f254fb415,
+  "/admin-ui/HomeView#HomeView": HomeView_2a553b0a5ba3ecce6d06ffd42da26b87,
+  "/admin-ui/HomeView#OverviewHome": OverviewHome_2a553b0a5ba3ecce6d06ffd42da26b87,
+  "/admin-ui/HiddenPagesView#HiddenPagesView": HiddenPagesView_d41ca7fc92cc370db6a5f8134778a2fd,
   "/components/admin/ContentReviewView#ContentReviewView": ContentReviewView_559b0f15b41f54742617fe9db3cc158e,
   "/components/admin/ProjectsView#ProjectsView": ProjectsView_52b0369b50b14f6311ca8629549163eb,
   "/components/admin/KpiView#KpiView": KpiView_109205f83ea2a8cc06c0d5512f810249,

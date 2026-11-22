@@ -1,0 +1,51 @@
+/*
+ * Staff screens (R3, M8): /staff/login, /staff/forgot, /staff/invite. Loaded only by app/(site)/staff/layout.tsx and
+ * scoped to `body.otn-staff`, so no public page changes. Same tokens and fonts as the admin (tokens.css).
+ */
+@import './tokens.css';
+
+html:has(> body.otn-staff), body.otn-staff { background: var(--otn-page); }
+body.otn-staff { color: var(--otn-body); min-height: 100vh; margin: 0; }
+html[lang='ar'] body.otn-staff { font-family: var(--otn-font-ar); line-height: 1.8; letter-spacing: 0; }
+html[lang='en'] body.otn-staff { font-family: var(--otn-font-en); line-height: 1.6; }
+.otn-staff :focus-visible { outline: 3px solid var(--otn-sky); outline-offset: 2px; }
+.otn-staff main.wrap { padding-inline: 16px; }
+
+.otn-staff .staff-auth { display: grid; gap: 20px; }
+.otn-staff .staff-auth-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.otn-staff .staff-logo { display: block; width: min(220px, 60vw); height: auto; object-fit: contain; }
+.otn-staff .staff-auth-title { display: grid; gap: 4px; }
+.otn-staff .staff-auth-title h1 { margin: 0; color: var(--otn-navy); font-size: clamp(24px, 6vw, 30px); line-height: 1.3; }
+html[lang='ar'] .otn-staff .staff-auth-title h1 { font-family: var(--otn-font-ar); font-weight: 700; letter-spacing: 0; }
+html[lang='en'] .otn-staff .staff-auth-title h1 { font-family: var(--otn-font-display-en); font-weight: 400; letter-spacing: -0.01em; }
+.otn-staff .staff-auth-title p { margin: 0; color: var(--otn-muted); font-size: 15px; }
+
+/* the language switch (same as the admin menu) */
+.otn-staff .otn-lang { display: inline-flex; border: 1px solid var(--otn-navy); border-radius: 9999px; padding: 3px; gap: 2px; background: var(--otn-card); }
+.otn-staff .otn-lang__btn { min-height: 38px; min-width: 76px; padding: 4px 14px; border: 0; border-radius: 9999px; background: transparent; color: var(--otn-navy); font-size: 15px; font-weight: 600; cursor: pointer; box-shadow: none; }
+.otn-staff .otn-lang__btn[lang='ar'] { font-family: var(--otn-font-ar); }
+.otn-staff .otn-lang__btn[lang='en'] { font-family: var(--otn-font-en); }
+.otn-staff .otn-lang__btn[aria-pressed='true'] { background: var(--otn-sky); }
+.otn-staff .otn-lang__btn:not([aria-pressed='true']):hover { background: var(--otn-ice); }
+
+/* the form card: white, 1px navy border, radius 16, no shadow */
+.otn-staff form.rfq, .otn-staff .auth-card { display: grid; gap: 16px; margin: 0; padding: clamp(20px, 5vw, 32px); background: var(--otn-card); border: 1px solid var(--otn-navy); border-radius: 16px; box-shadow: none; }
+.otn-staff form.rfq h2, .otn-staff .auth-card h2 { margin: 0; color: var(--otn-navy); font-size: 20px; }
+.otn-staff form.rfq p, .otn-staff .auth-card p { margin: 0; }
+.otn-staff form.rfq label { display: grid; gap: 6px; color: var(--otn-navy); font-size: 15px; font-weight: 600; }
+.otn-staff form.rfq input { width: 100%; min-height: 48px; padding: 10px 14px; border: 1px solid var(--otn-input-line); border-radius: 12px; background: var(--otn-card); color: var(--otn-navy); font: inherit; font-weight: 400; font-size: 16px; box-shadow: none; }
+.otn-staff form.rfq input:focus { border-color: var(--otn-navy); box-shadow: 0 0 0 1px var(--otn-navy); outline: none; }
+.otn-staff form.rfq input:focus-visible { outline: 3px solid var(--otn-sky); outline-offset: 2px; }
+
+/* buttons (handoff): primary sky fill + navy text + navy border; secondary outline; radius 12; 44px+ */
+.otn-staff .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 13px 20px; border: 1px solid var(--otn-navy); border-radius: 12px; background: var(--otn-sky); color: var(--otn-navy); font: inherit; font-size: 16px; font-weight: 600; box-shadow: none; cursor: pointer; text-decoration: none; }
+.otn-staff .btn:hover:not(:disabled) { background: #1594cc; }
+.otn-staff .btn:disabled { background: var(--otn-hairline); color: var(--otn-muted); border-color: var(--otn-input-line); cursor: not-allowed; }
+.otn-staff .btn.secondary { background: transparent; color: var(--otn-navy); }
+.otn-staff .btn.secondary:hover:not(:disabled) { background: var(--otn-ice); }
+.otn-staff form.rfq a, .otn-staff .auth-card a { color: var(--otn-blue-text); font-weight: 600; }
+
+.otn-staff .staff-auth-hint { margin: -6px 0 0; color: var(--otn-muted); font-size: 14px; }
+.otn-staff .staff-secret { display: block; overflow-wrap: anywhere; white-space: pre-wrap; border: 1px solid var(--otn-hairline); border-radius: 12px; padding: 12px; background: var(--otn-page); color: var(--otn-navy); font-family: ui-monospace, Consolas, monospace; direction: ltr; text-align: left; }
+.otn-staff .err { margin: 0; padding: 12px 14px; border: 1px solid var(--otn-danger); border-radius: 12px; background: var(--otn-danger-soft); color: var(--otn-danger); font-weight: 600; }
+.otn-staff [role='status'] { margin: 0; color: var(--otn-ok); font-weight: 600; }

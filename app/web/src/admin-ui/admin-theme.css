@@ -1,0 +1,177 @@
+/*
+ * OTONOM admin theme (R3, M2): the site's Claude Design system on Payload's admin. Loaded only by app/(payload)/layout.
+ * Payload's own CSS sits in `@layer payload-default`; these rules are unlayered, so they win without `!important`.
+ * The values come from admin-ui/tokens.css (= the site's `--v2-*` tokens). Light theme only (admin.theme: 'light').
+ */
+@import './tokens.css';
+@import './admin-pages.css';
+
+/* ---------- Payload variables → OTONOM tokens ---------- */
+:root {
+  --color-base-0: #ffffff;
+  --color-base-50: #f5f7fa;
+  --color-base-100: #eef2f6;
+  --color-base-150: #e3e8ef;
+  --color-base-200: #d5dde7;
+  --color-base-250: #c6d0dc;
+  --color-base-300: #b9c4d2;
+  --color-base-350: #a6b2c1;
+  --color-base-400: #8a97a8;
+  --color-base-450: #75839a;
+  --color-base-500: #64728a;
+  --color-base-550: #56657c;
+  --color-base-600: #4a5a71;
+  --color-base-650: #3e4e66;
+  --color-base-700: #34445b;
+  --color-base-750: #2f4056;
+  --color-base-800: #2a3b50;
+  --color-base-850: #1c2f45;
+  --color-base-900: #0f2238;
+  --color-base-950: #0b1a2c;
+  --color-base-1000: #07111d;
+  --theme-bg: var(--otn-page);
+  --theme-input-bg: var(--otn-card);
+  --theme-text: var(--otn-body);
+  --theme-border-color: var(--otn-hairline);
+  --style-radius-s: 8px;
+  --style-radius-m: 12px;
+  --style-radius-l: 16px;
+  --font-body: var(--otn-font-ar);
+  --base-body-size: 15;
+  --accessibility-outline: 3px solid var(--otn-sky);
+  --accessibility-outline-offset: 2px;
+}
+html { font-size: 15px; }
+/* the menu is 288 px on desktop; phones keep Payload's full-width menu (100vw) */
+@media (min-width: 769px) { :root { --nav-width: 288px; } }
+html[lang='en'] { --font-body: var(--otn-font-en); }
+html[lang='ar'] { --font-body: var(--otn-font-ar); }
+html[lang='ar'] body { line-height: 1.8; letter-spacing: 0; }
+html[lang='en'] body { line-height: 1.6; }
+body { background: var(--otn-page); color: var(--otn-body); }
+:focus-visible { outline: 3px solid var(--otn-sky); outline-offset: 2px; }
+a { color: var(--otn-blue-text); }
+
+/* headings: navy; Arabic Plex 700, English DM Serif for page titles only */
+:where(h1, h2, h3, h4) { color: var(--otn-navy); }
+html[lang='ar'] :where(h1, h2, h3, h4) { font-family: var(--otn-font-ar); font-weight: 700; line-height: 1.3; letter-spacing: 0; }
+html[lang='en'] :where(h1, h2, h3, h4) { font-family: var(--otn-font-en); font-weight: 600; letter-spacing: -0.01em; }
+html[lang='en'] :where(.otn-title, .list-header h1, .doc-header__title, .dashboard h1, .global-edit h1) { font-family: var(--otn-font-display-en); font-weight: 400; letter-spacing: -0.01em; }
+
+/* ---------- Menu (custom Nav, Payload's NavWrapper) ---------- */
+.nav { background: var(--otn-card); border-inline-end: 1px solid var(--otn-hairline); }
+.otn-nav { display: flex; flex-direction: column; gap: 18px; padding: 20px 16px 24px; min-height: 100%; }
+.otn-nav__brand { display: grid; gap: 14px; padding: 4px 6px 14px; border-bottom: 1px solid var(--otn-hairline); }
+.otn-nav__logo { display: block; width: clamp(128px, 14vw, 150px); }
+.otn-nav__logo img { display: block; width: 100%; height: auto; object-fit: contain; }
+.otn-lang { display: inline-flex; width: fit-content; border: 1px solid var(--otn-navy); border-radius: 9999px; padding: 3px; gap: 2px; background: var(--otn-card); }
+.otn-lang__btn { min-height: 36px; min-width: 76px; padding: 4px 14px; border: 0; border-radius: 9999px; background: transparent; color: var(--otn-navy); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+.otn-lang__btn[lang='ar'] { font-family: var(--otn-font-ar); }
+.otn-lang__btn[lang='en'] { font-family: var(--otn-font-en); }
+.otn-lang__btn[aria-pressed='true'] { background: var(--otn-sky); color: var(--otn-navy); }
+.otn-lang__btn:not([aria-pressed='true']):hover { background: var(--otn-ice); }
+.otn-nav__groups { display: grid; gap: 14px; }
+.otn-nav__group { display: grid; gap: 4px; }
+.otn-nav__group-title { padding-inline: 14px; color: var(--otn-blue-text); font-size: 13px; font-weight: 600; line-height: 1.5; }
+html[lang='en'] .otn-nav__group-title { letter-spacing: 0.06em; text-transform: uppercase; font-size: 12px; }
+.otn-nav__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.otn-nav__link { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 9px 14px; border: 1px solid transparent; border-radius: 12px; color: var(--otn-navy); font-size: 16px; font-weight: 500; line-height: 1.35; text-decoration: none; }
+.otn-nav__link:hover { background: var(--otn-page); color: var(--otn-navy); }
+.otn-nav__link[aria-current='page'] { background: var(--otn-ice); border-color: var(--otn-navy); font-weight: 600; }
+.otn-nav__link .otn-icon { width: 20px; height: 20px; flex: none; color: var(--otn-blue-text); }
+.otn-nav__link[aria-current='page'] .otn-icon { color: var(--otn-navy); }
+.otn-nav__footer { margin-top: auto; display: grid; gap: 2px; padding-top: 14px; border-top: 1px solid var(--otn-hairline); }
+.otn-nav__who { margin: 0 0 6px; padding-inline: 14px; color: var(--otn-muted); font-size: 14px; }
+.otn-nav__who strong { color: var(--otn-navy); font-weight: 600; }
+.otn-nav__link--quiet { font-size: 15px; }
+.nav__mobile-close { color: var(--otn-navy); }
+.nav__header { border-bottom: 1px solid var(--otn-hairline); }
+
+/* ---------- Top bar (breadcrumb, account) ---------- */
+.app-header__bg { background: var(--otn-page); }
+.app-header { border-bottom: 1px solid var(--otn-hairline); }
+.step-nav { font-size: 15px; }
+.step-nav a, .step-nav span { color: var(--otn-body); }
+.step-nav__home .otn-header-icon, .otn-header-icon { display: block; width: 26px; height: auto; }
+.nav-toggler, .template-default__nav-toggler-wrapper .nav-toggler { color: var(--otn-navy); border-radius: 12px; }
+/* the content-language switch only matters for photo descriptions (the only translated-by-locale field shown) */
+.template-default:not(:has(.collection-edit--media, .collection-list--media)) .app-header__localizer { display: none; }
+
+/* ---------- Page titles and the page line ---------- */
+.otn-title { margin: 0; color: var(--otn-navy); font-size: clamp(26px, 3vw, 34px); line-height: 1.2; }
+html[lang='ar'] .otn-title { line-height: 1.3; }
+.otn-line, .custom-view-description, .view-description { margin: 6px 0 0; color: var(--otn-muted); font-size: 15px; line-height: 1.6; max-width: 70ch; }
+html[lang='ar'] :is(.otn-line, .custom-view-description, .view-description) { line-height: 1.8; }
+
+/* ---------- Buttons (handoff: radius 12, 44px, 1px navy border, primary = sky with navy text) ---------- */
+.btn { border-radius: 12px; font-weight: 600; }
+.btn--size-medium, .btn--size-large { min-height: 44px; padding: 10px 20px; }
+.btn--style-primary { background: var(--otn-sky); color: var(--otn-navy); border: 1px solid var(--otn-navy); box-shadow: none; }
+.btn--style-primary:not(:disabled):hover, .btn--style-primary:not(:disabled):focus-visible { background: #1594cc; color: var(--otn-navy); }
+.btn--style-primary:disabled, .btn--style-primary.btn--disabled { background: var(--otn-hairline); color: var(--otn-muted); border-color: var(--otn-input-line); }
+.btn--style-secondary { background: transparent; color: var(--otn-navy); box-shadow: inset 0 0 0 1px var(--otn-navy); }
+.btn--style-secondary:not(:disabled):hover { background: var(--otn-ice); box-shadow: inset 0 0 0 1px var(--otn-navy); }
+.btn--style-pill { background: var(--otn-ice); color: var(--otn-navy); border: 1px solid var(--otn-navy); border-radius: 9999px; }
+.btn--style-pill:not(:disabled):hover { background: var(--otn-pale); }
+
+/* ---------- Fields ---------- */
+.field-label { color: var(--otn-navy); font-size: 15px; font-weight: 600; }
+.field-description { color: var(--otn-muted); font-size: 14px; }
+.field-type input:not([type='checkbox']):not([type='radio']), .field-type textarea, .rs__control, .react-select .rs__control {
+  background: var(--otn-card); border: 1px solid var(--otn-input-line); border-radius: 12px; box-shadow: none; min-height: 44px; font-size: 15px; color: var(--otn-navy);
+}
+.field-type input:not([type='checkbox']):not([type='radio']):focus, .field-type textarea:focus, .rs__control--is-focused { border-color: var(--otn-navy); box-shadow: 0 0 0 1px var(--otn-navy); outline: none; }
+.field-type input[readonly], .field-type input:disabled, .field-type textarea[readonly], .field-type textarea:disabled, .read-only .rs__control { background: var(--otn-page); color: var(--otn-body); border-color: var(--otn-hairline); }
+
+/* ---------- Cards, tables, pills ---------- */
+.card { background: var(--otn-card); border: 1px solid var(--otn-navy); border-radius: 16px; box-shadow: none; }
+.table table { background: var(--otn-card); border-collapse: separate; border-spacing: 0; border: 1px solid var(--otn-hairline); border-radius: 16px; overflow: hidden; }
+.table thead th { color: var(--otn-blue-text); font-size: 13px; font-weight: 600; background: var(--otn-card); border-bottom: 1px solid var(--otn-hairline); }
+.table tbody tr { background: var(--otn-card); }
+.table tbody tr:nth-child(odd) { background: var(--otn-card); }
+.table tbody td { border-bottom: 1px solid var(--otn-hairline); font-size: 15px; color: var(--otn-body); }
+.table tbody tr:last-child td { border-bottom: 0; }
+.table tbody tr:hover td { background: var(--otn-page); }
+.pill { border-radius: 9999px; }
+
+/* ---------- Document header and controls ---------- */
+.doc-controls { background: var(--otn-page); border-bottom: 1px solid var(--otn-hairline); }
+.doc-controls__wrapper { background: var(--otn-page); }
+.doc-header__title { color: var(--otn-navy); }
+.document-fields__sidebar-wrap { border-inline-start: 1px solid var(--otn-hairline); }
+.collapsible { border: 1px solid var(--otn-hairline); border-radius: 16px; background: var(--otn-card); }
+.collapsible__toggle-wrap { border-radius: 16px; background: var(--otn-card); }
+.collapsible__header { font-weight: 600; color: var(--otn-navy); }
+
+/* ---------- Status badges (colour + text, never colour alone) ---------- */
+.otn-badge { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 2px 12px; border: 1px solid var(--otn-navy); border-radius: 9999px; background: var(--otn-ice); color: var(--otn-navy); font-size: 14px; font-weight: 600; line-height: 1.4; white-space: nowrap; }
+.otn-badge::before { content: ''; width: 8px; height: 8px; border-radius: 9999px; background: currentColor; flex: none; }
+.otn-badge--NEW { background: var(--otn-sky); }
+.otn-badge--CONTACTED { background: var(--otn-ice); }
+.otn-badge--VISIT_SCHEDULED { background: var(--otn-pale); }
+.otn-badge--QUOTED { background: var(--otn-warn-soft); color: var(--otn-warn); border-color: var(--otn-warn); }
+.otn-badge--FOLLOW_UP { background: var(--otn-card); }
+.otn-badge--NOT_INTERESTED { background: var(--otn-hairline); color: var(--otn-muted); border-color: var(--otn-disabled); }
+
+/* ---------- Login page (/admin/login) ---------- */
+.template-minimal { background: var(--otn-page); }
+.login__brand .otn-login-logo { width: 240px; height: auto; }
+
+/* ---------- Mixed text: phones, codes, e-mails and links stay left-to-right ---------- */
+.otn-ltr { direction: ltr; unicode-bidi: isolate; }
+
+.otn-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ---------- Right-to-left fixes for Payload's layout ---------- */
+/* lists bleed to the screen edges with left-only offsets; mirror them in Arabic so nothing spills off the page */
+html[dir='rtl' i] :is(.collection-list, .collection-folder-list, .folder-list, .versions) .table {
+  left: auto; right: calc(var(--gutter-h) * -1); padding-left: 0; padding-right: var(--gutter-h);
+}
+/* some of Payload's pieces are placed with left-only offsets and 100vw widths; in right-to-left that spills past the
+   left edge and the phone page slides sideways. Clip it (clip, not hidden: sticky headers keep working). */
+html[dir='rtl' i] .template-default { overflow-x: clip; }
+/* phones: the menu covers the page (both directions) instead of pushing it sideways */
+@media (max-width: 768px) {
+  .template-default--nav-hydrated.template-default--nav-open { grid-template-columns: 0 auto; }
+  .template-default--nav-open .nav { position: fixed; inset-block: 0; inset-inline-start: 0; z-index: var(--z-nav); width: 100vw; }
+}
