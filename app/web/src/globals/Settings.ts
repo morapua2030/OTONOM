@@ -4,19 +4,24 @@ import { KPI_IDS } from '@otonom/domain';
 import { auditRow } from '../lib/audit.ts';
 import { BusinessRuleError } from '../lib/errors.ts';
 import { commercialOperationsEnabled } from '../lib/server.ts';
+import { GROUP, KPI_COPY, optionsOf, PAGE, SETTINGS_F, STAGE_COPY } from '../admin-ui/copy.ts';
 
 export const Settings: GlobalConfig = {
   slug: 'settings',
+  label: PAGE.settings.name,
+  // owner 2026-11-15: the stage is shown read-only, with an explanation (the field rules are unchanged)
+  admin: { group: GROUP.settings, description: PAGE.settings.line },
   versions: { max: 100 },
   access: { read: staffOnly, update: perm('settings.stage') },
   fields: [
-    { name: 'stage', type: 'select', required: true, defaultValue: 'PREVIEW', options: ['PREVIEW', 'COMMERCIAL'] },
+    { name: 'stage', label: SETTINGS_F.stage.label, type: 'select', required: true, defaultValue: 'PREVIEW', options: optionsOf(['PREVIEW', 'COMMERCIAL'] as const, STAGE_COPY), admin: { readOnly: true, description: SETTINGS_F.stage.help } },
     {
       name: 'northStarKpi',
+      label: SETTINGS_F.northStar.label,
       type: 'select',
       defaultValue: 'UNSELECTED',
-      options: ['UNSELECTED', ...KPI_IDS],
-      admin: { description: 'Primary KPI highlighted in reports — an OWNER decision (pending). Changing it never changes any KPI value.' },
+      options: optionsOf(['UNSELECTED', ...KPI_IDS] as const, KPI_COPY),
+      admin: { description: SETTINGS_F.northStar.help },
     },
   ],
   hooks: {

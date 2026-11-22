@@ -8,6 +8,7 @@ import { productionOwnerPasswordOnly } from '../lib/production-owner-auth.ts';
 import { auditChange, writeAudit } from '../lib/audit.ts';
 import { PASSWORD_RESET_TOKEN_TTL_MS, passwordResetEmail, passwordResetEmailEnabled } from '../lib/password-reset.ts';
 import { failAfterChangeForTests } from '../lib/test-failures.ts';
+import { GROUP, optionsOf, PAGE, ROLE_COPY, USER_F } from '../admin-ui/copy.ts';
 
 const ROLES = [...STAFF_ROLES, 'CUSTOMER'];
 const ownerOnlyField: FieldAccess = ({ req }) => !!req.user && mfaOk(req.user as any) && can((req.user as any).role, 'user.role_change');
@@ -30,7 +31,8 @@ export const Users: CollectionConfig = {
       generateEmailHTML: (args) => passwordResetEmail(`${args?.req?.payload?.config?.serverURL ?? ''}/admin/reset/${encodeURIComponent(String(args?.token ?? ''))}`).html,
     },
   },
-  admin: { useAsTitle: 'email', group: 'System' },
+  labels: { singular: PAGE.users.one, plural: PAGE.users.name },
+  admin: { useAsTitle: 'email', group: GROUP.settings, description: PAGE.users.line, defaultColumns: ['email', 'role', 'mfaEnabled'] },
   access: {
     admin: ({ req }) => !!req.user && (STAFF_ROLES as readonly string[]).includes((req.user as any).role) && mfaOk(req.user as any),
     // self or owner/admin may read; customers only themselves
@@ -49,16 +51,17 @@ export const Users: CollectionConfig = {
     unlock: perm('user.role_change'),
   },
   fields: [
-    { name: 'role', type: 'select', required: true, defaultValue: 'CUSTOMER', options: ROLES, access: { create: ownerOnlyField, update: ownerOnlyField } },
+    { name: 'role', label: USER_F.role.label, type: 'select', required: true, defaultValue: 'CUSTOMER', options: optionsOf(ROLES, ROLE_COPY), access: { create: ownerOnlyField, update: ownerOnlyField }, admin: { description: USER_F.role.help } },
     {
       name: 'canPublishContent',
+      label: USER_F.canPublish.label,
       type: 'checkbox',
       defaultValue: false,
       access: { create: ownerOnlyField, update: ownerOnlyField },
-      admin: { description: 'OWNER only: lets an EDITOR ("CONTENT") publish site content. OWNER/ADMIN can always publish.' },
+      admin: { description: USER_F.canPublish.help },
     },
     { name: 'totpSecret', type: 'text', access: hiddenField, admin: { hidden: true } },
-    { name: 'mfaEnabled', type: 'checkbox', defaultValue: false, access: { read: staffOnly as any, create: () => false, update: () => false } },
+    { name: 'mfaEnabled', label: USER_F.mfaEnabled.label, type: 'checkbox', defaultValue: false, access: { read: staffOnly as any, create: () => false, update: () => false } },
     { name: 'mfaVerifiedSids', type: 'json', access: hiddenField, admin: { hidden: true } },
     { name: 'lastTotpStep', type: 'number', defaultValue: 0, access: hiddenField, admin: { hidden: true } },
     { name: 'recoveryCodes', type: 'json', access: hiddenField, admin: { hidden: true } },

@@ -26,7 +26,8 @@ export const PrivateFiles: CollectionConfig = {
       return headers;
     },
   },
-  admin: { group: 'Projects' },
+  // R3: hidden from the menu only (route kept; listed on «Hidden pages»)
+  admin: { group: false },
   access: {
     create: ({ req }) => privateUploadsEnabled() && !!req.user && mfaOk(req.user as any),
     read: ({ req }) => {

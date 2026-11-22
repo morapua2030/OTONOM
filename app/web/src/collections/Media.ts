@@ -10,6 +10,7 @@ import { blobFileName } from '../lib/deferred-upload.ts';
 import { cleanUploadedFile } from '../lib/image-metadata.ts';
 import { revalidateSiteContent } from '../lib/content-workflow.ts';
 import { failAfterChangeForTests } from '../lib/test-failures.ts';
+import { GROUP, MEDIA_F, MEDIA_STATUS_COPY, optionsOf, PAGE } from '../admin-ui/copy.ts';
 
 /**
  * Public-site media (WAVE 4). Rules:
@@ -25,7 +26,8 @@ const PUBLIC_STATUS = 'APPROVED';
 
 export const Media: CollectionConfig = {
   slug: 'media',
-  admin: { group: 'Content', useAsTitle: 'filename', defaultColumns: ['filename', 'status', 'depictsClientProperty', 'updatedAt'] },
+  labels: { singular: PAGE.media.one, plural: PAGE.media.name },
+  admin: { group: GROUP.photos, description: PAGE.media.line, useAsTitle: 'filename', defaultColumns: ['filename', 'alt', 'status', 'updatedAt'] },
   versions: { maxPerDoc: 50 },
   upload: {
     staticDir: MEDIA_UPLOAD_DIR,
@@ -43,12 +45,12 @@ export const Media: CollectionConfig = {
     delete: nobody,
   },
   fields: [
-    { name: 'alt', type: 'text', localized: true, admin: { description: 'Required in Arabic and English before approval' } },
-    { name: 'status', type: 'select', defaultValue: 'DRAFT', options: ['DRAFT', 'APPROVED', 'WITHDRAWN'], admin: { position: 'sidebar' } },
-    { name: 'depictsClientProperty', type: 'checkbox', defaultValue: false, admin: { position: 'sidebar' } },
-    { name: 'consent', type: 'relationship', relationTo: 'consents', admin: { position: 'sidebar' } },
-    { name: 'privacyScreened', type: 'checkbox', defaultValue: false, admin: { position: 'sidebar', description: 'Keypads/locks, addresses, faces/children, Wi-Fi names, serials removed or blurred' } },
-    { name: 'approvedBy', type: 'text', admin: { position: 'sidebar', readOnly: true } },
+    { name: 'alt', label: MEDIA_F.alt.label, type: 'text', localized: true, admin: { description: MEDIA_F.alt.help } },
+    { name: 'status', label: MEDIA_F.status.label, type: 'select', defaultValue: 'DRAFT', options: optionsOf(['DRAFT', 'APPROVED', 'WITHDRAWN'] as const, MEDIA_STATUS_COPY), admin: { position: 'sidebar', description: MEDIA_F.status.help } },
+    { name: 'depictsClientProperty', label: MEDIA_F.client.label, type: 'checkbox', defaultValue: false, admin: { position: 'sidebar', description: MEDIA_F.client.help } },
+    { name: 'consent', label: MEDIA_F.consent.label, type: 'relationship', relationTo: 'consents', admin: { position: 'sidebar' } },
+    { name: 'privacyScreened', label: MEDIA_F.privacy.label, type: 'checkbox', defaultValue: false, admin: { position: 'sidebar', description: MEDIA_F.privacy.help } },
+    { name: 'approvedBy', label: MEDIA_F.approvedBy.label, type: 'text', admin: { position: 'sidebar', readOnly: true } },
   ],
   hooks: {
     afterError: [exposeDomainErrorCodes],

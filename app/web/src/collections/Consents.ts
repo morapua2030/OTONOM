@@ -4,7 +4,8 @@ import { auditRow } from '../lib/audit.ts';
 
 export const Consents: CollectionConfig = {
   slug: 'consents',
-  admin: { group: 'Content' },
+  // R3: hidden from the menu only (route kept; listed on «Hidden pages»)
+  admin: { group: false },
   versions: { maxPerDoc: 100 },
   access: { read: staffOnly, create: perm('consent.revoke'), update: perm('consent.revoke'), delete: nobody },
   fields: [

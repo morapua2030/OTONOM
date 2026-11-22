@@ -1,3 +1,4 @@
+import type { Config } from 'payload';
 /**
  * OTONOM admin wording: the ONE place for every word the admin shows (R3, owner 2026-11-22).
  * Every entry is a pair { ar, en }. To change a word, change it here only.
@@ -328,4 +329,411 @@ export const PAYLOAD_TRANSLATIONS = {
     general: { locale: "Content language you're editing", dashboard: 'Home', createdAt: 'Date' },
     authentication: { logOut: 'Sign out' },
   },
-} as any; // a partial override; Payload deep-merges it over its full translations
+} as unknown as NonNullable<Config['i18n']>['translations']; // partial: Payload deep-merges it over its full translations
+
+/* ---------------------------------------------------------------------------------------------------------------------
+ * Every other page in the menu (M9): field labels, option labels and help. Help texts are at most 10 words.
+ * ------------------------------------------------------------------------------------------------------------------- */
+
+/** Ar/En pairs: «الاسم (عربي)» and «الاسم (English)» (M1), side by side on desktop. */
+export const pairLabels = (label: Pair): { ar: Pair; en: Pair } => ({
+  ar: { ar: `${label.ar} (عربي)`, en: `${label.en} (Arabic)` },
+  en: { ar: `${label.ar} (English)`, en: `${label.en} (English)` },
+});
+/** Fields the public site does not show today (M4). */
+export const NOT_ON_SITE: Pair = { ar: 'مش بيظهر على الموقع لسه.', en: 'Not shown on the site yet.' };
+/** Controllers' internal fields (owner decision 11-15). */
+export const INTERNAL: Pair = { ar: 'داخلي — مش بيظهر على الموقع.', en: 'Internal — not shown on the site.' };
+
+export const REVIEW_COPY = {
+  label: { ar: 'حالة المراجعة', en: 'Review state' },
+  help: { ar: 'مسودة، بعدين مستنية مراجعة، بعدين منشورة.', en: 'Draft, then in review, then published.' },
+  options: {
+    DRAFT: { ar: 'مسودة', en: 'Draft' },
+    IN_REVIEW: { ar: 'مستنية مراجعة', en: 'In review' },
+    PUBLISHED: { ar: 'منشورة', en: 'Published' },
+  },
+} as const;
+export const ORDER_COPY = { label: { ar: 'الترتيب', en: 'Order' }, help: { ar: 'الرقم الأصغر بيظهر الأول.', en: 'Smaller numbers show first.' } } as const;
+export const ACTIVE_COPY = { label: { ar: 'ظاهر', en: 'Shown' }, help: { ar: 'لو مش متعلّم، مش هيظهر حتى لو منشور.', en: 'Unticked hides it, even when published.' } } as const;
+
+export const MODEL_COPY = { '4r': { ar: '4R', en: '4R' }, '6r': { ar: '6R', en: '6R' }, '16r': { ar: '16R', en: '16R' } } as const satisfies Record<string, Pair>;
+
+export const PACKAGE_F = {
+  packageId: { label: { ar: 'الباقة', en: 'Package' }, help: { ar: 'ثابتة، مش بتتغير.', en: 'Fixed; it cannot change.' } },
+  name: { label: { ar: 'الاسم', en: 'Name' } },
+  price: { label: { ar: 'السعر (جنيه)', en: 'Price (EGP)' }, help: { ar: 'رقم صحيح بالجنيه، من غير كسور.', en: 'A whole number in Egyptian pounds.' } },
+  mostComplete: { label: { ar: 'شارة «الأكمل»', en: '“Most complete” badge' }, help: { ar: 'بيحط الشارة على الباقة دي في الموقع.', en: 'Shows the badge on this package on the site.' } },
+  badge: { label: { ar: 'نص الشارة', en: 'Badge text' }, help: { ar: 'بيظهر بس لو شارة «الأكمل» متعلّمة.', en: 'Shown only when the badge is ticked.' } },
+  items: { label: { ar: 'اللي جوه الباقة', en: 'What the package includes' }, one: { ar: 'عنصر', en: 'Item' }, many: { ar: 'عناصر', en: 'Items' } },
+  itemKey: { label: { ar: 'النوع', en: 'Type' } },
+  itemName: { label: { ar: 'اسم العنصر', en: 'Item name' } },
+  quantity: { label: { ar: 'العدد', en: 'Quantity' } },
+  model: { label: { ar: 'الموديل', en: 'Model' }, help: { ar: 'بيربط العنصر بصفحة جهاز التحكم.', en: 'Links the item to its controller page.' } },
+  photo: { label: { ar: 'الصورة', en: 'Photo' } },
+} as const;
+export const ITEM_KEY_COPY = {
+  alexa: { ar: 'جهاز Amazon Alexa', en: 'Amazon Alexa device' },
+  lock: { ar: 'قفل ذكي', en: 'Smart lock' },
+  ir: { ar: 'ريموت IR', en: 'IR remote' },
+  gas: { ar: 'حساس غاز', en: 'Gas sensor' },
+  controller: { ar: 'جهاز تحكم', en: 'Controller' },
+  panel: { ar: 'لوحة كهرباء وأسلاك', en: 'Electrical panel and wires' },
+} as const satisfies Record<string, Pair>;
+
+export const CONTROLLER_F = {
+  model: { label: { ar: 'الموديل', en: 'Model' }, help: { ar: 'ثابت، مش بيتغير.', en: 'Fixed; it cannot change.' } },
+  name: { label: { ar: 'الاسم', en: 'Name' } },
+  channels: { label: { ar: 'عدد القنوات', en: 'Channels' }, help: { ar: `لازم 4 أو 6 أو 16 حسب الموديل.`, en: 'Must be 4, 6 or 16 for the model.' } },
+  override: { label: { ar: 'السماح بعدد قنوات تاني', en: 'Allow another channel count' }, help: { ar: 'للمالك بس: يسمح برقم غير 4 أو 6 أو 16.', en: 'Owner only: allows a number other than 4, 6, 16.' } },
+  photo: { label: { ar: 'الصورة', en: 'Photo' }, help: { ar: 'صورة الجهاز في صفحة المنتج.', en: 'The controller photo on its product page.' } },
+  note: { label: { ar: 'ملاحظة', en: 'Note' } },
+  inPackages: { label: { ar: 'داخل في الباقات', en: 'Part of the packages' } },
+} as const;
+
+export const ROUTINE_F = {
+  routineId: { label: { ar: 'السيناريو', en: 'Routine' }, help: { ar: 'الخطوات ثابتة في البيت التجريبي؛ هنا النصوص بس.', en: 'Its steps are built in; only its texts live here.' } },
+  title: { label: { ar: 'العنوان', en: 'Title' } },
+  trigger: { label: { ar: 'بيبدأ إمتى', en: 'Starts when' } },
+  actions: { label: { ar: 'اللي بيحصل', en: 'What happens' }, help: { ar: 'خطوة في كل سطر.', en: 'One step per line.' } },
+  premium: { label: { ar: 'محتاج القفل الذكي (بريميوم)', en: 'Needs the smart lock (Premium)' } },
+} as const;
+export const ROUTINE_COPY = {
+  morning: { ar: 'صباح الخير', en: 'Good morning' },
+  leave: { ar: 'خارج من البيت', en: 'Leaving home' },
+  arrive: { ar: 'وصلت البيت', en: 'Arriving home' },
+  night: { ar: 'تصبح على خير', en: 'Good night' },
+  guests: { ar: 'وضع الضيوف', en: 'Guests' },
+  suhoor: { ar: 'السحور في رمضان', en: 'Ramadan suhoor' },
+  travel: { ar: 'وإنت مسافر', en: 'While travelling' },
+  pump: { ar: 'موتور المياه بمواعيد', en: 'Water pump schedule' },
+  gas: { ar: 'أمان الغاز', en: 'Gas safety' },
+} as const satisfies Record<string, Pair>;
+
+export const FAQ_F = {
+  service: { label: { ar: 'الخدمة', en: 'Service' } },
+  question: { label: { ar: 'السؤال', en: 'Question' } },
+  answer: { label: { ar: 'الإجابة', en: 'Answer' } },
+} as const;
+export const SERVICE_COPY = {
+  iot: { ar: 'إنترنت الأشياء والأنظمة المدمجة', en: 'IoT & Embedded' },
+  soft: { ar: 'هندسة البرمجيات', en: 'Software Engineering' },
+  custom: { ar: 'الهندسة المخصصة والبحث والتطوير', en: 'Custom Engineering & R&D' },
+} as const satisfies Record<string, Pair>;
+
+export const CONTACT_F = {
+  phone: { label: { ar: 'رقم التليفون', en: 'Phone number' }, help: { ar: `بالصيغة الدولية، زي ${ltr('+201234567890')}.`, en: 'International format, like +201234567890.' } },
+  whatsapp: { label: { ar: 'رقم الواتساب', en: 'WhatsApp number' }, help: { ar: `بالصيغة الدولية، زي ${ltr('+201234567890')}.`, en: 'International format, like +201234567890.' } },
+  email: { label: { ar: 'الإيميل', en: 'Email' }, help: { ar: 'بيظهر جوه نص الخصوصية بس.', en: 'Shown only inside the privacy text.' } },
+  address: { label: { ar: 'العنوان', en: 'Address' } },
+  hours: { label: { ar: 'مواعيد العمل', en: 'Opening hours' } },
+  socials: { label: { ar: 'لينكات السوشيال ميديا', en: 'Social links' }, help: { ar: 'اللينك الفاضي مش بيظهر في الموقع.', en: 'Empty links are hidden on the site.' }, one: { ar: 'لينك', en: 'Link' }, many: { ar: 'لينكات', en: 'Links' } },
+  network: { label: { ar: 'الشبكة', en: 'Network' } },
+  url: { label: { ar: 'اللينك', en: 'Link' }, help: { ar: `لازم يبدأ بـ ${ltr('https://')}`, en: 'Must start with https://' } },
+} as const;
+export const NETWORK_COPY = {
+  facebook: { ar: 'فيسبوك', en: 'Facebook' },
+  instagram: { ar: 'إنستجرام', en: 'Instagram' },
+  linkedin: { ar: 'لينكدإن', en: 'LinkedIn' },
+  youtube: { ar: 'يوتيوب', en: 'YouTube' },
+  tiktok: { ar: 'تيك توك', en: 'TikTok' },
+  x: { ar: 'إكس', en: 'X' },
+} as const satisfies Record<string, Pair>;
+
+export const ANNOUNCEMENT_F = {
+  enabled: { label: { ar: 'شغّال', en: 'On' }, help: { ar: 'محتاج النص العربي والإنجليزي الاتنين.', en: 'Needs both the Arabic and the English text.' } },
+  text: { label: { ar: 'النص', en: 'Text' } },
+  link: { label: { ar: 'اللينك', en: 'Link' }, help: { ar: `صفحة زي ${ltr('/ar/contact')} أو لينك ${ltr('https://')}.`, en: 'A page like /ar/contact, or an https:// link.' } },
+  from: { label: { ar: 'يبدأ من', en: 'Starts' }, help: { ar: 'فاضي يعني من دلوقتي.', en: 'Empty means from now.' } },
+  to: { label: { ar: 'ينتهي في', en: 'Ends' }, help: { ar: 'فاضي يعني من غير نهاية.', en: 'Empty means no end date.' } },
+} as const;
+
+export const SIM_RULES_F = {
+  ac: { label: { ar: 'قنوات التكييف', en: 'AC channels' }, help: { ar: 'قنوات لكل تكييف؛ التكييف بالريموت يعني 0.', en: 'Channels per AC; IR-controlled AC means 0.' } },
+  perDevice: { label: { ar: 'قنوات لكل جهاز', en: 'Channels per device' }, help: { ar: 'السخان أو الموتور أو الستارة: قنوات كل جهاز.', en: 'Channels each device uses (heater, pump, curtain).' } },
+  review: { label: { ar: 'مراجعة مهندس فوق', en: 'Engineer review above' }, help: { ar: 'فوق العدد ده من القنوات، المحاكي يطلب مراجعة مهندس.', en: 'Above this many channels, the simulator asks for review.' } },
+} as const;
+
+export const PRIVACY_F = {
+  body: { label: { ar: 'نص الخصوصية', en: 'Privacy text' }, help: { ar: `${ltr('{contact}')} و${ltr('{date}')} بيتملوا لوحدهم.`, en: '{contact} and {date} are filled in automatically.' } },
+  lastUpdated: { label: { ar: 'آخر تحديث', en: 'Last updated' } },
+  approved: { label: { ar: 'الموافقة على نص الخصوصية', en: 'Approve the privacy text' }, help: { ar: 'للمالك بس؛ لو اتشالت، فورم الحجز بيختفي.', en: 'Owner only; switching it off hides the booking form.' } },
+  approvedBy: { label: { ar: 'وافق عليه', en: 'Approved by' } },
+  approvedAt: { label: { ar: 'وقت الموافقة', en: 'Approved at' } },
+} as const;
+
+export const BOOKING_FORM_F = {
+  enabled: { label: { ar: 'استقبال الحجوزات من الموقع', en: 'Accept bookings on the site' }, help: { ar: 'بيظهر بس لو نص الخصوصية متوافق عليه.', en: 'Shows only while the privacy text is approved.' } },
+  retention: { label: { ar: 'الاحتفاظ بالحجوزات (شهور)', en: 'Keep bookings (months)' }, help: { ar: 'الحجز بيتمسح بعد المدة دي من آخر تعديل.', en: 'Deleted this many months after its last update.' } },
+} as const;
+
+export const USER_F = {
+  role: { label: { ar: 'الدور', en: 'Role' }, help: { ar: 'بيحدد الصفحات اللي يقدر يشتغل فيها.', en: 'Decides which pages this person can work on.' } },
+  canPublish: { label: { ar: 'يقدر ينشر محتوى الموقع', en: 'Can publish site content' }, help: { ar: 'للمالك بس: يسمح للمحرر إنه ينشر.', en: 'Owner only: lets an editor publish.' } },
+  mfaEnabled: { label: { ar: 'التحقق بخطوتين شغّال', en: 'Two-step sign-in on' } },
+} as const;
+export const ROLE_COPY = { ...UI.role, CUSTOMER: { ar: 'عميل', en: 'Customer' } } as const satisfies Record<string, Pair>;
+
+export const SETTINGS_F = {
+  stage: { label: { ar: 'البيع أونلاين', en: 'Online selling' }, help: { ar: 'عرض بس: البيع أونلاين مقفول.', en: 'Display only: online selling is off.' } },
+  northStar: { label: { ar: 'المؤشر الأساسي', en: 'Main indicator' }, help: { ar: 'اختيار المالك؛ بيتعلّم في التقارير بس.', en: "The owner's choice; only highlighted in Reports." } },
+} as const;
+export const STAGE_COPY = { PREVIEW: { ar: 'مقفول (عرض بس)', en: 'Off (display only)' }, COMMERCIAL: { ar: 'شغّال', en: 'On' } } as const satisfies Record<string, Pair>;
+export const KPI_COPY = {
+  UNSELECTED: { ar: 'لسه ما اتحددش', en: 'Not chosen yet' },
+  'KPI-001_websiteSourced': { ar: 'جاي من الموقع بس', en: 'Website-sourced only' },
+  'KPI-002_websiteAssisted': { ar: 'الموقع ساعد فيه', en: 'Website-assisted' },
+  'KPI-003_totalWebsiteInfluenced': { ar: 'كل اللي الموقع أثّر فيه', en: 'Total website-influenced' },
+  'KPI-004_nonWebsite': { ar: 'مش من الموقع', en: 'Not from the website' },
+  'KPI-005_unknown': { ar: 'مش معروف', en: 'Unknown' },
+  'KPI-006_totalEligible': { ar: 'الإجمالي', en: 'Total eligible' },
+  'KPI-015_attributionCoveragePct': { ar: 'نسبة العقود المصنّفة', en: 'Attribution coverage (%)' },
+  'KPI-016_overrideRatePct': { ar: 'نسبة التعديل اليدوي', en: 'Manual override rate (%)' },
+} as const satisfies Record<string, Pair>;
+
+export const MEDIA_F = {
+  alt: { label: { ar: 'وصف الصورة', en: 'Photo description' }, help: { ar: 'اكتبه عربي، وبعدين غيّر «لغة المحتوى» واكتبه إنجليزي.', en: 'Write it in Arabic, switch the content language, then English.' } },
+  status: { label: { ar: 'الحالة', en: 'Status' }, help: { ar: 'الصورة بتظهر في الموقع بعد الموافقة بس.', en: 'Shown on the site only after approval.' } },
+  client: { label: { ar: 'صورة من بيت عميل', en: "Shows a client's home" }, help: { ar: 'لو أيوه، لازم موافقة العميل مكتوبة.', en: "If yes, the client's written consent is required." } },
+  consent: { label: { ar: 'موافقة العميل', en: 'Client consent' } },
+  privacy: { label: { ar: 'اتراجعت للخصوصية', en: 'Privacy checked' }, help: { ar: 'مفيش أقفال أو عناوين أو وشوش أو أسماء واي فاي.', en: 'No locks, addresses, faces, children or Wi-Fi names.' } },
+  approvedBy: { label: { ar: 'وافق عليها', en: 'Approved by' } },
+} as const;
+export const MEDIA_STATUS_COPY = {
+  DRAFT: { ar: 'مستنية موافقة', en: 'Waiting for approval' },
+  APPROVED: { ar: 'متوافق عليها', en: 'Approved' },
+  WITHDRAWN: { ar: 'اتسحبت', en: 'Withdrawn' },
+} as const satisfies Record<string, Pair>;
+
+/** Options with { ar, en } labels; the stored values never change. */
+export const optionsOf = <V extends string>(values: readonly V[], copy: Partial<Record<V, Pair>>) =>
+  values.map((value) => ({ value, label: copy[value] ?? { ar: value, en: value } }));
+
+/** Pages hidden from the menu (M3): still reachable, listed on «Hidden pages» with one line each. */
+export const HIDDEN_COPY = {
+  'pages': { name: { ar: 'صفحات الموقع (قديمة)', en: 'Site pages (old)' }, line: { ar: 'نظام صفحات قديم. الموقع الحالي مش بيستخدمه.', en: 'An older page system. The current site does not use it.' } },
+  'claims': { name: { ar: 'الادعاءات', en: 'Claims' }, line: { ar: 'سجل الادعاءات اللي محتاجة دليل قبل ما تتنشر.', en: 'Claims that need evidence before they can be published.' } },
+  'case-studies': { name: { ar: 'قصص المشاريع', en: 'Case studies' }, line: { ar: 'قصص مشاريع للعملاء. فاضية دلوقتي.', en: 'Customer project stories. Empty for now.' } },
+  'consents': { name: { ar: 'موافقات الصور', en: 'Photo consents' }, line: { ar: 'موافقات العملاء على نشر صور بيوتهم.', en: "Customers' permission to publish photos of their homes." } },
+  'organisations': { name: { ar: 'الشركات', en: 'Organisations' }, line: { ar: 'شركات العملاء للمشاريع الكبيرة. مش مستخدمة دلوقتي.', en: 'Client companies for larger projects. Not in use now.' } },
+  'contacts': { name: { ar: 'جهات الاتصال', en: 'Contacts' }, line: { ar: 'أشخاص تبع الشركات دي. مش مستخدمة دلوقتي.', en: 'People at those companies. Not in use now.' } },
+  'rfqs': { name: { ar: 'طلبات عروض الأسعار', en: 'Quote requests' }, line: { ar: 'طلبات عروض أسعار للمشاريع. مش مستخدمة دلوقتي.', en: 'Project quote requests. Not in use now.' } },
+  'opportunities': { name: { ar: 'الفرص', en: 'Opportunities' }, line: { ar: 'متابعة فرص البيع للمشاريع. مش مستخدمة دلوقتي.', en: 'Project sales follow-up. Not in use now.' } },
+  'private-files': { name: { ar: 'ملفات خاصة', en: 'Private files' }, line: { ar: 'ملفات المشاريع الخاصة. فاضية دلوقتي.', en: 'Private project files. Empty for now.' } },
+  'workspace': { name: { ar: 'مساحة المشاريع', en: 'Projects workspace' }, line: { ar: 'شركات وطلبات وفرص المشاريع في مكان واحد.', en: 'Project companies, requests and opportunities in one place.' } },
+  'store-ops': { name: { ar: 'الطلبات والمخزون', en: 'Orders and stock' }, line: { ar: 'البيع أونلاين مقفول، فالصفحة دي مش مستخدمة.', en: 'Online selling is off, so this page is not in use.' } },
+  'service-desk': { name: { ar: 'الخدمة والضمان', en: 'Service and warranty' }, line: { ar: 'تذاكر الخدمة والضمان. فاضية دلوقتي.', en: 'Service and warranty tickets. Empty for now.' } },
+  'product-drafts': { name: { ar: 'مسودات المنتجات', en: 'Product drafts' }, line: { ar: 'مراجعة منتجات جديدة قبل البيع. فاضية دلوقتي.', en: 'Review of new products before sale. Empty for now.' } },
+  'content-review': { name: { ar: 'مراجعة المحتوى', en: 'Content review' }, line: { ar: 'مراجعة صفحات وقصص المشاريع قبل النشر.', en: 'Review of pages and project stories before publishing.' } },
+} as const satisfies Record<string, { name: Pair; line: Pair }>;
+
+/* ---------------------------------------------------------------------------------------------------------------------
+ * Custom pages that stay in the menu (M9): Site numbers, Reports, Account security, and the shared page frame.
+ * The English side keeps the words existing tests check (e.g. "MFA VERIFIED", "Website-Sourced only", "N contracts").
+ * ------------------------------------------------------------------------------------------------------------------- */
+export const SHELL_V = {
+  home: { ar: 'الرئيسية', en: 'Home' },
+  noAccessTitle: { ar: 'الصفحة دي مش ضمن صلاحياتك', en: 'Access restricted' },
+  noAccessLine: { ar: 'دورك ما فيهوش الصلاحية دي، ومفيش بيانات ولا أزرار ظهرت.', en: 'Your role does not include this permission. No page data or actions were exposed.' },
+} as const;
+
+export const SALES_V = {
+  bookings: { ar: 'الحجوزات', en: 'Booking requests' },
+  newToday: { ar: 'جديدة النهارده', en: 'New today' },
+  waiting: { ar: 'جديدة ومستنية أكتر من 24 ساعة', en: 'New, waiting > 24 h' },
+  byStatus: { ar: 'الحجوزات حسب الحالة', en: 'Booking requests by status' },
+  status: { ar: 'الحالة', en: 'Status' },
+  requests: { ar: 'العدد', en: 'Requests' },
+  openBookings: { ar: 'افتح طلبات الحجز', en: 'Open booking requests' },
+  export: { ar: 'تنزيل الحجوزات CSV (للمالك)', en: 'Export CSV (OWNER)' },
+  metrics: { ar: 'زيارات الموقع', en: 'Site metrics' },
+  metricsCaption: { ar: 'أحداث الموقع النهارده وآخر 7 و30 يوم', en: 'Site events today, last 7 days and last 30 days' },
+  event: { ar: 'الحدث', en: 'Event' },
+  today: { ar: 'النهارده', en: 'Today' },
+  days7: { ar: '7 أيام', en: '7 days' },
+  days30: { ar: '30 يوم', en: '30 days' },
+  funnel: { ar: 'مراحل المحاكي (30 يوم)', en: 'Simulator funnel (30 days)' },
+  topPackages: { ar: 'أكتر الباقات (30 يوم)', en: 'Top packages (30 days)' },
+  topPages: { ar: 'أكتر الصفحات (30 يوم)', en: 'Top pages (30 days)' },
+} as const;
+export const EVENT_COPY = {
+  page_view: { ar: 'مشاهدات الصفحات', en: 'Page views' },
+  whatsapp_click: { ar: 'ضغطات الواتساب', en: 'WhatsApp clicks' },
+  call_click: { ar: 'ضغطات الاتصال', en: 'Call clicks' },
+  package_premium: { ar: 'اختاروا بريميوم', en: 'Premium chosen' },
+  package_plus: { ar: 'اختاروا بلس', en: 'Plus chosen' },
+  package_essential: { ar: 'اختاروا إسنشيال', en: 'Essential chosen' },
+  sim_start: { ar: 'بدأوا المحاكي', en: 'Simulator started' },
+  sim_stage_2: { ar: 'المحاكي: الأوض', en: 'Simulator: rooms' },
+  sim_stage_3: { ar: 'المحاكي: جرّب', en: 'Simulator: try it' },
+  sim_stage_4: { ar: 'المحاكي: الخطة', en: 'Simulator: plan' },
+  plan_sent: { ar: 'اتبعتت خطة', en: 'Plan sent' },
+} as const satisfies Record<string, Pair>;
+
+export const SECURITY_V = {
+  current: { ar: 'الحساب الحالي', en: 'Current account' },
+  identity: { ar: 'الإيميل (جزء منه مخفي)', en: 'Masked identity' },
+  role: { ar: 'الدور', en: 'Active role' },
+  policy: { ar: 'طريقة الدخول', en: 'Authentication policy' },
+  session: { ar: 'الجلسة دي', en: 'This session' },
+  ownerPasswordOnly: { ar: 'المالك بالباسورد بس (استثناء)', en: 'OWNER PASSWORD-ONLY EXCEPTION' },
+  enrolled: { ar: 'التحقق بخطوتين شغّال', en: 'MFA ENROLLED' },
+  actionRequired: { ar: 'لازم تشغّل التحقق بخطوتين', en: 'MFA ACTION REQUIRED' },
+  authorized: { ar: 'مسموحة', en: 'AUTHORIZED' },
+  verified: { ar: 'متحققة بخطوتين', en: 'MFA VERIFIED' },
+  notVerified: { ar: 'مش متحققة', en: 'NOT VERIFIED' },
+  accountSettings: { ar: 'إعدادات الحساب', en: 'Account settings' },
+  signOut: { ar: 'خروج آمن', en: 'Sign out securely' },
+  notice: {
+    ar: 'حسابات الفريق شخصية وتحت إيد المالك: ادعي كل واحد من تحت (لينك لمرة واحدة، والتحقق بخطوتين لازم أول دخول). تغيير الأدوار من صفحة «المستخدمين».',
+    en: 'Staff accounts are personal and OWNER-controlled: invite each person below (one-time link, MFA required at first sign-in). Role changes and unlock operations stay in the protected Users collection.',
+  },
+  directory: { ar: 'حسابات الفريق', en: 'Staff security directory' },
+  directoryCaption: { ar: 'إيميلات الفريق (جزء منها مخفي) وأدوارهم والتحقق بخطوتين', en: 'Masked staff identities, roles and MFA enrollment' },
+  colIdentity: { ar: 'الإيميل', en: 'Identity' },
+  colRole: { ar: 'الدور', en: 'Role' },
+  colMfa: { ar: 'التحقق بخطوتين', en: 'MFA' },
+  mfaOn: { ar: 'شغّال', en: 'ENROLLED' },
+  mfaOff: { ar: 'مطلوب', en: 'ACTION REQUIRED' },
+  openUsers: { ar: 'افتح صفحة المستخدمين', en: 'Open OWNER user management' },
+  deniedTitle: { ar: 'حسابات الفريق للمالك بس', en: 'OWNER-only directory' },
+  deniedLine: { ar: 'حالتك إنت ظاهرة فوق؛ بيانات باقي الفريق مش بتظهر هنا.', en: 'Your own security state is visible above. Staff directory and role-management data were not exposed.' },
+} as const;
+
+export const INVITE_V = {
+  title: { ar: 'ادعي حد من الفريق', en: 'Invite a team member' },
+  line: { ar: 'حساب شخصي لكل واحد؛ إيميل الفريق للتنبيهات بس، مش للدخول.', en: 'One personal account per person. The team mailbox receives notifications; it is never a shared sign-in.' },
+  email: { ar: 'الإيميل', en: 'E-mail' },
+  role: { ar: 'الدور', en: 'Role' },
+  roles: {
+    SALES: { ar: 'مبيعات — الحجوزات والأرقام', en: 'SALES — booking requests and metrics' },
+    EDITOR: { ar: 'محتوى — مسودات ومراجعة', en: 'CONTENT (EDITOR) — drafts and review' },
+    ADMIN: { ar: 'مدير', en: 'ADMIN' },
+    ENGINEER: { ar: 'مهندس', en: 'ENGINEER' },
+    STORE: { ar: 'مخزن', en: 'STORE' },
+  },
+  shownOnce: { ar: 'اعرض اللينك هنا بدل ما يتبعت بالإيميل', en: 'Show the link here instead of e-mailing it' },
+  invite: { ar: 'ادعي', en: 'Invite' },
+  inviting: { ar: 'بنعمل الدعوة…', en: 'Inviting…' },
+  sent: { ar: 'إيميل الدعوة اتبعت. اللينك بيشتغل مرة واحدة وبيخلص بعد 72 ساعة.', en: 'Invitation e-mail sent. The link works once and expires in 72 hours.' },
+  shown: { ar: 'ادّي اللينك ده للشخص بنفسك (بيظهر دلوقتي بس، بيشتغل مرة واحدة وبيخلص بعد 72 ساعة):', en: 'Give this one-time link to the person directly (it is shown only now, works once and expires in 72 hours):' },
+  exists: { ar: 'فيه حساب بالإيميل ده بالفعل.', en: 'An account with this e-mail already exists.' },
+  invalid: { ar: 'راجع الإيميل والدور.', en: 'Check the e-mail address and the role.' },
+  error: { ar: 'الدعوة ما اتعملتش.', en: 'The invitation could not be created.' },
+} as const;
+
+export const RESET_V = {
+  title: { ar: 'إعادة ضبط تطبيق التحقق لحد من الفريق', en: "Reset a team member's authenticator" },
+  line: { ar: 'لو موبايله ضاع: جلساته بتقفل، وأول دخول جاي هيربط تطبيق جديد. بيتسجل في سجل المراجعة.', en: 'For a lost phone: their sessions end and their next sign-in asks them to set up a new authenticator. Recorded in the audit log.' },
+  member: { ar: 'الشخص', en: 'Team member' },
+  choose: { ar: 'اختار…', en: 'Choose…' },
+  notEnrolled: { ar: 'مش مفعّل', en: 'not enrolled' },
+  confirm: { ar: 'اكتب إيميله كامل للتأكيد', en: 'Type their full e-mail to confirm' },
+  reset: { ar: 'إعادة الضبط', en: 'Reset authenticator' },
+  resetting: { ar: 'بنعيد الضبط…', en: 'Resetting…' },
+  done: { ar: 'تمام. جلساته قفلت، وهيربط تطبيق جديد أول ما يدخل.', en: 'Done. Their sessions ended; they will set up a new authenticator at their next sign-in.' },
+  mismatch: { ar: 'الإيميل مش مطابق للشخص اللي اخترته.', en: 'The e-mail does not match the selected team member.' },
+  error: { ar: 'إعادة الضبط ما تمتش.', en: 'The reset could not be completed.' },
+} as const;
+
+export const KPI_V = {
+  from: { ar: 'من', en: 'From' },
+  to: { ar: 'لحد', en: 'To' },
+  load: { ar: 'اعرض', en: 'Load' },
+  northStar: { ar: 'المؤشر الأساسي (قرار المالك: {x})', en: 'North Star candidates (owner decision: {x})' },
+  pending: { ar: 'لسه ما اتحددش', en: 'PENDING' },
+  selected: { ar: 'اتحدد {x}', en: 'selected {x}' },
+  sourced: { ar: 'جاي من الموقع بس (KPI-001)', en: 'Website-Sourced only (KPI-001)' },
+  influenced: { ar: 'كل اللي الموقع أثّر فيه (KPI-003 = جاي + ساعد)', en: 'Total website-influenced (KPI-003 = sourced + assisted)' },
+  eligible: { ar: 'إجمالي قيمة العقود (KPI-006)', en: 'Total eligible signed value (KPI-006)' },
+  coverage: { ar: 'نسبة التصنيف (KPI-015) / التعديل اليدوي (KPI-016)', en: 'Attribution coverage (KPI-015) / override rate (KPI-016)' },
+  byClass: { ar: 'حسب مصدر العميل × نوعه (زي ما اتسجل)', en: 'By attribution class × cohort (as recorded)' },
+  colClass: { ar: 'المصدر', en: 'Class' },
+  colSigned: { ar: 'اتمضى', en: 'Signed' },
+  colAmend: { ar: 'تعديلات', en: 'Amendments' },
+  colCancel: { ar: 'إلغاءات', en: 'Cancellations' },
+  colNet: { ar: 'الصافي', en: 'Net' },
+  colNew: { ar: 'عملاء جداد', en: 'New customers' },
+  colExisting: { ar: 'عملاء قدام', en: 'Existing customers' },
+  identities: { ar: 'فحص الأرقام', en: 'Identities' },
+  signedInPeriod: { ar: 'عقود اتمضت في الفترة', en: 'contracts signed in period' },
+  vintage: { ar: 'الصافي الحالي لعقود الفترة', en: 'vintage (current net of contracts signed in period)' },
+  funnel: { ar: 'المسار', en: 'Funnel' },
+  rfqRate: { ar: 'نسبة تأهيل طلبات الأسعار (KPI-010)', en: 'RFQ qualification rate (KPI-010)' },
+  proposalSigned: { ar: 'من عرض سعر لعقد (KPI-011)', en: 'Proposal → signed (KPI-011)' },
+  medianValue: { ar: 'متوسط قيمة العقد (KPI-013)', en: 'Median signed value (KPI-013)' },
+  medianCycle: { ar: 'متوسط مدة البيع (KPI-014)', en: 'Median sales cycle (KPI-014)' },
+  days: { ar: 'يوم', en: 'days' },
+  pipeline: { ar: 'فرص مفتوحة مؤهلة (KPI-008، مش قيمة عقود)', en: 'Qualified open pipeline (KPI-008, not signed value)' },
+  reconcile: { ar: 'فحص الاتساق (البيانات ↔ اللوحة)', en: 'Consistency check (domain ↔ CMS)' },
+  check: { ar: 'افحص', en: 'Check' },
+  checkFix: { ar: 'افحص وصلّح', en: 'Check and repair' },
+  confirmFix: { ar: 'أصلّح المشاكل اللي تتصلّح أوتوماتيك؟', en: 'Repair the issues that can be repaired automatically?' },
+  drill: { ar: 'العقود اللي ورا الأرقام', en: 'Contracts behind the figures' },
+  cohort: { ar: 'نوع العميل', en: 'Cohort' },
+  attribution: { ar: 'المصدر', en: 'Attribution' },
+  projectType: { ar: 'نوع المشروع', en: 'Project type' },
+  all: { ar: 'الكل', en: 'All' },
+  apply: { ar: 'طبّق', en: 'Apply' },
+  csv: { ar: 'تنزيل CSV (من غير بيانات شخصية)', en: 'Export CSV (no personal data)' },
+  totals: { ar: '{n} عقد · اتمضى {signed} · الصافي الحالي {net}', en: '{n} contracts · signed {signed} · current net {net}' },
+  colContract: { ar: 'العقد', en: 'Contract' },
+  colSignedAt: { ar: 'اتمضى في', en: 'Signed' },
+  colValue: { ar: 'قيمة العقد', en: 'Signed value' },
+  colCurrentNet: { ar: 'الصافي الحالي', en: 'Current net' },
+  showing: { ar: 'بنعرض آخر 200 من {n}؛ ملف CSV فيه الكل.', en: 'Showing the 200 most recent of {n}; the CSV export contains all rows.' },
+} as const;
+export const CLASS_COPY = {
+  WEBSITE_SOURCED: { ar: 'من الموقع', en: 'Website-sourced' },
+  WEBSITE_ASSISTED: { ar: 'الموقع ساعد', en: 'Website-assisted' },
+  NON_WEBSITE: { ar: 'مش من الموقع', en: 'Not from the website' },
+  UNKNOWN: { ar: 'مش معروف', en: 'Unknown' },
+} as const satisfies Record<string, Pair>;
+export const COHORT_COPY = { NEW: { ar: 'جديد', en: 'New' }, EXISTING: { ar: 'قديم', en: 'Existing' } } as const satisfies Record<string, Pair>;
+export const PROJECT_TYPE_COPY = {
+  COMPOUND: { ar: 'كمبوند', en: 'Compound' },
+  MULTI_UNIT_BUILDING: { ar: 'عمارة', en: 'Multi-unit building' },
+  VILLA: { ar: 'فيلا', en: 'Villa' },
+  APARTMENT: { ar: 'شقة', en: 'Apartment' },
+  COMMERCIAL: { ar: 'تجاري', en: 'Commercial' },
+  OTHER: { ar: 'تاني', en: 'Other' },
+} as const satisfies Record<string, Pair>;
+
+/** Fills `{name}` placeholders in a picked string. */
+export const fillIn = (text: string, vars: Record<string, string | number>) => text.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m));
+
+/** Staff invitation page (M8): words only; the invitation flow is unchanged. English keeps today's words. */
+export const STAFF_INVITE = {
+  doneTitle: { ar: 'الباسورد اتعمل', en: 'Password set' },
+  doneText: { ar: 'ادخل دلوقتي. هيطلب منك تفعّل التحقق بخطوتين قبل ما تستخدم لوحة التحكم.', en: 'Sign in now. You will be asked to set up two-step verification (MFA) before you can use the admin.' },
+  goSignIn: { ar: 'روح لصفحة الدخول', en: 'Go to staff sign-in' },
+  checking: { ar: 'بنتأكد من الدعوة…', en: 'Checking the invitation…' },
+  missingTitle: { ar: 'لينك الدعوة مش صالح', en: 'Invitation link not valid' },
+  missingText: { ar: 'افتح اللينك بالظبط من الدعوة، أو اطلب واحد جديد من المالك. كل لينك بيشتغل مرة واحدة وبيخلص بعد 72 ساعة.', en: 'Open the exact link from your invitation, or ask the OWNER for a new one. Each link works once and expires after 72 hours.' },
+  invalid: { ar: 'لينك الدعوة ده مبقاش صالح (اتستخدم أو خلص أو اتلغى). اطلب واحد جديد من المالك.', en: 'This invitation link is not valid any more (used, expired or revoked). Ask the OWNER for a new one.' },
+  policy: { ar: 'الباسورد مش ماشي مع الشروط: {policy}', en: 'The password does not meet the policy: {policy}' },
+  policyDefault: { ar: 'استخدم من 14 لـ 128 حرف، ومتستخدمش إيميلك.', en: 'use 14 to 128 characters and do not reuse your e-mail address.' },
+  mismatch: { ar: 'الباسوردين مش زي بعض.', en: 'The two passwords are different.' },
+  limited: { ar: 'محاولات كتير. جرّب تاني بعد شوية.', en: 'Too many attempts. Try again in a few minutes.' },
+  formTitle: { ar: 'اعمل باسورد فريق OTONOM بتاعك', en: 'Set your OTONOM staff password' },
+  formText: { ar: 'اختار باسورد من 14 لـ 128 حرف مش مستخدمه في أي مكان تاني. محدش غيرك بيشوفه.', en: 'Choose a password of 14 to 128 characters that you do not use anywhere else. Nobody else sees it.' },
+  newPassword: { ar: 'الباسورد الجديد', en: 'New password' },
+  repeat: { ar: 'اكتب الباسورد تاني', en: 'Repeat the password' },
+  save: { ar: 'احفظ الباسورد', en: 'Set password' },
+  saving: { ar: 'بنحفظ…', en: 'Saving…' },
+} as const satisfies Record<string, Pair>;
+
+/** The notice above Payload's own sign-in form at /admin/login (M8). */
+export const ADMIN_LOGIN_NOTICE = {
+  text: { ar: 'حسابات الفريق محتاجة تحقق بخطوتين. ادخل من صفحة دخول الفريق (باسورد + كود)، وبعدها هتفتح لوحة التحكم.', en: 'Staff accounts require two-factor authentication. Please sign in through the staff sign-in page (password + authenticator code), then you will be redirected to the admin panel.' },
+  link: { ar: 'صفحة دخول الفريق', en: 'Staff sign-in' },
+} as const satisfies Record<string, Pair>;
+
+/** Names for a few of Payload's own controls that have none (read by screen readers). */
+export const A11Y_COPY = {
+  prevPage: { ar: 'الصفحة اللي قبل', en: 'Previous page' },
+  nextPage: { ar: 'الصفحة اللي بعد', en: 'Next page' },
+  selectRow: { ar: 'اختار الصف ده', en: 'Select this row' },
+  selectAll: { ar: 'اختار كل الصفوف', en: 'Select all rows' },
+  moreOptions: { ar: 'اختيارات تانية', en: 'More options' },
+} as const satisfies Record<string, Pair>;

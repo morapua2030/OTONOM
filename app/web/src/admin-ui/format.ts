@@ -26,6 +26,14 @@ export function dateTime(value: string | number | Date | null | undefined, lang:
   return lang === 'ar' ? `${date}، ${time}` : `${date}, ${time}`;
 }
 
+/** «22 نوفمبر 2026» / "22 Nov 2026" (Cairo calendar day) */
+export function dateOnly(value: string | number | Date | null | undefined, lang: AdminLang): string {
+  if (value === null || value === undefined || value === '') return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  return new Intl.DateTimeFormat(locale(lang), { timeZone: CAIRO, day: 'numeric', month: lang === 'ar' ? 'long' : 'short', year: 'numeric' }).format(d);
+}
+
 /** «الأحد، 22 نوفمبر 2026» / "Sunday, 22 November 2026" */
 export function longDate(value: Date, lang: AdminLang): string {
   return new Intl.DateTimeFormat(locale(lang), { timeZone: CAIRO, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(value);

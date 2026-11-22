@@ -1,6 +1,6 @@
-import { can, type Permission } from '@otonom/domain';
-import { GROUP, PAGE, type Pair } from './copy.ts';
-import type { NavIcon, NavPage, NavPageKey } from './nav-types.ts';
+import { can } from '@otonom/domain';
+import { GROUP, HIDDEN_COPY, PAGE, type Pair } from './copy.ts';
+import type { NavPage } from './nav-types.ts';
 export { isCurrent, type NavIcon, type NavPage, type NavPageKey } from './nav-types.ts';
 
 /**
@@ -76,20 +76,21 @@ export function menuFor(role: string | undefined | null): VisibleGroup[] {
   })).filter((g) => g.pages.length > 0);
 }
 
-/** Pages that are hidden from the menu but keep their routes (M3); listed on «Hidden pages». */
-export const HIDDEN_PAGES: ReadonlyArray<{ href: string; name: Pair; line: Pair }> = [
-  { href: '/admin/collections/pages', name: { ar: 'صفحات الموقع (قديمة)', en: 'Site pages (old)' }, line: { ar: 'نظام صفحات قديم. الموقع الحالي مش بيستخدمه.', en: 'An older page system. The current site does not use it.' } },
-  { href: '/admin/collections/claims', name: { ar: 'الادعاءات', en: 'Claims' }, line: { ar: 'سجل الادعاءات اللي محتاجة دليل قبل ما تتنشر.', en: 'Claims that need evidence before they can be published.' } },
-  { href: '/admin/collections/case-studies', name: { ar: 'قصص المشاريع', en: 'Case studies' }, line: { ar: 'قصص مشاريع للعملاء. فاضية دلوقتي.', en: 'Customer project stories. Empty for now.' } },
-  { href: '/admin/collections/consents', name: { ar: 'موافقات الصور', en: 'Photo consents' }, line: { ar: 'موافقات العملاء على نشر صور بيوتهم.', en: "Customers' permission to publish photos of their homes." } },
-  { href: '/admin/collections/organisations', name: { ar: 'الشركات', en: 'Organisations' }, line: { ar: 'شركات العملاء للمشاريع الكبيرة. مش مستخدمة دلوقتي.', en: 'Client companies for larger projects. Not in use now.' } },
-  { href: '/admin/collections/contacts', name: { ar: 'جهات الاتصال', en: 'Contacts' }, line: { ar: 'أشخاص تبع الشركات دي. مش مستخدمة دلوقتي.', en: 'People at those companies. Not in use now.' } },
-  { href: '/admin/collections/rfqs', name: { ar: 'طلبات عروض الأسعار', en: 'Quote requests' }, line: { ar: 'طلبات عروض أسعار للمشاريع. مش مستخدمة دلوقتي.', en: 'Project quote requests. Not in use now.' } },
-  { href: '/admin/collections/opportunities', name: { ar: 'الفرص', en: 'Opportunities' }, line: { ar: 'متابعة فرص البيع للمشاريع. مش مستخدمة دلوقتي.', en: 'Project sales follow-up. Not in use now.' } },
-  { href: '/admin/collections/private-files', name: { ar: 'ملفات خاصة', en: 'Private files' }, line: { ar: 'ملفات المشاريع الخاصة. فاضية دلوقتي.', en: 'Private project files. Empty for now.' } },
-  { href: '/admin/workspace', name: { ar: 'مساحة المشاريع', en: 'Projects workspace' }, line: { ar: 'شركات وطلبات وفرص المشاريع في مكان واحد.', en: 'Project companies, requests and opportunities in one place.' } },
-  { href: '/admin/store-ops', name: { ar: 'الطلبات والمخزون', en: 'Orders and stock' }, line: { ar: 'البيع أونلاين مقفول، فالصفحة دي مش مستخدمة.', en: 'Online selling is off, so this page is not in use.' } },
-  { href: '/admin/service-desk', name: { ar: 'الخدمة والضمان', en: 'Service and warranty' }, line: { ar: 'تذاكر الخدمة والضمان. فاضية دلوقتي.', en: 'Service and warranty tickets. Empty for now.' } },
-  { href: '/admin/product-drafts', name: { ar: 'مسودات المنتجات', en: 'Product drafts' }, line: { ar: 'مراجعة منتجات جديدة قبل البيع. فاضية دلوقتي.', en: 'Review of new products before sale. Empty for now.' } },
-  { href: '/admin/content-review', name: { ar: 'مراجعة المحتوى', en: 'Content review' }, line: { ar: 'مراجعة صفحات وقصص المشاريع قبل النشر.', en: 'Review of pages and project stories before publishing.' } },
+/** Pages that are hidden from the menu but keep their routes (M3); listed on «Hidden pages» (words: copy.ts). */
+const HIDDEN_HREFS: ReadonlyArray<[keyof typeof HIDDEN_COPY, string]> = [
+  ['pages', '/admin/collections/pages'],
+  ['claims', '/admin/collections/claims'],
+  ['case-studies', '/admin/collections/case-studies'],
+  ['consents', '/admin/collections/consents'],
+  ['organisations', '/admin/collections/organisations'],
+  ['contacts', '/admin/collections/contacts'],
+  ['rfqs', '/admin/collections/rfqs'],
+  ['opportunities', '/admin/collections/opportunities'],
+  ['private-files', '/admin/collections/private-files'],
+  ['workspace', '/admin/workspace'],
+  ['store-ops', '/admin/store-ops'],
+  ['service-desk', '/admin/service-desk'],
+  ['product-drafts', '/admin/product-drafts'],
+  ['content-review', '/admin/content-review'],
 ];
+export const HIDDEN_PAGES: ReadonlyArray<{ href: string; name: Pair; line: Pair }> = HIDDEN_HREFS.map(([key, href]) => ({ href, ...HIDDEN_COPY[key] }));
