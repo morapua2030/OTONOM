@@ -158,14 +158,19 @@ export interface UserAuthOperations {
   };
 }
 /**
+ * People who can sign in here, and what each can do.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users".
  */
 export interface User {
   id: number;
+  /**
+   * Decides which pages this person can work on.
+   */
   role: 'OWNER' | 'ADMIN' | 'ENGINEER' | 'STORE' | 'EDITOR' | 'SALES' | 'CUSTOMER';
   /**
-   * OWNER only: lets an EDITOR ("CONTENT") publish site content. OWNER/ADMIN can always publish.
+   * Owner only: lets an editor publish.
    */
   canPublishContent?: boolean | null;
   totpSecret?: string | null;
@@ -551,20 +556,28 @@ export interface PrivateFile {
   focalY?: number | null;
 }
 /**
+ * Upload a photo, describe it in Arabic and English, then approve it.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "media".
  */
 export interface Media {
   id: number;
   /**
-   * Required in Arabic and English before approval
+   * Write it in Arabic, switch the content language, then English.
    */
   alt?: string | null;
+  /**
+   * Shown on the site only after approval.
+   */
   status?: ('DRAFT' | 'APPROVED' | 'WITHDRAWN') | null;
+  /**
+   * If yes, the client's written consent is required.
+   */
   depictsClientProperty?: boolean | null;
   consent?: (number | null) | Consent;
   /**
-   * Keypads/locks, addresses, faces/children, Wi-Fi names, serials removed or blurred
+   * No locks, addresses, faces, children or Wi-Fi names.
    */
   privacyScreened?: boolean | null;
   approvedBy?: string | null;
@@ -637,20 +650,34 @@ export interface Lead {
   createdAt: string;
 }
 /**
+ * Packages and prices shown on the website; edit, then publish.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "catalog-packages".
  */
 export interface CatalogPackage {
   id: number;
+  /**
+   * Fixed; it cannot change.
+   */
   packageId: 'premium' | 'plus' | 'essential';
   nameAr: string;
   nameEn: string;
+  /**
+   * A whole number in Egyptian pounds.
+   */
   priceEgp: number;
   /**
-   * Shows the "most complete" badge
+   * Shows the badge on this package on the site.
    */
   mostComplete?: boolean | null;
+  /**
+   * Shown only when the badge is ticked.
+   */
   badgeAr?: string | null;
+  /**
+   * Shown only when the badge is ticked.
+   */
   badgeEn?: string | null;
   items?:
     | {
@@ -659,17 +686,26 @@ export interface CatalogPackage {
         nameEn: string;
         quantity: number;
         /**
-         * Links the item to its OTONOM controller page
+         * Links the item to its controller page.
          */
         model?: ('4r' | '6r' | '16r') | null;
+        /**
+         * Not shown on the site yet.
+         */
         photo?: (number | null) | Media;
         id?: string | null;
       }[]
     | null;
+  /**
+   * Smaller numbers show first.
+   */
   order: number;
+  /**
+   * Unticked hides it, even when published.
+   */
   active?: boolean | null;
   /**
-   * Draft → In review (submitted by the editor) → Published (OWNER, or an editor the OWNER allowed to publish)
+   * Draft, then in review, then published.
    */
   reviewState?: ('DRAFT' | 'IN_REVIEW' | 'PUBLISHED') | null;
   updatedAt: string;
@@ -677,25 +713,51 @@ export interface CatalogPackage {
   _status?: ('draft' | 'published') | null;
 }
 /**
+ * The 4R, 6R and 16R controllers and their details on the site.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "catalog-controllers".
  */
 export interface CatalogController {
   id: number;
+  /**
+   * Fixed; it cannot change.
+   */
   model: '4r' | '6r' | '16r';
+  /**
+   * Internal — not shown on the site.
+   */
   nameAr: string;
+  /**
+   * Internal — not shown on the site.
+   */
   nameEn: string;
+  /**
+   * Must be 4, 6 or 16 for the model.
+   */
   channels: number;
   /**
-   * OWNER only: allow a channel count other than 4 / 6 / 16
+   * Owner only: allows a number other than 4, 6, 16.
    */
   channelsOwnerOverride?: boolean | null;
+  /**
+   * The controller photo on its product page.
+   */
   photo?: (number | null) | Media;
+  /**
+   * Internal — not shown on the site.
+   */
   noteAr?: string | null;
+  /**
+   * Internal — not shown on the site.
+   */
   noteEn?: string | null;
+  /**
+   * Internal — not shown on the site.
+   */
   inPackages?: boolean | null;
   /**
-   * Draft → In review (submitted by the editor) → Published (OWNER, or an editor the OWNER allowed to publish)
+   * Draft, then in review, then published.
    */
   reviewState?: ('DRAFT' | 'IN_REVIEW' | 'PUBLISHED') | null;
   updatedAt: string;
@@ -703,29 +765,40 @@ export interface CatalogController {
   _status?: ('draft' | 'published') | null;
 }
 /**
+ * Texts of the routines on the Try page.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "sim-routines".
  */
 export interface SimRoutine {
   id: number;
   /**
-   * The routine steps on the demo house are built in; this record holds its texts
+   * Its steps are built in; only its texts live here.
    */
   routineId: 'morning' | 'leave' | 'arrive' | 'night' | 'guests' | 'suhoor' | 'travel' | 'pump' | 'gas';
   titleAr: string;
   titleEn: string;
   triggerAr: string;
   triggerEn: string;
-  actionsAr: string;
-  actionsEn: string;
   /**
-   * Needs the smart lock (Premium)
+   * One step per line.
    */
+  actionsAr: string;
+  /**
+   * One step per line.
+   */
+  actionsEn: string;
   premium?: boolean | null;
+  /**
+   * Smaller numbers show first.
+   */
   order: number;
+  /**
+   * Unticked hides it, even when published.
+   */
   active?: boolean | null;
   /**
-   * Draft → In review (submitted by the editor) → Published (OWNER, or an editor the OWNER allowed to publish)
+   * Draft, then in review, then published.
    */
   reviewState?: ('DRAFT' | 'IN_REVIEW' | 'PUBLISHED') | null;
   updatedAt: string;
@@ -733,6 +806,8 @@ export interface SimRoutine {
   _status?: ('draft' | 'published') | null;
 }
 /**
+ * Questions and answers shown on the service pages.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "service-faqs".
  */
@@ -743,10 +818,16 @@ export interface ServiceFaq {
   questionEn: string;
   answerAr: string;
   answerEn: string;
+  /**
+   * Smaller numbers show first.
+   */
   order: number;
+  /**
+   * Unticked hides it, even when published.
+   */
   active?: boolean | null;
   /**
-   * Draft → In review (submitted by the editor) → Published (OWNER, or an editor the OWNER allowed to publish)
+   * Draft, then in review, then published.
    */
   reviewState?: ('DRAFT' | 'IN_REVIEW' | 'PUBLISHED') | null;
   updatedAt: string;
@@ -1227,14 +1308,19 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
   createdAt?: T;
 }
 /**
+ * General settings; online selling is off for now.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "settings".
  */
 export interface Setting {
   id: number;
+  /**
+   * Display only: online selling is off.
+   */
   stage: 'PREVIEW' | 'COMMERCIAL';
   /**
-   * Primary KPI highlighted in reports — an OWNER decision (pending). Changing it never changes any KPI value.
+   * The owner's choice; only highlighted in Reports.
    */
   northStarKpi?:
     | (
@@ -1253,30 +1339,50 @@ export interface Setting {
   createdAt?: string | null;
 }
 /**
+ * Phone, WhatsApp and address shown to customers.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "contact-settings".
  */
 export interface ContactSetting {
   id: number;
+  /**
+   * International format, like +201234567890.
+   */
   phoneE164: string;
+  /**
+   * International format, like +201234567890.
+   */
   whatsappE164: string;
+  /**
+   * Shown only inside the privacy text.
+   */
   email?: string | null;
   addressAr: string;
   addressEn: string;
+  /**
+   * Not shown on the site yet.
+   */
   hoursAr?: string | null;
+  /**
+   * Not shown on the site yet.
+   */
   hoursEn?: string | null;
   /**
-   * Empty links are hidden on the site
+   * Empty links are hidden on the site.
    */
   socials?:
     | {
         network: 'facebook' | 'instagram' | 'linkedin' | 'youtube' | 'tiktok' | 'x';
+        /**
+         * Must start with https://
+         */
         url?: string | null;
         id?: string | null;
       }[]
     | null;
   /**
-   * Draft → In review (submitted by the editor) → Published (OWNER, or an editor the OWNER allowed to publish)
+   * Draft, then in review, then published.
    */
   reviewState?: ('DRAFT' | 'IN_REVIEW' | 'PUBLISHED') | null;
   _status?: ('draft' | 'published') | null;
@@ -1284,19 +1390,33 @@ export interface ContactSetting {
   createdAt?: string | null;
 }
 /**
+ * A line above the site for news or offers, on chosen dates.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "announcement".
  */
 export interface Announcement {
   id: number;
+  /**
+   * Needs both the Arabic and the English text.
+   */
   enabled?: boolean | null;
   textAr?: string | null;
   textEn?: string | null;
+  /**
+   * A page like /ar/contact, or an https:// link.
+   */
   link?: string | null;
+  /**
+   * Empty means from now.
+   */
   activeFrom?: string | null;
+  /**
+   * Empty means no end date.
+   */
   activeTo?: string | null;
   /**
-   * Draft → In review (submitted by the editor) → Published (OWNER, or an editor the OWNER allowed to publish)
+   * Draft, then in review, then published.
    */
   reviewState?: ('DRAFT' | 'IN_REVIEW' | 'PUBLISHED') | null;
   _status?: ('draft' | 'published') | null;
@@ -1304,16 +1424,27 @@ export interface Announcement {
   createdAt?: string | null;
 }
 /**
+ * Fixed numbers the simulator uses; change them carefully.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "sim-rules".
  */
 export interface SimRule {
   id: number;
+  /**
+   * Channels per AC; IR-controlled AC means 0.
+   */
   acChannels: number;
+  /**
+   * Channels each device uses (heater, pump, curtain).
+   */
   channelsPerDevice: number;
+  /**
+   * Above this many channels, the simulator asks for review.
+   */
   engineerReviewAbove: number;
   /**
-   * Draft → In review (submitted by the editor) → Published (OWNER, or an editor the OWNER allowed to publish)
+   * Draft, then in review, then published.
    */
   reviewState?: ('DRAFT' | 'IN_REVIEW' | 'PUBLISHED') | null;
   _status?: ('draft' | 'published') | null;
@@ -1321,16 +1452,24 @@ export interface SimRule {
   createdAt?: string | null;
 }
 /**
+ * The privacy text; approve it so the booking form shows.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "privacy-policy".
  */
 export interface PrivacyPolicy {
   id: number;
+  /**
+   * {contact} and {date} are filled in automatically.
+   */
   bodyAr: string;
+  /**
+   * {contact} and {date} are filled in automatically.
+   */
   bodyEn: string;
   lastUpdated: string;
   /**
-   * OWNER only. While off, /legal/privacy redirects to /contact and the booking form stays hidden.
+   * Owner only; switching it off hides the booking form.
    */
   approved?: boolean | null;
   approvedBy?: string | null;
@@ -1339,14 +1478,19 @@ export interface PrivacyPolicy {
   createdAt?: string | null;
 }
 /**
+ * Switch the booking form on or off; choose how long bookings stay.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "intake-settings".
  */
 export interface IntakeSetting {
   id: number;
+  /**
+   * Shows only while the privacy text is approved.
+   */
   enabled?: boolean | null;
   /**
-   * Leads are deleted this many months after their last activity
+   * Deleted this many months after its last update.
    */
   retentionMonths: number;
   updatedAt?: string | null;
