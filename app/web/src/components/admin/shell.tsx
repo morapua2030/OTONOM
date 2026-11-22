@@ -5,6 +5,7 @@ import { DefaultTemplate } from '@payloadcms/next/templates';
 import { Gutter } from '@payloadcms/ui';
 import { can, type Permission } from '@otonom/domain';
 import { mfaOk } from '@/lib/access.ts';
+import { langOf, pick, SHELL_V, UI, type AdminLang } from '@/admin-ui/copy.ts';
 import s from './staff.module.css';
 
 export type Staff = { id: string; role: string; can: (p: Permission) => boolean };
@@ -18,9 +19,14 @@ export function staffOf(props: AdminViewServerProps): Staff | null {
   return { id: String(u.id), role: u.role, can: (p) => can(u.role, p) };
 }
 
+/** The admin language of this request (R3). */
+export const viewLang = (props: AdminViewServerProps): AdminLang => langOf(props.initPageResult.req.i18n?.language);
+
 export function StaffShell(props: AdminViewServerProps & { title: string; subtitle: string; children: ReactNode }) {
   const { initPageResult, params, searchParams } = props;
-  const role = String((initPageResult.req.user as any)?.role ?? 'STAFF');
+  const role = String((initPageResult.req.user as any)?.role ?? '');
+  const lang = viewLang(props);
+  const roleLabel = role in UI.role ? pick(UI.role[role as keyof typeof UI.role], lang) : role.replaceAll('_', ' ');
   return (
     <DefaultTemplate
       i18n={initPageResult.req.i18n}
@@ -28,24 +34,22 @@ export function StaffShell(props: AdminViewServerProps & { title: string; subtit
       params={params}
       payload={initPageResult.req.payload}
       permissions={initPageResult.permissions}
+      req={initPageResult.req}
       searchParams={searchParams}
       user={initPageResult.req.user ?? undefined}
       visibleEntities={initPageResult.visibleEntities}
     >
       <Gutter>
-        <div className={s.page}>
-          <header className={s.workspaceHeader}>
-            <div className={s.breadcrumbs} aria-label="Breadcrumb">
-              <a href="/admin/overview">OTONOM Admin</a><span aria-hidden="true">/</span><span aria-current="page">{props.title}</span>
+        <div className={`${s.page} otn-page otn-staff-view`}>
+          <header className="otn-page__head">
+            <nav className="otn-crumbs" aria-label={pick(SHELL_V.home, lang)}>
+              <a href="/admin">{pick(SHELL_V.home, lang)}</a><span aria-hidden="true">/</span><span aria-current="page">{props.title}</span>
+            </nav>
+            <div className="otn-title-row">
+              <h1 className="otn-title">{props.title}</h1>
+              {roleLabel ? <span className="otn-badge otn-badge--role" title={pick(UI.signedInAs, lang)}>{roleLabel}</span> : null}
             </div>
-            <div className={s.titleRow}>
-              <div>
-                <p className={s.eyebrow}>SECURE OPERATIONS WORKSPACE</p>
-                <h1>{props.title}</h1>
-                <p className={s.sub}>{props.subtitle}</p>
-              </div>
-              <span className={s.roleBadge} title="Your active role">{role.replaceAll('_', ' ')}</span>
-            </div>
+            <p className="otn-line">{props.subtitle}</p>
           </header>
           {props.children}
         </div>
@@ -54,11 +58,11 @@ export function StaffShell(props: AdminViewServerProps & { title: string; subtit
   );
 }
 
-export function NoAccess({ need }: { need: string }) {
+export function NoAccess({ need, lang = 'en' }: { need: string; lang?: AdminLang }) {
   return (
     <section className={`${s.banner} ${s.denied}`} data-testid="no-access" role="alert">
-      <strong>Access restricted / الوصول مقيّد</strong>
-      <p>Your role does not include <code>{need}</code>. No page data or actions were exposed.</p>
+      <strong>{pick(SHELL_V.noAccessTitle, lang)}</strong>
+      <p>{pick(SHELL_V.noAccessLine, lang)} <code dir="ltr">{need}</code></p>
     </section>
   );
 }

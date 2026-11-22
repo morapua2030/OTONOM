@@ -1,12 +1,16 @@
 'use client';
 import { useEffect, useState, type FormEvent } from 'react';
+import { fillIn, pick, STAFF_INVITE, type AdminLang } from '@/admin-ui/copy.ts';
+import { StaffHeader, useStaffLang } from '@/admin-ui/StaffHeader.tsx';
 
 /**
  * Staff invitation acceptance (final release, owner 2026-11-04). The one-time token arrives in the URL fragment (never
  * sent to a server log), the invited person chooses their own password here (the password policy applies on the
  * server), and the first sign-in then requires MFA enrollment as for every staff account.
  */
-export function StaffInviteAccept() {
+export function StaffInviteAccept({ initialLocale = 'ar' }: { initialLocale?: AdminLang }) {
+  const [lang, setLang] = useStaffLang(initialLocale);
+  const t = (k: keyof typeof STAFF_INVITE) => pick(STAFF_INVITE[k], lang);
   const [token, setToken] = useState<string | null | undefined>(undefined);
   const [state, setState] = useState<'idle' | 'sending' | 'done' | 'invalid' | 'policy' | 'mismatch' | 'limited'>('idle');
   const [policy, setPolicy] = useState('');
@@ -32,38 +36,44 @@ export function StaffInviteAccept() {
     if (res?.status === 429) return setState('limited');
     setState('invalid');
   }
+  const frame = (body: React.ReactNode) => (
+    <section className="staff-auth" lang={lang} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+      <StaffHeader lang={lang} onLang={setLang} />
+      {body}
+    </section>
+  );
   if (state === 'done') {
-    return (
-      <section data-testid="invite-done">
-        <h1>Password set</h1>
-        <p>Sign in now. You will be asked to set up two-step verification (MFA) before you can use the admin.</p>
-        <p><a className="btn" href="/staff/login">Go to staff sign-in</a></p>
-      </section>
+    return frame(
+      <section className="auth-card" data-testid="invite-done">
+        <h1>{t('doneTitle')}</h1>
+        <p>{t('doneText')}</p>
+        <p><a className="btn" href="/staff/login">{t('goSignIn')}</a></p>
+      </section>,
     );
   }
-  if (token === undefined) return <p role="status">Checking the invitation…</p>;
+  if (token === undefined) return frame(<p role="status">{t('checking')}</p>);
   if (token === null) {
-    return (
-      <section data-testid="invite-missing">
-        <h1>Invitation link not valid</h1>
-        <p>Open the exact link from your invitation, or ask the OWNER for a new one. Each link works once and expires after 72 hours.</p>
-      </section>
+    return frame(
+      <section className="auth-card" data-testid="invite-missing">
+        <h1>{t('missingTitle')}</h1>
+        <p>{t('missingText')}</p>
+      </section>,
     );
   }
   const message =
-    state === 'invalid' ? 'This invitation link is not valid any more (used, expired or revoked). Ask the OWNER for a new one.'
-    : state === 'policy' ? `The password does not meet the policy: ${policy || 'use 14 to 128 characters and do not reuse your e-mail address.'}`
-    : state === 'mismatch' ? 'The two passwords are different.'
-    : state === 'limited' ? 'Too many attempts. Try again in a few minutes.'
+    state === 'invalid' ? t('invalid')
+    : state === 'policy' ? fillIn(t('policy'), { policy: policy || t('policyDefault') })
+    : state === 'mismatch' ? t('mismatch')
+    : state === 'limited' ? t('limited')
     : '';
-  return (
-    <form onSubmit={submit} data-testid="invite-form">
-      <h1>Set your OTONOM staff password</h1>
-      <p>Choose a password of 14 to 128 characters that you do not use anywhere else. Nobody else sees it.</p>
-      <p><label htmlFor="invite-password">New password</label><br /><input id="invite-password" name="password" type="password" minLength={14} maxLength={128} required autoComplete="new-password" /></p>
-      <p><label htmlFor="invite-confirm">Repeat the password</label><br /><input id="invite-confirm" name="confirm" type="password" minLength={14} maxLength={128} required autoComplete="new-password" /></p>
+  return frame(
+    <form className="rfq" onSubmit={submit} data-testid="invite-form">
+      <h1>{t('formTitle')}</h1>
+      <p>{t('formText')}</p>
+      <label htmlFor="invite-password">{t('newPassword')}<input id="invite-password" name="password" type="password" dir="ltr" minLength={14} maxLength={128} required autoComplete="new-password" /></label>
+      <label htmlFor="invite-confirm">{t('repeat')}<input id="invite-confirm" name="confirm" type="password" dir="ltr" minLength={14} maxLength={128} required autoComplete="new-password" /></label>
       <p role="status" aria-live="polite">{message}</p>
-      <button className="btn" type="submit" disabled={state === 'sending'}>{state === 'sending' ? 'Saving…' : 'Set password'}</button>
-    </form>
+      <button className="btn" type="submit" disabled={state === 'sending'}>{state === 'sending' ? t('saving') : t('save')}</button>
+    </form>,
   );
 }

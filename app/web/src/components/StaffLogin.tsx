@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, type FormEvent } from 'react';
 import { staffLoginWords } from '@/admin-ui/copy.ts';
+import { StaffHeader, useStaffLang } from '@/admin-ui/StaffHeader.tsx';
 
 type Step = 'password' | 'email' | 'enroll' | 'totp' | 'reenroll' | 'done';
 type Locale = 'ar' | 'en';
@@ -10,7 +11,7 @@ type Locale = 'ar' | 'en';
 export function StaffLogin({ forgotPasswordEnabled = false, initialLocale = 'ar' }: { forgotPasswordEnabled?: boolean; initialLocale?: Locale }) {
   const [step, setStep] = useState<Step>('password');
   // R3: Arabic unless the person chose English; the choice is remembered and carries into the admin
-  const [locale, setLocale] = useState<Locale>(initialLocale);
+  const [locale, setLocale] = useStaffLang(initialLocale);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [useRecovery, setUseRecovery] = useState(false);
@@ -22,15 +23,6 @@ export function StaffLogin({ forgotPasswordEnabled = false, initialLocale = 'ar'
   const [resendAt, setResendAt] = useState(0);
   const [now, setNow] = useState(Date.now());
   const t = staffLoginWords(locale);
-
-  // the UI-language preference only (Payload's `payload-lng`, not an auth cookie): saved on the first visit and on
-  // every switch, so the admin opens in the same language after sign-in
-  useEffect(() => {
-    const secure = window.location.protocol === 'https:' ? '; secure' : '';
-    document.cookie = `payload-lng=${locale}; path=/; max-age=31536000; samesite=lax${secure}`;
-    document.documentElement.lang = locale;
-    document.documentElement.dir = locale === 'ar' ? 'rtl' : 'ltr';
-  }, [locale]);
 
   useEffect(() => {
     if (step !== 'email') return;
@@ -193,14 +185,7 @@ export function StaffLogin({ forgotPasswordEnabled = false, initialLocale = 'ar'
 
   return (
     <section className="staff-auth" lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-      <div className="staff-auth-heading">
-        {/* official Hybrid 03 lockup for light surfaces, byte-for-byte; never mirrored in RTL */}
-        <img className="staff-logo" src="/brand/otonom/assets/svg/primary_light.svg" alt="OTONOM IoT Solutions" width={820} height={217} />
-        <div className="otn-lang" role="group" aria-label={locale === 'ar' ? 'اللغة' : 'Language'}>
-          <button type="button" lang="ar" className="otn-lang__btn staff-language" aria-pressed={locale === 'ar'} onClick={() => setLocale('ar')}>عربي</button>
-          <button type="button" lang="en" className="otn-lang__btn staff-language" aria-pressed={locale === 'en'} onClick={() => setLocale('en')}>English</button>
-        </div>
-      </div>
+      <StaffHeader lang={locale} onLang={setLocale} />
       <div className="staff-auth-title">
         <h1>{t.title}</h1>
         <p>{t.line}</p>

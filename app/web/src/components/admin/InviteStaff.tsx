@@ -1,5 +1,7 @@
 'use client';
 import { useState, type FormEvent } from 'react';
+import { useTranslation } from '@payloadcms/ui';
+import { INVITE_V, langOf, pick } from '@/admin-ui/copy.ts';
 import s from './staff.module.css';
 
 /**
@@ -10,6 +12,9 @@ import s from './staff.module.css';
 export function InviteStaff() {
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'shown' | 'exists' | 'invalid' | 'error'>('idle');
   const [link, setLink] = useState<string | null>(null);
+  const { i18n } = useTranslation();
+  const lang = langOf(i18n.language);
+  const t = (k: Exclude<keyof typeof INVITE_V, 'roles'>) => pick(INVITE_V[k], lang);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -33,34 +38,30 @@ export function InviteStaff() {
   }
   return (
     <section className={s.section} data-testid="invite-staff">
-      <h2>Invite a team member</h2>
-      <p className={s.muted}>One personal account per person. The team mailbox receives notifications; it is never a shared sign-in.</p>
+      <h2>{t('title')}</h2>
+      <p className={s.muted}>{t('line')}</p>
       <form className={s.form} onSubmit={submit}>
-        <label>E-mail <input name="email" type="email" required maxLength={254} autoComplete="off" /></label>
+        <label>{t('email')} <input name="email" type="email" dir="ltr" required maxLength={254} autoComplete="off" /></label>
         <label>
-          Role{' '}
+          {t('role')}{' '}
           <select name="role" required defaultValue="SALES">
-            <option value="SALES">SALES — booking requests and metrics</option>
-            <option value="EDITOR">CONTENT (EDITOR) — drafts and review</option>
-            <option value="ADMIN">ADMIN</option>
-            <option value="ENGINEER">ENGINEER</option>
-            <option value="STORE">STORE</option>
+            {(['SALES', 'EDITOR', 'ADMIN', 'ENGINEER', 'STORE'] as const).map((r) => <option key={r} value={r}>{pick(INVITE_V.roles[r], lang)}</option>)}
           </select>
         </label>
-        <label><input name="shownOnce" type="checkbox" /> Show the link here instead of e-mailing it</label>
-        <button className={s.btn} type="submit" disabled={state === 'sending'}>{state === 'sending' ? 'Inviting…' : 'Invite'}</button>
+        <label><input name="shownOnce" type="checkbox" /> {t('shownOnce')}</label>
+        <button className={s.btn} type="submit" disabled={state === 'sending'}>{state === 'sending' ? t('inviting') : t('invite')}</button>
       </form>
       <div role="status" aria-live="polite">
-        {state === 'sent' ? <p className={`${s.result} ${s.ok}`}>Invitation e-mail sent. The link works once and expires in 72 hours.</p> : null}
+        {state === 'sent' ? <p className={`${s.result} ${s.ok}`}>{t('sent')}</p> : null}
         {state === 'shown' && link ? (
           <div className={`${s.result} ${s.ok}`} data-testid="invite-link">
-            <p>Give this one-time link to the person directly (it is shown only now, works once and expires in 72 hours):</p>
-            <p><code style={{ overflowWrap: 'anywhere' }}>{link}</code></p>
+            <p>{t('shown')}</p>
+            <p><code dir="ltr" style={{ overflowWrap: 'anywhere' }}>{link}</code></p>
           </div>
         ) : null}
-        {state === 'exists' ? <p className={`${s.result} ${s.err}`}>An account with this e-mail already exists.</p> : null}
-        {state === 'invalid' ? <p className={`${s.result} ${s.err}`}>Check the e-mail address and the role.</p> : null}
-        {state === 'error' ? <p className={`${s.result} ${s.err}`}>The invitation could not be created.</p> : null}
+        {state === 'exists' ? <p className={`${s.result} ${s.err}`}>{t('exists')}</p> : null}
+        {state === 'invalid' ? <p className={`${s.result} ${s.err}`}>{t('invalid')}</p> : null}
+        {state === 'error' ? <p className={`${s.result} ${s.err}`}>{t('error')}</p> : null}
       </div>
     </section>
   );
