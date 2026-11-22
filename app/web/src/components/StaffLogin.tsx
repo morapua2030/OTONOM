@@ -1,57 +1,36 @@
 'use client';
 import { useEffect, useState, type FormEvent } from 'react';
+import { staffLoginWords } from '@/admin-ui/copy.ts';
 
 type Step = 'password' | 'email' | 'enroll' | 'totp' | 'reenroll' | 'done';
 type Locale = 'ar' | 'en';
 
-const copy = {
-  en: {
-    title: 'OTONOM staff sign-in', language: 'العربية', email: 'Email', password: 'Password', continue: 'Continue', working: 'Please wait…',
-    signInFailed: 'Sign-in failed. Check your email and password.', statusFailed: 'Unable to check verification status.',
-    emailTitle: 'Check your email', emailSent: (destination: string) => `We sent a six-digit code to ${destination}.`, emailCode: 'Email verification code',
-    verifyEmail: 'Verify email code', resend: 'Resend code', resendIn: (seconds: number) => `Resend in ${seconds}s`, expiresIn: (seconds: number) => `Code expires in ${seconds}s.`,
-    emailInvalid: 'That code is not valid. Check the latest email and try again.', emailExpired: 'That code expired. Request a new one.', emailLocked: 'Too many incorrect attempts. Request a new code.',
-    emailUnavailable: 'Email verification is temporarily unavailable. Try again shortly.',
-    enrollText: 'This staff account must enroll an authenticator before admin access is allowed.', createKey: 'Create authenticator key',
-    setupText: 'Add this one-time setup key to your authenticator. It is shown only during enrollment.', setupKey: 'Authenticator setup key',
-    authenticatorCode: 'Authenticator code', recoveryCode: 'Recovery code', verifyFinish: 'Verify and finish', verify: 'Verify',
-    useAuthenticator: 'Use authenticator code', useRecovery: 'Use a recovery code', mfaInvalid: 'Code not accepted. Wait for the next code and try again.', recoveryInvalid: 'Recovery code not accepted.',
-    verified: 'Verified. Opening the admin panel…', saveRecovery: 'Save these one-time recovery codes securely. They will not be shown again.', recoveryCodes: 'Recovery codes', admin: 'Continue to admin',
-    forgot: 'Forgot your password?', reenrollTitle: 'Signed in with a recovery code', reenrollText: 'Lost your phone? Set up a new authenticator now. The old one stops working, your other sessions are signed out, and you get new recovery codes.',
-    reenrollStart: 'Set up a new authenticator', reenrollLater: 'Not now, continue to admin', reenrollExpired: 'This setup expired. Start again.',
-  },
-  ar: {
-    title: 'تسجيل دخول فريق OTONOM', language: 'English', email: 'البريد الإلكتروني', password: 'كلمة المرور', continue: 'متابعة', working: 'جارٍ التنفيذ…',
-    signInFailed: 'تعذر تسجيل الدخول. راجع البريد وكلمة المرور.', statusFailed: 'تعذر التحقق من حالة الحماية.',
-    emailTitle: 'راجع بريدك الإلكتروني', emailSent: (destination: string) => `أرسلنا رمزاً من ستة أرقام إلى ${destination}.`, emailCode: 'رمز التحقق من البريد',
-    verifyEmail: 'تحقق من رمز البريد', resend: 'إعادة إرسال الرمز', resendIn: (seconds: number) => `إعادة الإرسال خلال ${seconds}ث`, expiresIn: (seconds: number) => `ينتهي الرمز خلال ${seconds}ث.`,
-    emailInvalid: 'الرمز غير صحيح. استخدم أحدث رسالة وحاول مرة أخرى.', emailExpired: 'انتهت صلاحية الرمز. اطلب رمزاً جديداً.', emailLocked: 'تجاوزت عدد المحاولات. اطلب رمزاً جديداً.',
-    emailUnavailable: 'التحقق عبر البريد غير متاح مؤقتاً. حاول بعد قليل.',
-    enrollText: 'يجب ربط تطبيق مصادقة بهذا الحساب قبل دخول لوحة الإدارة.', createKey: 'إنشاء مفتاح المصادقة',
-    setupText: 'أضف مفتاح الإعداد لمرة واحدة إلى تطبيق المصادقة. لن يظهر بعد إتمام الربط.', setupKey: 'مفتاح إعداد تطبيق المصادقة',
-    authenticatorCode: 'رمز تطبيق المصادقة', recoveryCode: 'رمز الاسترداد', verifyFinish: 'تحقق وأكمل', verify: 'تحقق',
-    useAuthenticator: 'استخدام تطبيق المصادقة', useRecovery: 'استخدام رمز استرداد', mfaInvalid: 'الرمز غير مقبول. انتظر الرمز التالي وحاول مرة أخرى.', recoveryInvalid: 'رمز الاسترداد غير مقبول.',
-    verified: 'تم التحقق. جارٍ فتح لوحة الإدارة…', saveRecovery: 'احفظ رموز الاسترداد أحادية الاستخدام بأمان. لن تظهر مرة أخرى.', recoveryCodes: 'رموز الاسترداد', admin: 'متابعة إلى لوحة الإدارة',
-    forgot: 'نسيت كلمة المرور؟', reenrollTitle: 'تم الدخول برمز استرداد', reenrollText: 'فقدت هاتفك؟ اربط تطبيق مصادقة جديداً الآن. سيتوقف التطبيق القديم، وستُغلق جلساتك الأخرى، وستحصل على رموز استرداد جديدة.',
-    reenrollStart: 'ربط تطبيق مصادقة جديد', reenrollLater: 'ليس الآن، المتابعة إلى لوحة الإدارة', reenrollExpired: 'انتهت صلاحية الإعداد. ابدأ من جديد.',
-  },
-} as const;
 
 /** Password, email OTP and existing TOTP/recovery verification bound to one Payload session. */
-export function StaffLogin({ forgotPasswordEnabled = false }: { forgotPasswordEnabled?: boolean }) {
+export function StaffLogin({ forgotPasswordEnabled = false, initialLocale = 'ar' }: { forgotPasswordEnabled?: boolean; initialLocale?: Locale }) {
   const [step, setStep] = useState<Step>('password');
-  const [locale, setLocale] = useState<Locale>('en');
+  // R3: Arabic unless the person chose English; the choice is remembered and carries into the admin
+  const [locale, setLocale] = useState<Locale>(initialLocale);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [useRecovery, setUseRecovery] = useState(false);
   const [enrollmentSecret, setEnrollmentSecret] = useState<string | null>(null);
   const [reenrollToken, setReenrollToken] = useState<string | null>(null);
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
-  const [destination, setDestination] = useState('your inbox');
+  const [destination, setDestination] = useState('');
   const [expiresAt, setExpiresAt] = useState(0);
   const [resendAt, setResendAt] = useState(0);
   const [now, setNow] = useState(Date.now());
-  const t = copy[locale];
+  const t = staffLoginWords(locale);
+
+  // the UI-language preference only (Payload's `payload-lng`, not an auth cookie): saved on the first visit and on
+  // every switch, so the admin opens in the same language after sign-in
+  useEffect(() => {
+    const secure = window.location.protocol === 'https:' ? '; secure' : '';
+    document.cookie = `payload-lng=${locale}; path=/; max-age=31536000; samesite=lax${secure}`;
+    document.documentElement.lang = locale;
+    document.documentElement.dir = locale === 'ar' ? 'rtl' : 'ltr';
+  }, [locale]);
 
   useEffect(() => {
     if (step !== 'email') return;
@@ -215,8 +194,16 @@ export function StaffLogin({ forgotPasswordEnabled = false }: { forgotPasswordEn
   return (
     <section className="staff-auth" lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       <div className="staff-auth-heading">
+        {/* official Hybrid 03 lockup for light surfaces, byte-for-byte; never mirrored in RTL */}
+        <img className="staff-logo" src="/brand/otonom/assets/svg/primary_light.svg" alt="OTONOM IoT Solutions" width={820} height={217} />
+        <div className="otn-lang" role="group" aria-label={locale === 'ar' ? 'اللغة' : 'Language'}>
+          <button type="button" lang="ar" className="otn-lang__btn staff-language" aria-pressed={locale === 'ar'} onClick={() => setLocale('ar')}>عربي</button>
+          <button type="button" lang="en" className="otn-lang__btn staff-language" aria-pressed={locale === 'en'} onClick={() => setLocale('en')}>English</button>
+        </div>
+      </div>
+      <div className="staff-auth-title">
         <h1>{t.title}</h1>
-        <button type="button" className="staff-language" onClick={() => setLocale(locale === 'en' ? 'ar' : 'en')}>{t.language}</button>
+        <p>{t.line}</p>
       </div>
       {step === 'password' && (
         <form className="rfq" onSubmit={login}>
@@ -229,7 +216,7 @@ export function StaffLogin({ forgotPasswordEnabled = false }: { forgotPasswordEn
       {step === 'email' && (
         <form className="rfq" onSubmit={verifyEmail}>
           <h2>{t.emailTitle}</h2>
-          <p>{t.emailSent(destination)}</p>
+          <p>{t.emailSent(destination || t.yourInbox)}</p>
           <label>{t.emailCode}<input name="code" dir="ltr" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" minLength={6} maxLength={6} required aria-describedby="email-code-timing" /></label>
           <p id="email-code-timing" className="staff-auth-hint" aria-live="polite">{t.expiresIn(expiresIn)}</p>
           <button className="btn" disabled={busy || expiresIn === 0}>{busy ? t.working : t.verifyEmail}</button>

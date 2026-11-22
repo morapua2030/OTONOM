@@ -1,0 +1,140 @@
+/* OTONOM admin pages (R3): Home, Hidden pages, the bookings list and one booking. Imported by admin-theme.css. */
+
+/* ---------- OTONOM pages (Home, Hidden pages, custom views) ---------- */
+.otn-page { display: grid; gap: 28px; padding-block: 24px 48px; max-width: 1200px; }
+.otn-page__head { display: grid; gap: 4px; }
+.otn-eyebrow { margin: 0; color: var(--otn-blue-text); font-size: 14px; font-weight: 600; }
+.otn-section-title { margin: 0; font-size: 20px; line-height: 1.4; }
+.otn-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.otn-link { color: var(--otn-blue-text); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.otn-empty { margin: 0; padding: 18px 20px; border: 1px dashed var(--otn-input-line); border-radius: 16px; background: var(--otn-card); color: var(--otn-muted); }
+html[dir='rtl' i] .otn-flip { transform: scaleX(-1); }
+
+.otn-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+.otn-card { display: grid; align-content: start; gap: 8px; padding: 20px; border: 1px solid var(--otn-navy); border-radius: 16px; background: var(--otn-card); }
+.otn-card__head { display: flex; align-items: center; gap: 10px; color: var(--otn-blue-text); }
+.otn-card__head .otn-icon { width: 22px; height: 22px; flex: none; }
+.otn-card__label { margin: 0; color: var(--otn-body); font-size: 15px; font-weight: 600; line-height: 1.5; }
+.otn-card__value { margin: 0; color: var(--otn-navy); font-size: 34px; font-weight: 700; line-height: 1.15; }
+.otn-card--ok .otn-card__value, .otn-card--off .otn-card__value { font-size: 18px; line-height: 1.5; }
+.otn-card--attention { background: var(--otn-ice); }
+.otn-card--off { background: var(--otn-warn-soft); border-color: var(--otn-warn); }
+.otn-card--off .otn-card__head, .otn-card--off .otn-card__value { color: var(--otn-warn); }
+.otn-card--ok .otn-card__head { color: var(--otn-ok); }
+.otn-card__note { margin: 0; color: var(--otn-body); font-size: 14px; }
+.otn-card__action { display: inline-flex; align-items: center; gap: 6px; width: fit-content; min-height: 44px; color: var(--otn-blue-text); font-weight: 600; text-decoration: none; }
+.otn-card__action .otn-icon { width: 18px; height: 18px; }
+.otn-card__action:hover { color: var(--otn-navy); text-decoration: underline; }
+
+.otn-quick { display: grid; gap: 12px; }
+.otn-quick__list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
+.otn-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 18px; border: 1px solid var(--otn-navy); border-radius: 9999px; background: var(--otn-card); color: var(--otn-navy); font-size: 15px; font-weight: 500; text-decoration: none; }
+.otn-chip .otn-icon { width: 18px; height: 18px; color: var(--otn-blue-text); }
+.otn-chip:hover { background: var(--otn-ice); color: var(--otn-navy); }
+
+.otn-latest { display: grid; gap: 12px; }
+.otn-latest__list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--otn-hairline); border-radius: 16px; background: var(--otn-card); overflow: hidden; }
+.otn-latest__row + .otn-latest__row { border-top: 1px solid var(--otn-hairline); }
+.otn-latest__link { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px 16px; min-height: 56px; padding: 12px 18px; color: var(--otn-body); text-decoration: none; }
+.otn-latest__link:hover { background: var(--otn-page); }
+.otn-latest__main { display: flex; align-items: baseline; gap: 12px; min-width: 0; }
+.otn-latest__ref { color: var(--otn-blue-text); font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.otn-latest__name { color: var(--otn-navy); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.otn-latest__meta { display: inline-flex; gap: 8px; color: var(--otn-muted); font-size: 14px; white-space: nowrap; }
+
+.otn-hidden { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.otn-hidden__row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; border: 1px solid var(--otn-hairline); border-radius: 16px; background: var(--otn-card); }
+.otn-hidden__name { margin: 0; color: var(--otn-navy); font-weight: 600; }
+.otn-hidden__line { margin: 2px 0 0; color: var(--otn-muted); font-size: 14px; }
+
+/* ---------- Bookings list (M6) ---------- */
+.otn-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 4px 16px; }
+.otn-filter { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 6px 14px; border: 1px solid var(--otn-input-line); border-radius: 9999px; background: var(--otn-card); color: var(--otn-navy); font-size: 15px; font-weight: 500; text-decoration: none; }
+.otn-filter:hover { border-color: var(--otn-navy); background: var(--otn-ice); }
+.otn-filter[aria-current='page'] { border-color: var(--otn-navy); background: var(--otn-ice); font-weight: 600; box-shadow: inset 0 0 0 1px var(--otn-navy); }
+.otn-filter__n { min-width: 26px; padding: 0 8px; border-radius: 9999px; background: var(--otn-page); color: var(--otn-navy); font-size: 13px; font-weight: 600; text-align: center; font-variant-numeric: tabular-nums; }
+.otn-filter[aria-current='page'] .otn-filter__n { background: var(--otn-card); }
+.otn-phone { display: inline-flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+.otn-phone__number { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.otn-phone__actions { display: inline-flex; gap: 6px; }
+.otn-icon-btn { display: inline-grid; place-items: center; width: 34px; height: 34px; flex: none; border: 1px solid var(--otn-navy); border-radius: 9999px; background: var(--otn-card); color: var(--otn-navy); }
+.otn-icon-btn .otn-icon { width: 18px; height: 18px; }
+.otn-icon-btn:hover { background: var(--otn-ice); color: var(--otn-navy); }
+
+/* ---------- One booking (M7) ---------- */
+.otn-lead-top { display: grid; gap: 10px; margin-bottom: 8px; }
+.otn-lead-top .otn-line { margin: 0; }
+.otn-lead-top__row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.otn-lead-top__ref { color: var(--otn-navy); font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.otn-lead-top__when { display: inline-flex; align-items: center; gap: 6px; color: var(--otn-muted); font-size: 15px; }
+.otn-lead-top__when .otn-icon { width: 18px; height: 18px; }
+.otn-lead-top__actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+.otn-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 18px; border: 1px solid var(--otn-navy); border-radius: 12px; font-size: 15px; font-weight: 600; text-decoration: none; }
+.otn-btn .otn-icon { width: 20px; height: 20px; }
+.otn-btn--outline { background: var(--otn-card); color: var(--otn-navy); }
+.otn-btn--outline:hover { background: var(--otn-ice); color: var(--otn-navy); }
+.otn-hint { margin: 0; padding: 12px 16px; border: 1px solid var(--otn-lightblue); border-radius: 12px; background: var(--otn-ice); color: var(--otn-navy); font-size: 15px; }
+.otn-hint strong { font-weight: 700; }
+
+/* ---------- Small screens ---------- */
+@media (max-width: 768px) {
+  .otn-page { padding-block: 16px 32px; gap: 22px; }
+  .otn-cards { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .otn-card { padding: 14px; }
+  .otn-card__value { font-size: 28px; }
+  .otn-latest__link { grid-template-columns: minmax(0, 1fr) auto; }
+  .otn-latest__meta { grid-column: 1 / -1; grid-row: 2; }
+  .otn-hidden__row { flex-direction: column; align-items: flex-start; }
+}
+@media (max-width: 520px) {
+  .otn-cards { grid-template-columns: 1fr; }
+}
+
+/* phone numbers, e-mails and links are typed left-to-right, also in the Arabic admin */
+:is(#field-phone, #field-email, #field-phoneE164, #field-whatsappE164, #field-link, [id^='field-socials__'][id$='__url']) { direction: ltr; unicode-bidi: plaintext; }
+html[dir='rtl' i] :is(#field-phone, #field-email, #field-phoneE164, #field-whatsappE164, #field-link, [id^='field-socials__'][id$='__url']) { text-align: right; }
+/* the developer view of a page (raw data) is not needed by the team; its address still works */
+.doc-tabs__tabs a.doc-tab[href$='/api'] { display: none; }
+/* one booking shows its own line in the summary; the list's line under the title would repeat */
+.template-default:has(.collection-edit--leads) .doc-header__after-header .custom-view-description { display: none; }
+.custom-view-description { margin: 4px 0 0; color: var(--otn-muted); font-size: 15px; }
+
+/* the bookings table sits inside the page (no edge-to-edge bleed, in both directions), so the six columns fit
+   without sideways scrolling; `html[dir] body` outranks the right-to-left bleed rule in admin-theme.css */
+html[dir] body .collection-list--leads .table { width: 100%; left: auto; right: auto; padding-inline: 0; }
+.collection-list--leads .table :is(th, td) { min-width: 0; padding-inline: 12px; }
+.collection-list--leads .table :is(td.cell-ref, td.cell-status) { white-space: nowrap; }
+.collection-list--leads .table td.cell-createdAt, .collection-list--leads .table td.cell-createdAt * { white-space: normal; }
+.collection-list--leads .table td.cell-createdAt { width: 130px; }
+@media (min-width: 769px) { .collection-list--leads .otn-icon-btn { width: 32px; height: 32px; } }
+
+/* system-stamped dates shown as text */
+.otn-readonly { display: grid; gap: 4px; }
+.otn-readonly__value { margin: 0; color: var(--otn-body); font-size: 15px; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 768px) {
+  /* the "last modified / created" strip wraps instead of scrolling sideways */
+  .doc-controls__meta { flex-wrap: wrap; row-gap: 4px; }
+  /* bookings on a phone: one stacked row per booking (name + status, phone with call/WhatsApp, code + date);
+     no sideways scrolling */
+  .collection-list--leads .table { overflow: visible; }
+  .collection-list--leads .table table { display: block; width: 100%; }
+  .collection-list--leads .table thead { display: none; }
+  .collection-list--leads .table tbody { display: block; }
+  .collection-list--leads .table tbody tr {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; padding: 14px 16px;
+    grid-template-areas: 'name status' 'phone phone' 'ref date' 'package package';
+    border-bottom: 1px solid var(--otn-hairline);
+  }
+  .collection-list--leads .table tbody tr:last-child { border-bottom: 0; }
+  .collection-list--leads .table tbody td { display: block; min-width: 0; padding: 0; border: 0; background: transparent; }
+  .collection-list--leads .table tbody td.cell-_select { display: none; }
+  .collection-list--leads .table tbody td.cell-name { grid-area: name; color: var(--otn-navy); font-size: 17px; font-weight: 600; overflow-wrap: anywhere; }
+  .collection-list--leads .table tbody td.cell-status { grid-area: status; }
+  .collection-list--leads .table tbody td.cell-phone { grid-area: phone; }
+  .collection-list--leads .table tbody td.cell-ref { grid-area: ref; font-size: 14px; }
+  .collection-list--leads .table tbody td.cell-createdAt { grid-area: date; color: var(--otn-muted); font-size: 14px; text-align: end; }
+  .collection-list--leads .table tbody td.cell-package { grid-area: package; color: var(--otn-muted); font-size: 14px; }
+  .collection-list--leads .otn-icon-btn { width: 40px; height: 40px; }
+  .collection-list--leads .otn-phone__number { font-size: 16px; }
+}

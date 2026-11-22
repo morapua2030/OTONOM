@@ -1,6 +1,8 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildConfig } from 'payload';
+import { ar } from 'payload/i18n/ar';
+import { en } from 'payload/i18n/en';
 import { postgresAdapter } from '@payloadcms/db-postgres';
 import { resendAdapter } from '@payloadcms/email-resend';
 import { vercelBlobStorage } from '@payloadcms/storage-vercel-blob';
@@ -15,6 +17,7 @@ import { protectedAdminOrigin, publicMarketingOnly } from './lib/deployment.ts';
 import { blobStorageEnabled } from './lib/blob-origin.ts';
 import { uploadAfterCommit } from './lib/deferred-upload.ts';
 import { parseFromAddress, passwordResetEmailEnabled } from './lib/password-reset.ts';
+import { PAYLOAD_TRANSLATIONS } from './admin-ui/copy.ts';
 
 const resetFrom = passwordResetEmailEnabled() ? parseFromAddress(process.env.OTONOM_EMAIL_FROM) : null;
 
@@ -27,13 +30,21 @@ export default buildConfig({
   csrf: trustedCsrfOrigins(),
   admin: {
     user: 'users',
+    // R3 (owner 2026-11-22): the OTONOM look, light only (admin-ui/admin-theme.css)
+    theme: 'light',
+    dateFormat: 'd MMM yyyy, h:mm a',
     importMap: { baseDir: path.resolve(dirname) },
     components: {
       beforeLogin: ['/components/StaffLoginNotice#StaffLoginNotice'],
-      afterNavLinks: ['/components/admin/StaffNav#StaffNav'],
+      // the menu: 6 groups by role + the language switch (navigation only; every page re-checks access)
+      Nav: '/admin-ui/Nav#AdminNav',
+      graphics: { Logo: '/admin-ui/brand#AdminLogo', Icon: '/admin-ui/brand#AdminIcon' },
       // staff workspaces (each view re-checks MFA + permission; every action goes through the existing guarded endpoints)
       views: {
-        overview: { Component: '/components/admin/OverviewView#OverviewView', path: '/overview', exact: true },
+        dashboard: { Component: '/admin-ui/HomeView#HomeView' },
+        // Home replaces the old overview; /admin/overview keeps working and shows Home
+        overview: { Component: '/admin-ui/HomeView#OverviewHome', path: '/overview', exact: true },
+        hiddenPages: { Component: '/admin-ui/HiddenPagesView#HiddenPagesView', path: '/hidden-pages', exact: true },
         contentReview: { Component: '/components/admin/ContentReviewView#ContentReviewView', path: '/content-review', exact: true },
         projectsWorkspace: { Component: '/components/admin/ProjectsView#ProjectsView', path: '/workspace', exact: true },
         kpiDashboard: { Component: '/components/admin/KpiView#KpiView', path: '/kpi', exact: true },
@@ -44,10 +55,18 @@ export default buildConfig({
         sales: { Component: '/components/admin/SalesView#SalesView', path: '/sales', exact: true },
       },
     },
-    meta: { titleSuffix: ' — OTONOM' },
+    meta: {
+      titleSuffix: ' — OTONOM',
+      icons: [
+        { rel: 'icon', type: 'image/x-icon', url: '/brand/otonom/assets/icons/favicon.ico' },
+        { rel: 'icon', type: 'image/png', url: '/brand/otonom/assets/icons/favicon-256.png' },
+      ],
+    },
     // never call gravatar.com: it would send a hash of every staff e-mail to a third party (privacy)
     avatar: 'default',
   },
+  // R3: the admin speaks Arabic (default, right-to-left) and English; one switch in the menu and on the sign-in page.
+  i18n: { supportedLanguages: { ar, en }, fallbackLanguage: 'ar', translations: PAYLOAD_TRANSLATIONS },
   // Document locking is off everywhere (2026-11-15 incident): Payload 3.90.2 reads the lock OUTSIDE the save's
   // transaction (checkDocumentLockStatus calls payload.db.find without req), so every save needed a second pool
   // connection and concurrent saves could deadlock the pool. Without locking a save uses only its own transaction.
