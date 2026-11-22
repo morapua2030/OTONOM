@@ -1,4 +1,4 @@
-import type { AdminViewServerProps, PayloadRequest } from 'payload';
+import type { AdminViewServerProps, PayloadRequest, Where } from 'payload';
 import { DefaultTemplate } from '@payloadcms/next/templates';
 import { Gutter, Link } from '@payloadcms/ui';
 import { can } from '@otonom/domain';
@@ -24,8 +24,7 @@ async function HomeBody({ req }: { req: PayloadRequest }) {
   const seesBookings = can(role, 'leads.read') && can(role, 'leads.write');
   const seesPhotos = can(role, 'content.edit') || can(role, 'content.publish');
   const seesForm = seesBookings || can(role, 'intake.settings');
-  const countOf = async (collection: 'leads' | 'media', where: Record<string, unknown>) =>
-    (await payload.count({ collection, where: where as any, req, overrideAccess: false })).totalDocs;
+  const countOf = async (collection: 'leads' | 'media', where: Where) => (await payload.count({ collection, where, req, overrideAccess: false })).totalDocs;
 
   const cards: Card[] = [];
   let latest: Latest[] = [];
@@ -34,7 +33,7 @@ async function HomeBody({ req }: { req: PayloadRequest }) {
     const [fresh, week, list] = await Promise.all([
       countOf('leads', { status: { equals: 'NEW' } }),
       countOf('leads', { createdAt: { greater_than_equal: weekAgo } }),
-      payload.find({ collection: 'leads', sort: '-createdAt', limit: 5, depth: 0, req, overrideAccess: false, select: { ref: true, name: true, package: true, status: true, createdAt: true } as any }),
+      payload.find({ collection: 'leads', sort: '-createdAt', limit: 5, depth: 0, req, overrideAccess: false, select: { ref: true, name: true, package: true, status: true, createdAt: true } }),
     ]);
     cards.push({ key: 'new', icon: 'inbox', label: pick(HOME.cards.newBookings, lang), value: fmtCount(fresh), tone: fresh > 0 ? 'attention' : undefined, href: leadsHref('NEW'), action: pick(HOME.cards.newBookingsAction, lang) });
     cards.push({ key: 'week', icon: 'chart', label: pick(HOME.cards.week, lang), value: fmtCount(week), href: leadsHref() });
@@ -152,7 +151,7 @@ export async function HomeView(props: AdminViewServerProps) {
 /** `/admin/overview` keeps working and shows Home (custom views get no template, so this one adds it). */
 export async function OverviewHome(props: AdminViewServerProps) {
   const { initPageResult, params, searchParams } = props;
-  const u = initPageResult.req.user as any;
+  const u = initPageResult.req.user as Parameters<typeof mfaOk>[0] | null;
   // custom views are not covered by Payload's admin-access redirect: mirror it (same rule as components/admin/shell.tsx)
   if (!u) redirect('/admin/login');
   if (!mfaOk(u)) redirect('/admin/unauthorized');

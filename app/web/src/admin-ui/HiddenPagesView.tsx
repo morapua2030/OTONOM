@@ -10,12 +10,12 @@ import { HIDDEN_PAGES } from './nav-model.ts';
 
 /** «Hidden pages» (R3, M3): OWNER only. The pages are hidden from the menu only; every route still works. */
 export function HiddenPagesView(props: AdminViewServerProps) {
-  const u = props.initPageResult.req.user as any;
+  const u = props.initPageResult.req.user as (Parameters<typeof mfaOk>[0] & { role?: string }) | null;
   // custom views are not covered by Payload's admin-access redirect: mirror it (same rule as components/admin/shell.tsx)
   if (!u) redirect('/admin/login');
   if (!mfaOk(u)) redirect('/admin/unauthorized');
   const lang = langOf(props.initPageResult.req.i18n?.language);
-  const owner = can(u.role, 'settings.stage');
+  const owner = can(u?.role, 'settings.stage');
   return (
     <AdminPage {...props} title={pick(PAGE.hidden.name, lang)} line={pick(PAGE.hidden.line, lang)} testId="hidden-pages">
       {owner ? (

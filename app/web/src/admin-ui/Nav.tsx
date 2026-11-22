@@ -3,6 +3,7 @@ import { NavHamburger, NavWrapper } from '@payloadcms/next/client';
 import { Link } from '@payloadcms/ui';
 import { langOf, PAGE, pick, UI } from './copy.ts';
 import { Icon } from './icons.tsx';
+import { A11yFixes } from './A11yFixes.tsx';
 import { AdminLanguageSwitch } from './LanguageSwitch.tsx';
 import { NavAutoOpen } from './NavAutoOpen.tsx';
 import { ACCOUNT_PAGE, menuFor } from './nav-model.ts';
@@ -25,10 +26,12 @@ export function AdminNav(props: ServerProps) {
   return (
     <NavWrapper baseClass="nav">
       <NavAutoOpen />
+      <A11yFixes />
       <nav className="nav__wrap otn-nav" aria-label={pick(UI.mainMenu, lang)} data-testid="staff-nav">
         <div className="otn-nav__brand">
           <Link href="/admin" prefetch={false} className="otn-nav__logo" aria-label={pick(UI.brand, lang)}>
             {/* official Hybrid 03 artwork, byte-for-byte; never mirrored in RTL */}
+            {/* eslint-disable-next-line @next/next/no-img-element -- the official logo file is shown byte-for-byte (brand guardian) */}
             <img src="/brand/otonom/assets/svg/wordmark_only_light.svg" alt="OTONOM" width={820} height={162} />
           </Link>
           <AdminLanguageSwitch />

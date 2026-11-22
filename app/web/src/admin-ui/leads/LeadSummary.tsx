@@ -12,7 +12,7 @@ import { StatusBadge } from '../StatusBadge.tsx';
 export function LeadSummary() {
   const { i18n } = useTranslation();
   const lang = langOf(i18n.language);
-  const { data, initialData } = useDocumentInfo() as { data?: Record<string, any>; initialData?: Record<string, any> };
+  const { data, initialData } = useDocumentInfo() as { data?: { createdAt?: string }; initialData?: { createdAt?: string } };
   const doc = data ?? initialData ?? {};
   const status = useFormFields(([fields]) => fields?.status?.value) as string | undefined;
   const copy = status ? LEAD_STATUS_COPY[status as keyof typeof LEAD_STATUS_COPY] : undefined;

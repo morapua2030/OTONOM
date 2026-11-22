@@ -1,11 +1,11 @@
-import type { ServerProps } from 'payload';
+import type { SanitizedPermissions, ServerProps, Where } from 'payload';
 import { Link } from '@payloadcms/ui';
 import { can } from '@otonom/domain';
 import { LEAD_STATUSES } from '@/lib/leads.ts';
 import { langOf, LEAD_STATUS_COPY, pick, UI } from '../copy.ts';
 import { count as fmtCount } from '../format.ts';
 
-type Props = ServerProps & { searchParams?: Record<string, string | string[] | undefined>; permissions?: any };
+type Props = ServerProps & { searchParams?: Record<string, string | string[] | undefined>; permissions?: SanitizedPermissions };
 
 /** The status filter in the URL, in either form Payload uses (flat, or rewritten to or[0][and][0]). */
 function currentStatus(searchParams: Props['searchParams']): string | null {
@@ -23,8 +23,7 @@ export async function LeadQuickFilters(props: Props) {
   const lang = langOf(props.i18n?.language);
   const readable = !!props.permissions?.collections?.leads?.read && can(role, 'leads.read');
   if (!readable || !props.payload) return null;
-  const countWhere = async (where?: Record<string, unknown>) =>
-    (await props.payload!.count({ collection: 'leads', where: where as any, overrideAccess: true })).totalDocs;
+  const countWhere = async (where?: Where) => (await props.payload!.count({ collection: 'leads', where, overrideAccess: true })).totalDocs;
   const [all, ...per] = await Promise.all([countWhere(), ...LEAD_STATUSES.map((s) => countWhere({ status: { equals: s.value } }))]);
   const active = currentStatus(props.searchParams);
   const chips = [

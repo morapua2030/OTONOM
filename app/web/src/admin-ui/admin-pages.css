@@ -138,3 +138,16 @@ html[dir] body .collection-list--leads .table { width: 100%; left: auto; right: 
   .collection-list--leads .otn-icon-btn { width: 40px; height: 40px; }
   .collection-list--leads .otn-phone__number { font-size: 16px; }
 }
+
+/* ---------- Custom pages frame (StaffShell) and the /admin/login notice ---------- */
+.otn-crumbs { display: flex; flex-wrap: wrap; gap: 8px; color: var(--otn-muted); font-size: 14px; }
+.otn-crumbs a { color: var(--otn-blue-text); text-decoration: none; }
+.otn-crumbs a:hover { text-decoration: underline; }
+.otn-title-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.otn-badge--role { background: var(--otn-card); }
+.otn-badge--role::before { display: none; }
+.otn-login-notice { display: grid; gap: 12px; margin-bottom: 20px; padding: 16px 18px; border: 1px solid var(--otn-navy); border-radius: 16px; background: var(--otn-ice); color: var(--otn-navy); font-size: 15px; line-height: 1.7; }
+.otn-login-notice p { margin: 0; }
+.otn-login-notice .btn { width: fit-content; margin: 0; text-decoration: none; }
+/* Payload's "Add row" button text was below AA contrast on white */
+.array-field__add-row, .array-field__add-row .btn__label { color: var(--otn-blue-text); }
