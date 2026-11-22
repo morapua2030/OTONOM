@@ -583,6 +583,8 @@ export interface Media {
   focalY?: number | null;
 }
 /**
+ * Every booking from the website: call the customer, then update the status.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "leads".
  */
@@ -596,11 +598,11 @@ export interface Lead {
   phone: string;
   package: 'premium' | 'plus' | 'essential' | 'unsure';
   /**
-   * Optional note the visitor added (up to 500 characters)
+   * A note the customer wrote, up to 500 characters.
    */
   message?: string | null;
   /**
-   * Simulator plan sent with the request (text only, attached automatically from the simulator)
+   * Sent automatically from the Try page.
    */
   plan?: string | null;
   source: 'contact' | 'simulator';
@@ -609,14 +611,17 @@ export interface Lead {
     given: boolean;
     at: string;
     /**
-     * Date of the approved privacy text the visitor accepted
+     * Date of the privacy text the customer accepted.
      */
     privacyVersion: string;
   };
   status: 'NEW' | 'CONTACTED' | 'VISIT_SCHEDULED' | 'QUOTED' | 'FOLLOW_UP' | 'NOT_INTERESTED';
+  /**
+   * Who on the team follows this booking.
+   */
   assignee?: (number | null) | User;
   /**
-   * Notes are added, never edited or removed
+   * Notes are added only, never edited or removed.
    */
   notes?:
     | {
