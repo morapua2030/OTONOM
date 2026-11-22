@@ -168,6 +168,8 @@ async function main() {
       for (const width of [390, 1440]) {
         const page = await browser.newPage(width, 900);
         await (page as any).cdp.send('Network.setCookie', { name: 'payload-token', value: token, domain: new URL(BASE).hostname, path: '/', httpOnly: true }, (page as any).sid);
+        // R3: the admin opens in Arabic by default; this check reads the English admin
+        await (page as any).cdp.send('Network.setCookie', { name: 'payload-lng', value: 'en', domain: new URL(BASE).hostname, path: '/' }, (page as any).sid);
         await page.goto(url);
         await sleep(2500);
         const facts = await page.eval<{ path: string; unauthorized: boolean; text: number }>(`({ path: location.pathname, unauthorized: /unauthorized|login/.test(location.pathname), text: document.body.innerText.length })`);

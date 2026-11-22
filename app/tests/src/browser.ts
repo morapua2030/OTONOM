@@ -180,7 +180,7 @@ export class Browser {
     return new Browser(edge, await Cdp.connect(wsUrl), base, shotsDir);
   }
   /** A fresh, isolated browser context (own cookies) — one per signed-in person. */
-  async newPage(width = 1366, height = 900): Promise<Page> {
+  async newPage(width = 1366, height = 900, opts: { adminLang?: 'ar' | 'en' | null } = {}): Promise<Page> {
     const { result: ctx } = await this.cdp.send('Target.createBrowserContext', {});
     const { result: tgt } = await this.cdp.send('Target.createTarget', { url: 'about:blank', browserContextId: ctx.browserContextId });
     const { result: att } = await this.cdp.send('Target.attachToTarget', { targetId: tgt.targetId, flatten: true });
@@ -191,6 +191,9 @@ export class Browser {
     await this.cdp.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: width < 768 }, sid);
     // confirm() dialogs are accepted automatically (the test asserts the server outcome instead)
     await this.cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: 'window.confirm = () => true;' }, sid);
+    // R3: the admin opens in Arabic when no language is saved; the suites written for the English admin keep English
+    const adminLang = opts.adminLang === undefined ? 'en' : opts.adminLang;
+    if (adminLang) await this.cdp.send('Network.setCookie', { name: 'payload-lng', value: adminLang, url: this.base }, sid);
     const page = new Page(this.cdp, sid, tgt.targetId, this.base, this.shotsDir);
     const clean = (u?: string) => (u ? u.split('?')[0].replace(this.base, '') : undefined);
     this.cdp.on(sid, (method, p) => {

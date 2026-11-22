@@ -140,7 +140,8 @@ async function main() {
     const eng = await browser.newPage();
     await staffLogin(eng, 'ENGINEER');
     const navText = await eng.text('[data-testid="staff-nav"]');
-    rec.add('E2E-ENG-NAV', 'ROLES', 'engineer sees Projects + Service links but not KPI or Store', /Projects workspace/.test(navText) && /Service desk/.test(navText) && !/KPI dashboard/.test(navText) && !/Store operations/.test(navText), navText);
+    // R3 menu by role (owner 2026-11-22): ENGINEER works on no page in the menu (projects, service and store are hidden pages)
+    rec.add('E2E-ENG-NAV', 'ROLES', 'engineer menu: Home and Account security only — no bookings, reports, store or hidden pages', /Home/.test(navText) && /Account security/.test(navText) && !/Booking requests|Reports|Hidden pages|Store operations|KPI dashboard/.test(navText), navText);
     await reload(eng, '/admin/workspace', `[data-testid="rfq-${rfqRef}-to-INITIAL_QUALIFICATION"]`);
     await eng.screenshot('staff-workspace-engineer-1366.png');
     await act(eng, `rfq-${rfqRef}-to-INITIAL_QUALIFICATION`);
@@ -197,10 +198,11 @@ async function main() {
     rec.add('E2E-HANDOFF', 'JOURNEY', 'handoff summary opens from the workspace and contains the contract ref without file links', String(ho).includes(after?.contract_ref ?? '##') && !/https?:\/\//.test(String(ho)), String(ho).slice(0, 160));
 
     // ---------- 3b. owner overview, KPI drill-down and sanitized CSV export ----------
-    await reload(owner, '/admin/overview', '[data-testid="overview-kpi"]');
-    const ov = { crm: await owner.exists('[data-testid="overview-crm"]'), kpi: await owner.exists('[data-testid="overview-kpi"]'), content: await owner.exists('[data-testid="overview-content"]'), store: await owner.exists('[data-testid="overview-store"]'), stage: await owner.text('[data-testid="overview-stage"]') };
+    // R3 (M5): /admin/overview shows Home; the cards follow what the role can work on
+    await reload(owner, '/admin/overview', '[data-testid="admin-home"]');
+    const ov = { home: await owner.exists('[data-testid="admin-home"]'), fresh: await owner.exists('[data-testid="home-card-new"]'), week: await owner.exists('[data-testid="home-card-week"]'), photos: await owner.exists('[data-testid="home-card-photos"]'), form: await owner.exists('[data-testid="home-card-form"]') };
     await owner.screenshot('staff-overview-owner-1366.png');
-    rec.add('E2E-OVERVIEW-OWNER', 'KPI', 'owner overview shows projects, contracts, content and store blocks with the PREVIEW stage banner', ov.crm && ov.kpi && ov.content && ov.store && /PREVIEW/.test(ov.stage), ov);
+    rec.add('E2E-OVERVIEW-OWNER', 'KPI', 'owner: /admin/overview shows Home with the new bookings, last 7 days, photos and booking-form cards', ov.home && ov.fresh && ov.week && ov.photos && ov.form, ov);
     await reload(owner, '/admin/account-security', '[data-testid="security-current"]');
     const securityText = await owner.text('[data-testid="security-current"]');
     const securityDirectory = await owner.exists('[data-testid="security-directory"]');
@@ -241,14 +243,14 @@ async function main() {
     const editor = await browser.newPage();
     await staffLogin(editor, 'EDITOR');
     const edNavText = (await editor.exists('[data-testid="staff-nav"]')) ? await editor.text('[data-testid="staff-nav"]') : '';
-    const edNav = /Projects workspace|KPI dashboard|Store operations|Service desk/.test(edNavText);
+    const edNav = /Projects workspace|KPI dashboard|Store operations|Service desk|Booking requests|Reports|Hidden pages/.test(edNavText);
     await editor.goto('/admin/workspace');
     const edNo = await editor.waitFor(`!!document.querySelector('[data-testid="no-access"]') || !!document.querySelector('[data-testid="rfq-queue"]')`, 20000);
     const edSees = await editor.exists('[data-testid="rfq-queue"]');
-    rec.add('E2E-EDITOR-NO-CRM', 'ROLES', 'editor: only Overview + Content review links; the Projects workspace shows no data', !edNav && /Content review/.test(edNavText) && !!edNo && !edSees, { edNavText, edSees });
-    await reload(editor, '/admin/overview', '[data-testid="overview-stage"]');
-    const edOverview = { content: await editor.exists('[data-testid="overview-content"]'), crm: await editor.exists('[data-testid="overview-crm"]'), kpi: await editor.exists('[data-testid="overview-kpi"]'), store: await editor.exists('[data-testid="overview-store"]') };
-    rec.add('E2E-OVERVIEW-EDITOR', 'ROLES', 'editor overview shows the content block only (no CRM, KPI or store figures)', edOverview.content && !edOverview.crm && !edOverview.kpi && !edOverview.store, edOverview);
+    rec.add('E2E-EDITOR-NO-CRM', 'ROLES', 'editor menu: site content and photos only (no bookings, reports or hidden pages); the Projects workspace shows no data', !edNav && /Packages/.test(edNavText) && /Photo library/.test(edNavText) && !!edNo && !edSees, { edNavText, edSees });
+    await reload(editor, '/admin/overview', '[data-testid="admin-home"]');
+    const edOverview = { photos: await editor.exists('[data-testid="home-card-photos"]'), fresh: await editor.exists('[data-testid="home-card-new"]'), week: await editor.exists('[data-testid="home-card-week"]'), latest: await editor.exists('[data-testid="home-latest"]') };
+    rec.add('E2E-OVERVIEW-EDITOR', 'ROLES', 'editor Home shows the photos card only (no booking figures or names)', edOverview.photos && !edOverview.fresh && !edOverview.week && !edOverview.latest, edOverview);
     await reload(editor, '/admin/account-security', '[data-testid="security-current"]');
     const editorSecurity = { current: await editor.exists('[data-testid="security-current"]'), directory: await editor.exists('[data-testid="security-directory"]'), denied: await editor.exists('[data-testid="security-directory-denied"]') };
     rec.add('E2E-EDITOR-SECURITY', 'ROLES', 'editor sees only their own MFA posture and an explicit OWNER-only directory state', editorSecurity.current && !editorSecurity.directory && editorSecurity.denied, editorSecurity);
