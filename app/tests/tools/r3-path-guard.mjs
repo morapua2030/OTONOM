@@ -21,6 +21,7 @@ const ALLOWED = [
   /^app\/web\/src\/payload\.config\.ts$/, // admin + i18n only (protected settings checked below)
   /^app\/web\/src\/payload-types\.ts$/, // generated; comments only (checked separately)
   /^app\/web\/test\/admin-[a-z-]+\.test\.ts$/,
+  /^app\/web\/test\/csrf-origin\.test\.ts$/, // test only: one more case, for R2's access-control mutation score on R3
   /^app\/tests\/src\/(admin-r3|browser|e2e|visual|final-shots|acceptance)\.ts$/,
   /^app\/tests\/(package\.json|run-all\.sh)$/,
   /^app\/tests\/tools\/r3-[a-z-]+\.(mjs|sh)$/,

@@ -52,6 +52,12 @@ test('plain http is accepted only for a loopback host that matches the request h
   await refused(mutationOriginGuard(request('POST', '127.0.0.1:3301', 'http://localhost:3301')));
 });
 
+test('a loopback host does not make a non-web scheme acceptable: only http is allowed there', async () => {
+  await refused(mutationOriginGuard(request('POST', '127.0.0.1:3301', 'ws://127.0.0.1:3301')));
+  await refused(mutationOriginGuard(request('POST', 'localhost:3000', 'ftp://localhost:3000')));
+  await refused(mutationOriginGuard(request('POST', '[::1]:3301', 'wss://[::1]:3301')));
+});
+
 test('unchanged: requests without Origin and GET requests are not judged by this guard', () => {
   assert.equal(mutationOriginGuard(request('POST', ADMIN)), null);
   assert.equal(mutationOriginGuard(request('GET', ADMIN, `http://${ADMIN}`)), null);
